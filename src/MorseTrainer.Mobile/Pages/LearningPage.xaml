@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="MorseTrainer.Mobile.Pages.LearningPage"
+             Title="Обучение">
+    <Grid Padding="14" RowDefinitions="Auto,Auto,*,Auto" RowSpacing="10">
+        <VerticalStackLayout>
+            <Label Text="Обучение" FontSize="26" FontAttributes="Bold" />
+            <Label Text="Напевы сохранены в приложении и работают без интернета" Opacity="0.65" />
+        </VerticalStackLayout>
+
+        <Grid Grid.Row="1" ColumnDefinitions="*,10,*">
+            <Picker x:Name="AlphabetPicker" Title="Алфавит" SelectedIndex="0"
+                    SelectedIndexChanged="Filter_OnChanged">
+                <Picker.Items>
+                    <x:String>Русские</x:String>
+                    <x:String>Латинские</x:String>
+                    <x:String>Русские и латинские</x:String>
+                    <x:String>Цифры</x:String>
+                </Picker.Items>
+            </Picker>
+            <SearchBar x:Name="SearchBox" Grid.Column="2" Placeholder="Найти"
+                       TextChanged="Filter_OnChanged" />
+        </Grid>
+
+        <CollectionView x:Name="CardsView" Grid.Row="2" SelectionMode="None">
+            <CollectionView.ItemsLayout>
+                <GridItemsLayout Orientation="Vertical" Span="2" HorizontalItemSpacing="8" VerticalItemSpacing="8" />
+            </CollectionView.ItemsLayout>
+            <CollectionView.ItemTemplate>
+                <DataTemplate>
+                    <Border Margin="2" Padding="12">
+                        <VerticalStackLayout Spacing="7">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <Label Text="{Binding Symbol}" FontSize="30" FontAttributes="Bold" />
+                                <Label Grid.Column="1" Text="{Binding Code}" FontSize="20" TextColor="{StaticResource PrimaryDark}" />
+                            </Grid>
+                            <Label Text="{Binding Chant}" FontAttributes="Bold" LineBreakMode="WordWrap" />
+                            <Grid ColumnDefinitions="*,6,*">
+                                <Button Text="Голос" Padding="8,7" CommandParameter="{Binding Symbol}"
+                                        Clicked="VoiceButton_OnClicked" />
+                                <Button Grid.Column="2" Text="Сигнал" Padding="8,7" CommandParameter="{Binding Symbol}"
+                                        Clicked="SignalButton_OnClicked" />
+                            </Grid>
+                        </VerticalStackLayout>
+                    </Border>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+
+        <Border Grid.Row="3" BackgroundColor="{AppThemeBinding Light=#ECFDF5, Dark=#102F29}">
+            <VerticalStackLayout Spacing="8">
+                <Grid ColumnDefinitions="*,Auto">
+                    <VerticalStackLayout>
+                        <Label Text="Проверка на слух" FontAttributes="Bold" FontSize="17" />
+                        <Label x:Name="QuizStatusLabel" Text="Прослушайте сигнал и выберите символ" Opacity="0.65" />
+                    </VerticalStackLayout>
+                    <Button Grid.Column="1" Text="Новое" Clicked="QuizButton_OnClicked" />
+                </Grid>
+                <FlexLayout x:Name="QuizAnswers" Direction="Row" Wrap="Wrap" JustifyContent="SpaceAround" />
+                <Label x:Name="QuizScoreLabel" Text="Результат: 0 / 0" HorizontalTextAlignment="Center" />
+            </VerticalStackLayout>
+        </Border>
+    </Grid>
+</ContentPage>

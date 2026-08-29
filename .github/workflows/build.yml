@@ -1,0 +1,45 @@
+name: Build Windows app
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Install Inno Setup
+        shell: powershell
+        run: choco install innosetup --no-progress -y
+
+      - name: Verify repository structure
+        shell: powershell
+        run: node .\tests\static-verify.mjs
+
+      - name: Test and build
+        shell: powershell
+        run: .\scripts\build.ps1
+
+      - name: Upload Windows packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: MorseTrainer-Windows-x64
+          path: |
+            dist/MorseTrainer-Windows-x64.zip
+            dist/MorseTrainer-Setup-x64.exe
+          if-no-files-found: error

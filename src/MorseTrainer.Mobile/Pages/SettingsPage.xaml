@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="MorseTrainer.Mobile.Pages.SettingsPage"
+             Title="Настройки">
+    <ScrollView>
+        <VerticalStackLayout Padding="16" Spacing="14">
+            <Label Text="Настройки" FontSize="26" FontAttributes="Bold" />
+
+            <Border>
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="Профили" FontSize="18" FontAttributes="Bold" />
+                    <Picker x:Name="ProfilePicker" Title="Выберите профиль" ItemDisplayBinding="{Binding Name}"
+                            SelectedIndexChanged="ProfilePicker_OnChanged" />
+                    <Entry x:Name="ProfileNameEntry" Placeholder="Название профиля" MaxLength="40" />
+                    <Grid ColumnDefinitions="*,8,*">
+                        <Button Text="Сохранить" BackgroundColor="{StaticResource Primary}" TextColor="#06231C"
+                                Clicked="SaveProfileButton_OnClicked" />
+                        <Button Grid.Column="2" Text="Удалить" Clicked="DeleteProfileButton_OnClicked" />
+                    </Grid>
+                </VerticalStackLayout>
+            </Border>
+
+            <Border>
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="Оформление" FontSize="18" FontAttributes="Bold" />
+                    <Picker x:Name="ThemePicker" Title="Тема" SelectedIndexChanged="SettingsControl_OnChanged">
+                        <Picker.Items>
+                            <x:String>Системная</x:String>
+                            <x:String>Тёмная</x:String>
+                            <x:String>Светлая</x:String>
+                        </Picker.Items>
+                    </Picker>
+                </VerticalStackLayout>
+            </Border>
+
+            <Border>
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="Состав задания" FontSize="18" FontAttributes="Bold" />
+                    <Label Text="Алфавит" Opacity="0.65" />
+                    <Picker x:Name="AlphabetPicker" SelectedIndexChanged="SettingsControl_OnChanged">
+                        <Picker.Items>
+                            <x:String>Русский</x:String>
+                            <x:String>Латинский</x:String>
+                            <x:String>Русский и латинский</x:String>
+                        </Picker.Items>
+                    </Picker>
+                    <Label Text="Режим" Opacity="0.65" />
+                    <Picker x:Name="ContentPicker" SelectedIndexChanged="SettingsControl_OnChanged">
+                        <Picker.Items>
+                            <x:String>Только буквы</x:String>
+                            <x:String>Только цифры</x:String>
+                            <x:String>Буквы и цифры</x:String>
+                            <x:String>Все символы</x:String>
+                            <x:String>Выбранные символы</x:String>
+                        </Picker.Items>
+                    </Picker>
+                    <Label x:Name="SelectedSymbolsLabel" Text="Выбрано: 0" FontAttributes="Bold" />
+                    <FlexLayout x:Name="SymbolsFlex" Direction="Row" Wrap="Wrap" AlignItems="Start" />
+                    <Grid ColumnDefinitions="*,8,*">
+                        <Button Text="Выбрать все" Clicked="SelectAllButton_OnClicked" />
+                        <Button Grid.Column="2" Text="Очистить" Clicked="ClearSymbolsButton_OnClicked" />
+                    </Grid>
+                </VerticalStackLayout>
+            </Border>
+
+            <Border>
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="Параметры тренировки" FontSize="18" FontAttributes="Bold" />
+
+                    <Grid ColumnDefinitions="*,Auto">
+                        <Label Text="Количество групп" />
+                        <Label x:Name="GroupCountValue" Grid.Column="1" FontAttributes="Bold" />
+                    </Grid>
+                    <Stepper x:Name="GroupCountStepper" Minimum="1" Maximum="100" Increment="1"
+                             ValueChanged="SettingsControl_OnChanged" />
+
+                    <Grid ColumnDefinitions="*,Auto">
+                        <Label Text="Скорость" />
+                        <Label x:Name="SpeedValue" Grid.Column="1" FontAttributes="Bold" />
+                    </Grid>
+                    <Slider x:Name="SpeedSlider" Minimum="20" Maximum="300" ValueChanged="SettingsControl_OnChanged" />
+
+                    <Grid ColumnDefinitions="*,Auto">
+                        <Label Text="Тональность" />
+                        <Label x:Name="FrequencyValue" Grid.Column="1" FontAttributes="Bold" />
+                    </Grid>
+                    <Slider x:Name="FrequencySlider" Minimum="300" Maximum="1200" ValueChanged="SettingsControl_OnChanged" />
+
+                    <Grid ColumnDefinitions="*,Auto">
+                        <Label Text="Громкость" />
+                        <Label x:Name="VolumeValue" Grid.Column="1" FontAttributes="Bold" />
+                    </Grid>
+                    <Slider x:Name="VolumeSlider" Minimum="0" Maximum="100" ValueChanged="SettingsControl_OnChanged" />
+
+                    <Grid ColumnDefinitions="*,Auto">
+                        <Label Text="Пауза между символами" />
+                        <Label x:Name="CharacterGapValue" Grid.Column="1" FontAttributes="Bold" />
+                    </Grid>
+                    <Slider x:Name="CharacterGapSlider" Minimum="3" Maximum="20" ValueChanged="SettingsControl_OnChanged" />
+
+                    <Grid ColumnDefinitions="*,Auto">
+                        <Label Text="Пауза между группами" />
+                        <Label x:Name="GroupGapValue" Grid.Column="1" FontAttributes="Bold" />
+                    </Grid>
+                    <Slider x:Name="GroupGapSlider" Minimum="7" Maximum="30" ValueChanged="SettingsControl_OnChanged" />
+
+                    <Grid ColumnDefinitions="*,Auto">
+                        <Label Text="Сигнал Ж Ж Ж перед заданием" VerticalOptions="Center" />
+                        <Switch x:Name="StartSignalSwitch" Grid.Column="1" Toggled="SettingsControl_OnChanged" />
+                    </Grid>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <Label Text="Пауза после Ж Ж Ж" />
+                        <Label x:Name="StartPauseValue" Grid.Column="1" FontAttributes="Bold" />
+                    </Grid>
+                    <Slider x:Name="StartPauseSlider" Minimum="7" Maximum="60" ValueChanged="SettingsControl_OnChanged" />
+                </VerticalStackLayout>
+            </Border>
+
+            <Label x:Name="SaveStatusLabel" Text="Настройки сохраняются автоматически"
+                   HorizontalTextAlignment="Center" Opacity="0.65" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

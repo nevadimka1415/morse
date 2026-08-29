@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../MorseTrainer/Domain/*.cs" Link="Domain/%(Filename)%(Extension)" />
+    <Compile Include="../MorseTrainer/Models/AppSettings.cs" Link="Models/AppSettings.cs" />
+    <Compile Include="../MorseTrainer/Models/TrainingProfile.cs" Link="Models/TrainingProfile.cs" />
+    <Compile Include="../MorseTrainer/Services/MorseAudioService.cs" Link="Services/MorseAudioService.cs" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,76 @@
+name: Build mobile apps
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  android:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Install Android workload
+        shell: powershell
+        run: dotnet workload install maui-android
+
+      - name: Verify repository structure
+        shell: powershell
+        run: node .\tests\static-verify.mjs
+
+      - name: Build Android APK
+        shell: powershell
+        run: >-
+          dotnet publish .\src\MorseTrainer.Mobile\MorseTrainer.Mobile.csproj
+          -f net8.0-android -c Release
+          -p:AndroidPackageFormats=apk
+
+      - name: Collect Android APK
+        shell: powershell
+        run: |
+          New-Item -ItemType Directory -Path .\mobile-artifacts\android -Force | Out-Null
+          Get-ChildItem .\src\MorseTrainer.Mobile\bin\Release\net8.0-android -Recurse -Filter *.apk |
+            Copy-Item -Destination .\mobile-artifacts\android
+
+      - name: Upload Android APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: MorseTrainer-Android
+          path: mobile-artifacts/android/*.apk
+          if-no-files-found: error
+
+  ios-simulator:
+    runs-on: macos-14
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Install iOS workload
+        run: dotnet workload install maui-ios
+
+      - name: Build iPhone simulator app
+        run: >-
+          dotnet build ./src/MorseTrainer.Mobile/MorseTrainer.Mobile.csproj
+          -f net8.0-ios -c Release
+          -p:RuntimeIdentifier=iossimulator-x64
+          -p:CodesignKey=""
+

@@ -1,0 +1,76 @@
+<Window x:Class="MorseTrainer.SymbolSelectionWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Выбор символов"
+        Width="760" Height="690" MinWidth="620" MinHeight="560"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource WindowBrush}"
+        Foreground="{DynamicResource TextBrush}">
+    <Grid Margin="24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="14" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="16" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <Grid>
+            <StackPanel>
+                <TextBlock Text="Выберите изученные символы" FontSize="22" FontWeight="SemiBold" />
+                <TextBlock Text="Генератор будет использовать только отмеченные символы."
+                           Foreground="{DynamicResource MutedTextBrush}" Margin="0,5,0,0" />
+            </StackPanel>
+            <Border Background="{DynamicResource PrimaryDarkBrush}" CornerRadius="12" Padding="12,6"
+                    HorizontalAlignment="Right" VerticalAlignment="Center">
+                <TextBlock x:Name="SelectionCountText" Foreground="{DynamicResource PrimaryBrush}" FontWeight="SemiBold" />
+            </Border>
+        </Grid>
+
+        <Border Grid.Row="2" Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource BorderBrush}"
+                BorderThickness="1" CornerRadius="14" Padding="20">
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <StackPanel>
+                    <Grid Margin="0,0,0,8">
+                        <TextBlock Text="Русские буквы" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" />
+                        <Button Content="Выбрать раздел" Tag="Russian" Click="SelectCategory_OnClick"
+                                HorizontalAlignment="Right" Padding="10,5" />
+                    </Grid>
+                    <WrapPanel x:Name="RussianSymbolsPanel" Margin="-4,0,0,18" />
+
+                    <Grid Margin="0,0,0,8">
+                        <TextBlock Text="Латинские буквы" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" />
+                        <Button Content="Выбрать раздел" Tag="Latin" Click="SelectCategory_OnClick"
+                                HorizontalAlignment="Right" Padding="10,5" />
+                    </Grid>
+                    <WrapPanel x:Name="LatinSymbolsPanel" Margin="-4,0,0,18" />
+
+                    <Grid Margin="0,0,0,8">
+                        <TextBlock Text="Цифры" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" />
+                        <Button Content="Выбрать раздел" Tag="Digits" Click="SelectCategory_OnClick"
+                                HorizontalAlignment="Right" Padding="10,5" />
+                    </Grid>
+                    <WrapPanel x:Name="DigitSymbolsPanel" Margin="-4,0,0,18" />
+
+                    <Grid Margin="0,0,0,8">
+                        <TextBlock Text="Знаки" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" />
+                        <Button Content="Выбрать раздел" Tag="Punctuation" Click="SelectCategory_OnClick"
+                                HorizontalAlignment="Right" Padding="10,5" />
+                    </Grid>
+                    <WrapPanel x:Name="PunctuationSymbolsPanel" Margin="-4,0,0,0" />
+                </StackPanel>
+            </ScrollViewer>
+        </Border>
+
+        <Grid Grid.Row="4">
+            <StackPanel Orientation="Horizontal">
+                <Button Content="Выбрать всё" Click="SelectAll_OnClick" />
+                <Button Content="Очистить" Click="Clear_OnClick" Margin="8,0,0,0" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button Content="Отмена" Click="Cancel_OnClick" />
+                <Button Content="Применить" Style="{StaticResource PrimaryButton}" Click="Apply_OnClick" Margin="8,0,0,0" />
+            </StackPanel>
+        </Grid>
+    </Grid>
+</Window>

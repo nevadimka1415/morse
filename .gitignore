@@ -1,0 +1,10 @@
+bin/
+obj/
+dist/
+release/
+morse-start.log
+.vs/
+.idea/
+*.user
+*.suo
+*.log

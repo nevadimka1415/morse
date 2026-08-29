@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>MorseTrainer</AssemblyName>
+    <RootNamespace>MorseTrainer</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets\MorseTrainer.ico</ApplicationIcon>
+    <Version>2.2.0</Version>
+    <Authors>Morse Trainer contributors</Authors>
+    <Product>Morse Trainer</Product>
+    <Description>Offline Morse code trainer for Windows.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Assets\Voice\*.wav" />
+  </ItemGroup>
+</Project>

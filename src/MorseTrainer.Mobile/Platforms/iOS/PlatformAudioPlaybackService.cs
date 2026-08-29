@@ -1,0 +1,69 @@
+using AVFoundation;
+using Foundation;
+using MorseTrainer.Mobile.Services;
+
+namespace MorseTrainer.Mobile.Platforms.iOS;
+
+public sealed class PlatformAudioPlaybackService : IAudioPlaybackService
+{
+    private AVAudioPlayer? _player;
+    private TaskCompletionSource? _completion;
+    public bool IsPlaying => _player?.Playing == true;
+
+    public async Task PlayAsync(string filePath, CancellationToken cancellationToken = default)
+    {
+        Stop();
+        var session = AVAudioSession.SharedInstance();
+        session.SetCategory(AVAudioSessionCategory.Playback);
+        session.SetActive(true);
+
+        var player = AVAudioPlayer.FromUrl(NSUrl.FromFilename(filePath));
+        if (player is null)
+        {
+            throw new InvalidOperationException("iOS could not open the audio file.");
+        }
+
+        _player = player;
+        var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        _completion = completion;
+        player.FinishedPlaying += (_, _) => completion.TrySetResult();
+        if (!player.PrepareToPlay() || !player.Play())
+        {
+            Stop();
+            throw new InvalidOperationException("iOS could not start audio playback.");
+        }
+
+        using var cancellationRegistration = cancellationToken.Register(() =>
+        {
+            Stop();
+            completion.TrySetCanceled(cancellationToken);
+        });
+        try
+        {
+            await completion.Task;
+        }
+        finally
+        {
+            Stop();
+        }
+    }
+
+    public void Stop()
+    {
+        var completion = _completion;
+        _completion = null;
+        completion?.TrySetCanceled();
+        if (_player is null)
+        {
+            return;
+        }
+
+        if (_player.Playing)
+        {
+            _player.Stop();
+        }
+
+        _player.Dispose();
+        _player = null;
+    }
+}

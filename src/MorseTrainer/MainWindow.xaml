@@ -1,0 +1,441 @@
+<Window x:Class="MorseTrainer.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Morse Trainer"
+        Width="1240" Height="860" MinWidth="1040" MinHeight="720"
+        WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource WindowBrush}"
+        Foreground="{DynamicResource TextBrush}"
+        FontFamily="Segoe UI"
+        Loaded="Window_OnLoaded"
+        Closing="Window_OnClosing"
+        KeyDown="Window_OnKeyDown">
+    <Grid Margin="26">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="18" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <Grid Grid.Row="0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="14" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <Border Width="48" Height="48" CornerRadius="15" Background="{DynamicResource PrimaryBrush}">
+                <TextBlock Text="••—" Foreground="#10251D" FontWeight="Bold" FontSize="15"
+                           HorizontalAlignment="Center" VerticalAlignment="Center" />
+            </Border>
+            <StackPanel Grid.Column="2" VerticalAlignment="Center">
+                <TextBlock Text="Morse Trainer" FontSize="25" FontWeight="SemiBold" />
+                <TextBlock Text="Тренировка и изучение азбуки Морзе" Foreground="{DynamicResource MutedTextBrush}" FontSize="13" />
+            </StackPanel>
+            <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center">
+                <ComboBox x:Name="ThemeCombo" Width="145" SelectedIndex="0"
+                          SelectionChanged="ThemeCombo_OnSelectionChanged">
+                    <ComboBoxItem Content="Тема: системная" />
+                    <ComboBoxItem Content="Тема: тёмная" />
+                    <ComboBoxItem Content="Тема: светлая" />
+                </ComboBox>
+                <Border Background="{DynamicResource PrimaryDarkBrush}" CornerRadius="13" Padding="13,7" Margin="10,0,0,0">
+                    <TextBlock Text="OFFLINE" Foreground="{DynamicResource PrimaryBrush}" FontWeight="SemiBold" FontSize="11" />
+                </Border>
+            </StackPanel>
+        </Grid>
+
+        <TabControl x:Name="MainTabs" Grid.Row="2">
+            <TabItem Header="Тренировка">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="380" />
+                        <ColumnDefinition Width="18" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <Border Grid.Column="0" Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource BorderBrush}"
+                            BorderThickness="1" CornerRadius="16" Padding="22">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                            <StackPanel>
+                                <TextBlock Text="Параметры задания" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,20" />
+
+                                <Label Content="Профиль настроек" />
+                                <ComboBox x:Name="ProfileCombo" IsEditable="True" IsTextSearchEnabled="True"
+                                          SelectionChanged="ProfileCombo_OnSelectionChanged" Margin="0,0,0,8" />
+                                <Grid Margin="0,0,0,15">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="8" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Button Content="Сохранить профиль" Click="SaveProfileButton_OnClick" Padding="10,7" />
+                                    <Button Grid.Column="2" Content="Удалить" Click="DeleteProfileButton_OnClick" Padding="10,7" />
+                                </Grid>
+
+                                <Label Content="Алфавит" />
+                                <ComboBox x:Name="AlphabetCombo" SelectedIndex="0" Margin="0,0,0,15">
+                                    <ComboBoxItem Content="Русский" />
+                                    <ComboBoxItem Content="Латинский" />
+                                    <ComboBoxItem Content="Русский и латинский" />
+                                </ComboBox>
+
+                                <Label Content="Состав задания" />
+                                <ComboBox x:Name="ContentModeCombo" SelectedIndex="2" Margin="0,0,0,15"
+                                          SelectionChanged="ContentModeCombo_OnSelectionChanged">
+                                    <ComboBoxItem Content="Только буквы" />
+                                    <ComboBoxItem Content="Только цифры" />
+                                    <ComboBoxItem Content="Буквы и цифры" />
+                                    <ComboBoxItem Content="Буквы, цифры и знаки" />
+                                    <ComboBoxItem Content="Выбранные символы" />
+                                </ComboBox>
+
+                                <Border x:Name="CustomSymbolsPanel" Visibility="Collapsed" Background="{DynamicResource CardAltBrush}"
+                                        CornerRadius="10" Padding="12" Margin="0,0,0,15">
+                                    <StackPanel>
+                                        <TextBlock Text="Собственный набор" FontWeight="SemiBold" />
+                                        <TextBlock x:Name="SelectedSymbolsSummaryText" Text="Ничего не выбрано"
+                                                   Foreground="{DynamicResource MutedTextBrush}" TextWrapping="Wrap" Margin="0,5,0,9" />
+                                        <Button Content="Выбрать символы" Click="SelectSymbolsButton_OnClick" Padding="12,7" />
+                                    </StackPanel>
+                                </Border>
+
+                                <Grid Margin="0,0,0,15">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="110" />
+                                    </Grid.ColumnDefinitions>
+                                    <Label Content="Количество групп" VerticalAlignment="Center" Padding="0" />
+                                    <TextBox x:Name="GroupCountText" Grid.Column="1" Text="10" HorizontalContentAlignment="Center" />
+                                </Grid>
+                                <TextBlock Text="В каждой группе 5 символов" Foreground="{DynamicResource MutedTextBrush}"
+                                           FontSize="11" Margin="0,-9,0,15" />
+
+                                <Grid Margin="0,0,0,5">
+                                    <TextBlock Text="Скорость знака" Foreground="{DynamicResource MutedTextBrush}" />
+                                    <TextBlock x:Name="SpeedValueText" Text="60 знаков/мин" HorizontalAlignment="Right" />
+                                </Grid>
+                                <Slider x:Name="SpeedSlider" Minimum="20" Maximum="300" Value="60" TickFrequency="10"
+                                        IsSnapToTickEnabled="True" ValueChanged="SettingSlider_OnValueChanged" Margin="0,0,0,17" />
+
+                                <Grid Margin="0,0,0,5">
+                                    <TextBlock Text="Тональность" Foreground="{DynamicResource MutedTextBrush}" />
+                                    <TextBlock x:Name="FrequencyValueText" Text="700 Гц" HorizontalAlignment="Right" />
+                                </Grid>
+                                <Slider x:Name="FrequencySlider" Minimum="300" Maximum="1200" Value="700" TickFrequency="50"
+                                        IsSnapToTickEnabled="True" ValueChanged="SettingSlider_OnValueChanged" Margin="0,0,0,17" />
+
+                                <Grid Margin="0,0,0,5">
+                                    <TextBlock Text="Громкость" Foreground="{DynamicResource MutedTextBrush}" />
+                                    <TextBlock x:Name="VolumeValueText" Text="70%" HorizontalAlignment="Right" />
+                                </Grid>
+                                <Slider x:Name="VolumeSlider" Minimum="0" Maximum="100" Value="70" TickFrequency="5"
+                                        IsSnapToTickEnabled="True" ValueChanged="SettingSlider_OnValueChanged" Margin="0,0,0,17" />
+
+                                <Grid Margin="0,0,0,5">
+                                    <TextBlock Text="Пауза между символами" Foreground="{DynamicResource MutedTextBrush}" />
+                                    <TextBlock x:Name="CharacterGapValueText" Text="3 точки" HorizontalAlignment="Right" />
+                                </Grid>
+                                <Slider x:Name="CharacterGapSlider" Minimum="3" Maximum="20" Value="3" TickFrequency="1"
+                                        IsSnapToTickEnabled="True" ValueChanged="SettingSlider_OnValueChanged" Margin="0,0,0,17" />
+
+                                <Grid Margin="0,0,0,5">
+                                    <TextBlock Text="Пауза между группами" Foreground="{DynamicResource MutedTextBrush}" />
+                                    <TextBlock x:Name="GroupGapValueText" Text="7 точек" HorizontalAlignment="Right" />
+                                </Grid>
+                                <Slider x:Name="GroupGapSlider" Minimum="7" Maximum="30" Value="7" TickFrequency="1"
+                                        IsSnapToTickEnabled="True" ValueChanged="SettingSlider_OnValueChanged" Margin="0,0,0,18" />
+
+                                <CheckBox x:Name="PlayStartSignalCheckBox" Content="Перед заданием проигрывать Ж Ж Ж"
+                                          IsChecked="True" Margin="0,0,0,12" />
+                                <Grid Margin="0,0,0,5">
+                                    <TextBlock Text="Пауза после Ж Ж Ж" Foreground="{DynamicResource MutedTextBrush}" />
+                                    <TextBlock x:Name="StartPauseValueText" Text="21 точка" HorizontalAlignment="Right" />
+                                </Grid>
+                                <Slider x:Name="StartPauseSlider" Minimum="7" Maximum="60" Value="21" TickFrequency="1"
+                                        IsSnapToTickEnabled="True" ValueChanged="SettingSlider_OnValueChanged" Margin="0,0,0,18" />
+
+                                <Button x:Name="GenerateButton" Content="Сгенерировать задание" Style="{StaticResource PrimaryButton}"
+                                        Click="GenerateButton_OnClick" Padding="16,13" />
+                                <TextBlock Text="Ctrl+G — создать новое задание" Foreground="{DynamicResource MutedTextBrush}"
+                                           FontSize="11" HorizontalAlignment="Center" Margin="0,8,0,0" />
+                            </StackPanel>
+                        </ScrollViewer>
+                    </Border>
+
+                    <Border Grid.Column="2" Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource BorderBrush}"
+                            BorderThickness="1" CornerRadius="16" Padding="24">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="16" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="16" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="16" />
+                                <RowDefinition Height="*" />
+                                <RowDefinition Height="16" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+
+                            <Grid Grid.Row="0">
+                                <StackPanel>
+                                    <TextBlock Text="Тренировка" FontSize="18" FontWeight="SemiBold" />
+                                    <TextBlock x:Name="TaskMetaText" Text="Подготавливаем задание…"
+                                               Foreground="{DynamicResource MutedTextBrush}" FontSize="12" Margin="0,4,0,0" />
+                                </StackPanel>
+                                <Border x:Name="StatusBadge" Background="{DynamicResource CardAltBrush}" CornerRadius="12"
+                                        Padding="12,6" HorizontalAlignment="Right" VerticalAlignment="Top">
+                                    <TextBlock x:Name="StatusBadgeText" Text="НЕ ГОТОВО" Foreground="{DynamicResource MutedTextBrush}"
+                                               FontWeight="SemiBold" FontSize="10" />
+                                </Border>
+                            </Grid>
+
+                            <Border Grid.Row="2" Background="{DynamicResource CardAltBrush}" BorderBrush="{DynamicResource BorderBrush}"
+                                    BorderThickness="1" CornerRadius="12" Padding="18">
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="10" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+                                    <Grid>
+                                        <TextBlock Text="Правильный ответ" Foreground="{DynamicResource MutedTextBrush}" />
+                                        <Button x:Name="ToggleAnswerButton" Content="Показать" HorizontalAlignment="Right"
+                                                Padding="12,5" Click="ToggleAnswerButton_OnClick" IsEnabled="False" />
+                                    </Grid>
+                                    <TextBlock x:Name="AnswerDisplayText" Grid.Row="2" Text="••••• ••••• •••••"
+                                               FontFamily="Cascadia Mono, Consolas" FontSize="21" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                </Grid>
+                            </Border>
+
+                            <Grid Grid.Row="4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="10" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="10" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="18" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Button x:Name="PlayButton" Content="▶  Слушать" Style="{StaticResource PrimaryButton}"
+                                        Click="PlayButton_OnClick" IsEnabled="False" />
+                                <Button x:Name="StopButton" Grid.Column="2" Content="■  Стоп" Click="StopButton_OnClick" IsEnabled="False" />
+                                <Button x:Name="RepeatButton" Grid.Column="4" Content="↻  Повторить" Click="PlayButton_OnClick" IsEnabled="False" />
+                                <StackPanel Grid.Column="6" VerticalAlignment="Center">
+                                    <ProgressBar x:Name="PlaybackProgress" Height="6" Minimum="0" Maximum="100" Value="0" />
+                                    <TextBlock x:Name="PlaybackStatusText" Text="Ожидание задания" Foreground="{DynamicResource MutedTextBrush}"
+                                               FontSize="11" Margin="0,6,0,0" HorizontalAlignment="Right" />
+                                </StackPanel>
+                            </Grid>
+
+                            <Grid Grid.Row="6">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="8" />
+                                    <RowDefinition Height="*" />
+                                    <RowDefinition Height="10" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <TextBlock Text="Введите то, что услышали" Foreground="{DynamicResource MutedTextBrush}" />
+                                <TextBox x:Name="UserAnswerText" Grid.Row="2" AcceptsReturn="True" TextWrapping="Wrap"
+                                         VerticalScrollBarVisibility="Auto" FontFamily="Cascadia Mono, Consolas" FontSize="18" IsEnabled="False" />
+                                <Grid Grid.Row="4">
+                                    <Button x:Name="CheckAnswerButton" Content="Проверить ответ" Style="{StaticResource PrimaryButton}"
+                                            Click="CheckAnswerButton_OnClick" IsEnabled="False" HorizontalAlignment="Left" />
+                                    <TextBlock x:Name="ResultDetailsText" Text="Пробелы между группами при проверке не учитываются"
+                                               Foreground="{DynamicResource MutedTextBrush}" TextWrapping="Wrap" VerticalAlignment="Center"
+                                               HorizontalAlignment="Right" MaxWidth="430" FontSize="11" />
+                                </Grid>
+                            </Grid>
+
+                            <Grid Grid.Row="8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="10" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="10" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="16" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="8" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <Border Background="{DynamicResource CardAltBrush}" CornerRadius="10" Padding="14,10">
+                                    <StackPanel>
+                                        <TextBlock Text="ТОЧНОСТЬ" Foreground="{DynamicResource MutedTextBrush}" FontSize="10" />
+                                        <TextBlock x:Name="AccuracyText" Text="—" FontSize="20" FontWeight="SemiBold" />
+                                    </StackPanel>
+                                </Border>
+                                <Border Grid.Column="2" Background="{DynamicResource CardAltBrush}" CornerRadius="10" Padding="14,10">
+                                    <StackPanel>
+                                        <TextBlock Text="ПОПЫТКИ" Foreground="{DynamicResource MutedTextBrush}" FontSize="10" />
+                                        <TextBlock x:Name="AttemptsText" Text="0" FontSize="20" FontWeight="SemiBold" />
+                                    </StackPanel>
+                                </Border>
+                                <Border Grid.Column="4" Background="{DynamicResource CardAltBrush}" CornerRadius="10" Padding="14,10">
+                                    <StackPanel>
+                                        <TextBlock Text="СЛОЖНЫЕ СИМВОЛЫ" Foreground="{DynamicResource MutedTextBrush}" FontSize="10" />
+                                        <TextBlock x:Name="ProblemSymbolsText" Text="—" FontSize="16" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                    </StackPanel>
+                                </Border>
+                                <Button x:Name="SaveTaskButton" Grid.Column="6" Content="Сохранить TXT" Click="SaveTaskButton_OnClick" IsEnabled="False" />
+                                <Button x:Name="ExportWavButton" Grid.Column="8" Content="Экспорт WAV" Click="ExportWavButton_OnClick" IsEnabled="False" />
+                            </Grid>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </TabItem>
+
+            <TabItem Header="Обучение">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="14" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <Border Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource BorderBrush}"
+                            BorderThickness="1" CornerRadius="14" Padding="16">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="12" />
+                                <ColumnDefinition Width="220" />
+                                <ColumnDefinition Width="18" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="12" />
+                                <ColumnDefinition Width="280" />
+                                <ColumnDefinition Width="18" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Раздел" Foreground="{DynamicResource MutedTextBrush}" VerticalAlignment="Center" />
+                            <ComboBox x:Name="LearningAlphabetCombo" Grid.Column="2" SelectedIndex="0"
+                                      SelectionChanged="LearningFilter_OnSelectionChanged">
+                                <ComboBoxItem Content="Русские буквы" />
+                                <ComboBoxItem Content="Латинские буквы" />
+                                <ComboBoxItem Content="Русский и латинский" />
+                                <ComboBoxItem Content="Цифры" />
+                            </ComboBox>
+                            <TextBlock Grid.Column="4" Text="Воспроизведение" Foreground="{DynamicResource MutedTextBrush}" VerticalAlignment="Center" />
+                            <ComboBox x:Name="LearningAudioModeCombo" Grid.Column="6" SelectedIndex="0">
+                                <ComboBoxItem Content="Напев на экране + сигнал" />
+                                <ComboBoxItem Content="Естественный офлайн-голос + сигнал" />
+                            </ComboBox>
+                            <TextBox x:Name="LearningSearchText" Grid.Column="8" TextChanged="LearningFilter_OnTextChanged"
+                                     ToolTip="Поиск по букве или напеву" />
+                        </Grid>
+                    </Border>
+
+                    <Grid Grid.Row="2">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="16" />
+                            <ColumnDefinition Width="365" />
+                        </Grid.ColumnDefinitions>
+
+                        <Border Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource BorderBrush}"
+                                BorderThickness="1" CornerRadius="14" Padding="14">
+                            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                <ItemsControl x:Name="LearningItemsControl">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <WrapPanel />
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Width="190" MinHeight="160" Margin="6" Padding="14"
+                                                    Background="{DynamicResource CardAltBrush}"
+                                                    BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="12">
+                                                <Grid>
+                                                    <Grid.RowDefinitions>
+                                                        <RowDefinition Height="Auto" />
+                                                        <RowDefinition Height="Auto" />
+                                                        <RowDefinition Height="*" />
+                                                        <RowDefinition Height="Auto" />
+                                                    </Grid.RowDefinitions>
+                                                    <Grid>
+                                                        <TextBlock Text="{Binding Symbol}" FontSize="30" FontWeight="Bold" />
+                                                        <TextBlock Text="{Binding Code}" FontFamily="Cascadia Mono, Consolas" FontSize="20"
+                                                                   Foreground="{DynamicResource PrimaryBrush}" HorizontalAlignment="Right" />
+                                                    </Grid>
+                                                    <TextBlock Grid.Row="1" Text="{Binding Chant}" FontWeight="SemiBold"
+                                                               TextWrapping="Wrap" Margin="0,8,0,5" />
+                                                    <TextBlock Grid.Row="2" Text="{Binding Category}" Foreground="{DynamicResource MutedTextBrush}"
+                                                               FontSize="10" />
+                                                    <Button Grid.Row="3" Content="▶  Слушать" Tag="{Binding Symbol}"
+                                                            Click="LearningCardPlay_OnClick" Padding="10,7" Margin="0,9,0,0" />
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                        </Border>
+
+                        <Grid Grid.Column="2">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="14" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+
+                            <Border Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource BorderBrush}"
+                                    BorderThickness="1" CornerRadius="14" Padding="20">
+                                <StackPanel>
+                                    <TextBlock Text="Сейчас изучаем" Foreground="{DynamicResource MutedTextBrush}" />
+                                    <Grid Margin="0,8,0,4">
+                                        <TextBlock x:Name="LearningNowSymbolText" Text="А" FontSize="44" FontWeight="Bold" />
+                                        <TextBlock x:Name="LearningNowCodeText" Text=".-" FontFamily="Cascadia Mono, Consolas"
+                                                   FontSize="28" Foreground="{DynamicResource PrimaryBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                                    </Grid>
+                                    <TextBlock x:Name="LearningHighlightedChantText" Text="ай-даа" FontSize="21" FontWeight="SemiBold"
+                                               TextWrapping="Wrap" Margin="0,4,0,8" />
+                                    <TextBlock x:Name="LearningPlaybackStatusText" Text="Выберите карточку"
+                                               Foreground="{DynamicResource MutedTextBrush}" FontSize="11" />
+                                </StackPanel>
+                            </Border>
+
+                            <Border Grid.Row="2" Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource BorderBrush}"
+                                    BorderThickness="1" CornerRadius="14" Padding="20">
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="12" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="12" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="*" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+                                    <Grid>
+                                        <StackPanel>
+                                            <TextBlock Text="Проверочное задание" FontSize="18" FontWeight="SemiBold" />
+                                            <TextBlock Text="Прослушайте сигнал и выберите символ"
+                                                       Foreground="{DynamicResource MutedTextBrush}" FontSize="11" />
+                                        </StackPanel>
+                                        <TextBlock x:Name="QuizScoreText" Text="0 / 0" HorizontalAlignment="Right"
+                                                   Foreground="{DynamicResource PrimaryBrush}" FontSize="18" FontWeight="SemiBold" />
+                                    </Grid>
+                                    <Button x:Name="QuizPlayButton" Grid.Row="2" Content="▶  Новое задание"
+                                            Style="{StaticResource PrimaryButton}" Click="QuizPlayButton_OnClick" />
+                                    <TextBlock x:Name="QuizPromptText" Grid.Row="4" Text="Нажмите «Новое задание»"
+                                               HorizontalAlignment="Center" Foreground="{DynamicResource MutedTextBrush}" />
+                                    <UniformGrid x:Name="QuizAnswersPanel" Grid.Row="5" Columns="2" Margin="-4,8,-4,8" />
+                                    <TextBlock x:Name="QuizResultText" Grid.Row="6" Text=" " HorizontalAlignment="Center"
+                                               FontWeight="SemiBold" TextWrapping="Wrap" />
+                                </Grid>
+                            </Border>
+                        </Grid>
+                    </Grid>
+                </Grid>
+            </TabItem>
+        </TabControl>
+
+        <TextBlock Grid.Row="3" Text="F5 — воспроизведение    Esc — остановка    Все данные хранятся только на этом компьютере"
+                   Foreground="{DynamicResource MutedTextBrush}" FontSize="11" HorizontalAlignment="Center" Margin="0,14,0,0" />
+    </Grid>
+</Window>

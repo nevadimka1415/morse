@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="MorseTrainer.Mobile.Pages.TrainingPage"
+             Title="Тренировка">
+    <ScrollView>
+        <VerticalStackLayout Padding="16" Spacing="14">
+            <Grid ColumnDefinitions="*,Auto">
+                <VerticalStackLayout Spacing="2">
+                    <Label Text="Тренировка" FontSize="26" FontAttributes="Bold" />
+                    <Label x:Name="ProfileLabel" Text="Профиль: Основной" Opacity="0.65" />
+                </VerticalStackLayout>
+                <Button Grid.Column="1" Text="Настроить" Clicked="SettingsButton_OnClicked" />
+            </Grid>
+
+            <Border BackgroundColor="{AppThemeBinding Light=#ECFDF5, Dark=#102F29}">
+                <VerticalStackLayout Spacing="8">
+                    <Label Text="Параметры" FontAttributes="Bold" />
+                    <Label x:Name="SettingsSummaryLabel" Text="10 групп × 5 · 60 знаков/мин" LineBreakMode="WordWrap" />
+                    <Label Text="Перед началом: Ж Ж Ж → пауза → задание" TextColor="{StaticResource PrimaryDark}" FontAttributes="Bold" />
+                </VerticalStackLayout>
+            </Border>
+
+            <Button x:Name="GenerateButton" Text="Сгенерировать новое задание"
+                    BackgroundColor="{StaticResource Primary}" TextColor="#06231C"
+                    Clicked="GenerateButton_OnClicked" />
+
+            <Border>
+                <VerticalStackLayout Spacing="12">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <Label Text="Правильный ответ" Opacity="0.65" />
+                        <Button Grid.Column="1" x:Name="ToggleAnswerButton" Text="Показать"
+                                Padding="10,6" Clicked="ToggleAnswerButton_OnClicked" />
+                    </Grid>
+                    <Label x:Name="TaskLabel" Text="••••• •••••" FontSize="22" FontAttributes="Bold"
+                           FontFamily="monospace" LineBreakMode="WordWrap" />
+                </VerticalStackLayout>
+            </Border>
+
+            <Grid ColumnDefinitions="*,12,*,12,*">
+                <Button x:Name="PlayButton" Grid.Column="0" Text="▶ Слушать"
+                        BackgroundColor="{StaticResource Primary}" TextColor="#06231C"
+                        Clicked="PlayButton_OnClicked" IsEnabled="False" />
+                <Button x:Name="StopButton" Grid.Column="2" Text="■ Стоп"
+                        Clicked="StopButton_OnClicked" IsEnabled="False" />
+                <Button x:Name="RepeatButton" Grid.Column="4" Text="↻ Ещё раз"
+                        Clicked="PlayButton_OnClicked" IsEnabled="False" />
+            </Grid>
+            <Label x:Name="PlaybackStatusLabel" Text="Подготовьте задание" HorizontalTextAlignment="Center" Opacity="0.65" />
+
+            <Label Text="Введите услышанные группы" FontAttributes="Bold" />
+            <Editor x:Name="AnswerEditor" HeightRequest="110" AutoSize="TextChanges"
+                    Placeholder="Например: АГЖДЕ БВГДА" />
+            <Button x:Name="CheckButton" Text="Проверить ответ" Clicked="CheckButton_OnClicked" IsEnabled="False" />
+            <Border>
+                <VerticalStackLayout Spacing="6">
+                    <Label x:Name="AccuracyLabel" Text="Точность: —" FontSize="20" FontAttributes="Bold" />
+                    <Label x:Name="ResultLabel" Text="Пробелы между группами не учитываются" LineBreakMode="WordWrap" />
+                </VerticalStackLayout>
+            </Border>
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>
