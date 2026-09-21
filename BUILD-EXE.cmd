@@ -6,13 +6,13 @@ title Morse Trainer - EXE builder
 set "MORSE_PROJECT=%~dp0src\MorseTrainer\MorseTrainer.csproj"
 set "MORSE_OUTPUT=%~dp0release"
 
-echo Building MorseTrainer.exe using the installed .NET 8 runtime...
+echo Building MorseTrainer.exe using the installed .NET 10 runtime...
 echo No large Windows runtime package download is required.
 echo.
 
 where dotnet >nul 2>&1
 if errorlevel 1 (
-    echo ERROR: .NET SDK 8 was not found.
+    echo ERROR: .NET SDK 10 was not found.
     goto :failed
 )
 

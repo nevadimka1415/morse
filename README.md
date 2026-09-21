@@ -52,14 +52,14 @@
 
 Требования для разработчика:
 
-- [.NET SDK 8](https://dotnet.microsoft.com/download/dotnet/8.0);
+- [.NET SDK 10](https://dotnet.microsoft.com/download/dotnet/10.0);
 - [Inno Setup 6](https://jrsoftware.org/isinfo.php) — только для установщика.
 
 Для обычного запуска исходников дважды щёлкните `START-MORSE-TRAINER.cmd`.
 Перед загрузкой на GitHub запустите `CHECK-BEFORE-GITHUB.cmd`: он проверит SDK, выполнит тесты и соберёт приложение.
 Окно запуска теперь остаётся открытым после завершения программы. Ошибки сборки сохраняются в `morse-start.log`, а ошибки самого приложения — в `%LOCALAPPDATA%\MorseTrainer\crash.log`.
 
-Чтобы получить один запускаемый файл, дважды щёлкните `BUILD-EXE.cmd`. После успешной сборки откроется папка `release` с готовым `MorseTrainer.exe`. Эта локальная сборка использует уже установленную среду .NET 8 и не скачивает крупные runtime-пакеты. Для других компьютеров без .NET используйте полностью автономный EXE из GitHub Release.
+Чтобы получить один запускаемый файл, дважды щёлкните `BUILD-EXE.cmd`. После успешной сборки откроется папка `release` с готовым `MorseTrainer.exe`. Эта локальная сборка использует уже установленную среду .NET 10 и не скачивает крупные runtime-пакеты. Для других компьютеров без .NET используйте полностью автономный EXE из GitHub Release.
 
 ```powershell
 .\scripts\build.ps1

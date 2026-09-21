@@ -108,6 +108,12 @@ const buildWorkflow = read('.github/workflows/build.yml');
 assert(buildWorkflow.includes('scripts\\build.ps1'), 'Build workflow does not call the build script.');
 assert(buildWorkflow.includes('MorseTrainer-Setup-x64.exe'), 'Build workflow does not publish the installer.');
 
+assert(read('src/MorseTrainer/MorseTrainer.csproj').includes('<TargetFramework>net10.0-windows</TargetFramework>'), 'Windows project must target net10.0-windows.');
+assert(read('src/MorseTrainer.Core/MorseTrainer.Core.csproj').includes('<TargetFramework>net10.0</TargetFramework>'), 'Core project must target net10.0.');
+assert(read('tests/MorseTrainer.Tests/MorseTrainer.Tests.csproj').includes('<TargetFramework>net10.0-windows</TargetFramework>'), 'Tests project must target net10.0-windows.');
+assert(!buildWorkflow.includes('8.0.x'), 'Build workflow must use .NET SDK 10.');
+assert(existsSync(resolve(root, 'global.json')), 'global.json must pin the .NET SDK major version.');
+
 const mobileProject = read('src/MorseTrainer.Mobile/MorseTrainer.Mobile.csproj');
 assert(mobileProject.includes('<TargetFrameworks>net10.0-android;net10.0-ios</TargetFrameworks>'),
   'Mobile project must target net10.0-android and net10.0-ios.');
@@ -125,6 +131,7 @@ assert(mobileWorkflow.includes('iossimulator-arm64'), 'iOS job must build for th
 const releaseWorkflow = read('.github/workflows/release.yml');
 assert(releaseWorkflow.includes('gh release create'), 'Release workflow does not create a GitHub release.');
 assert(releaseWorkflow.includes('--notes-file'), 'Release workflow must take release notes from CHANGELOG.md.');
+assert(!releaseWorkflow.includes('8.0.x'), 'Release workflow must use .NET SDK 10.');
 for (const [name, workflow] of [['build', buildWorkflow], ['mobile', mobileWorkflow], ['release', releaseWorkflow]]) {
   assert(!/uses: actions\/[a-z-]+@v[1-4]\b/.test(workflow), `The ${name} workflow uses an outdated action version (Node 20).`);
 }

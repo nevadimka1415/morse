@@ -26,7 +26,7 @@ GitHub автоматически проверяет, что iPhone-версия
 
 ## Локальная сборка
 
-Мобильный проект собирается на .NET 10 (`net10.0-android`, `net10.0-ios`): для него нужен .NET SDK 10, а для Android ещё JDK 21 и Android SDK. Windows-приложение при этом по-прежнему собирается на .NET SDK 8.
+Весь проект собирается на .NET 10: мобильный (`net10.0-android`, `net10.0-ios`) и Windows-приложение. Нужен .NET SDK 10, а для Android ещё JDK 21 и Android SDK.
 
 Android:
 

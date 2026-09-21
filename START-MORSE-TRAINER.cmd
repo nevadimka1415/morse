@@ -11,7 +11,7 @@ echo.
 where dotnet >nul 2>&1
 if errorlevel 1 (
     echo ERROR: .NET SDK was not found.
-    echo Install .NET SDK 8 and restart Windows.
+    echo Install .NET SDK 10 and restart Windows.
     goto :finish
 )
 
