@@ -44,6 +44,21 @@ public sealed class PlatformAudioPlaybackService : IAudioPlaybackService
         }
     }
 
+    public void StartLoop(string filePath)
+    {
+        Stop();
+        var player = new MediaPlayer();
+        _player = player;
+        player.SetAudioAttributes(new AudioAttributes.Builder()!
+            .SetContentType(AudioContentType.Music)!
+            .SetUsage(AudioUsageKind.Media)!
+            .Build());
+        player.SetDataSource(filePath);
+        player.Looping = true;
+        player.Prepare();
+        player.Start();
+    }
+
     public void Stop()
     {
         var completion = _completion;

@@ -21,6 +21,7 @@ public static class MauiProgram
         builder.Services.AddSingleton<VoicePackService>();
         builder.Services.AddSingleton<TrainingPage>();
         builder.Services.AddSingleton<LearningPage>();
+        builder.Services.AddSingleton<KeyerPage>();
         builder.Services.AddSingleton<ProgressPage>();
         builder.Services.AddSingleton<SettingsPage>();
         builder.Services.AddSingleton<AppShell>();

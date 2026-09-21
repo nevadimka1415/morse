@@ -73,6 +73,38 @@ public static class MorseAlphabet
             || Punctuation.TryGetValue(symbol, out code!);
     }
 
+    /// <summary>Символ по коду с учётом алфавита: для «.» в русском режиме — Е, в латинском — E.</summary>
+    public static bool TryGetSymbol(string code, AlphabetMode alphabet, out char symbol)
+    {
+        var maps = new List<IReadOnlyDictionary<char, string>>();
+        if (alphabet is AlphabetMode.Russian or AlphabetMode.RussianAndLatin)
+        {
+            maps.Add(Russian);
+        }
+
+        if (alphabet is AlphabetMode.Latin or AlphabetMode.RussianAndLatin)
+        {
+            maps.Add(Latin);
+        }
+
+        maps.Add(Digits);
+        maps.Add(Punctuation);
+        foreach (var map in maps)
+        {
+            foreach (var pair in map)
+            {
+                if (pair.Value == code)
+                {
+                    symbol = pair.Key;
+                    return true;
+                }
+            }
+        }
+
+        symbol = '?';
+        return false;
+    }
+
     public static IReadOnlyList<char> BuildPool(
         AlphabetMode alphabet,
         ContentMode content,

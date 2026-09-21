@@ -25,6 +25,20 @@ public partial class MainWindow : Window
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "MorseTrainer", "history.json"));
     private IReadOnlyList<TrainingRecord> _history = Array.Empty<TrainingRecord>();
     private bool _currentTaskRecorded;
+    private const int KeyerTabIndex = 2;
+    private readonly Stopwatch _keyerClock = Stopwatch.StartNew();
+    private KeyerDecoder? _keyer;
+    private int _keyerSpeed;
+    private int _keyerAlphabet = -1;
+    private bool _keyDown;
+    private double _keyerPressStart;
+    private double _keyerLastRelease = -1;
+    private SoundPlayer? _tonePlayer;
+    private MemoryStream? _toneStream;
+    private int _toneFrequency;
+    private int _toneVolume;
+    private DispatcherTimer? _keyerTimer;
+    private string _keyerTarget = string.Empty;
     private readonly ProfileService _profileService = new();
     private readonly Dictionary<char, int> _problemSymbols = new();
     private SoundPlayer? _player;
@@ -76,6 +90,7 @@ public partial class MainWindow : Window
     {
         StopPlayback(resetProgress: false);
         StopLearningPlayback();
+        StopKeyerTone();
         if (_windowLoaded)
         {
             _settingsService.Save(ReadSettings());
@@ -95,10 +110,28 @@ public partial class MainWindow : Window
             await PlayCurrentAsync();
             e.Handled = true;
         }
+        else if (e.Key == Key.Space && MainTabs.SelectedIndex == KeyerTabIndex)
+        {
+            if (!e.IsRepeat)
+            {
+                StartKeyPress();
+            }
+
+            e.Handled = true;
+        }
         else if (e.Key == Key.Escape)
         {
             StopPlayback();
             StopLearningPlayback();
+            e.Handled = true;
+        }
+    }
+
+    private void Window_OnKeyUp(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Space && _keyDown)
+        {
+            EndKeyPress();
             e.Handled = true;
         }
     }
@@ -269,6 +302,227 @@ public partial class MainWindow : Window
         if (_windowLoaded)
         {
             _settingsService.Save(ReadSettings());
+        }
+    }
+
+    // ---------- Передача ключом ----------
+
+    private void EnsureKeyer()
+    {
+        var speed = (int)SpeedSlider.Value;
+        var alphabet = Math.Clamp(AlphabetCombo.SelectedIndex, 0, 2);
+        if (_keyer is null || _keyerSpeed != speed || _keyerAlphabet != alphabet)
+        {
+            var text = _keyer?.Text ?? string.Empty;
+            _keyer = new KeyerDecoder((AlphabetMode)alphabet, speed);
+            _keyerSpeed = speed;
+            _keyerAlphabet = alphabet;
+            KeyerTimingText.Text = $"Точка: {_keyer.UnitMilliseconds:0} мс · тире от {_keyer.UnitMilliseconds * KeyerDecoder.DashThresholdUnits:0} мс";
+            if (text.Length > 0)
+            {
+                KeyerOutputText.Text = text;
+            }
+        }
+
+        if (_keyerTimer is null)
+        {
+            _keyerTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(60) };
+            _keyerTimer.Tick += KeyerTimer_OnTick;
+            _keyerTimer.Start();
+        }
+    }
+
+    private void StartKeyPress()
+    {
+        if (_keyDown)
+        {
+            return;
+        }
+
+        EnsureKeyer();
+        _keyDown = true;
+        var now = _keyerClock.Elapsed.TotalMilliseconds;
+        if (_keyerLastRelease >= 0)
+        {
+            _keyer!.Idle(now - _keyerLastRelease);
+        }
+
+        _keyerPressStart = now;
+        StartKeyerTone();
+        UpdateKeyerDisplay();
+    }
+
+    private void EndKeyPress()
+    {
+        if (!_keyDown)
+        {
+            return;
+        }
+
+        _keyDown = false;
+        _tonePlayer?.Stop();
+        var now = _keyerClock.Elapsed.TotalMilliseconds;
+        _keyer?.Press(now - _keyerPressStart);
+        _keyerLastRelease = now;
+        UpdateKeyerDisplay();
+    }
+
+    private void KeyerTimer_OnTick(object? sender, EventArgs e)
+    {
+        if (_keyDown || _keyer is null || _keyerLastRelease < 0)
+        {
+            return;
+        }
+
+        var before = _keyer.Text.Length + _keyer.PendingCode.Length;
+        _keyer.Idle(_keyerClock.Elapsed.TotalMilliseconds - _keyerLastRelease);
+        if (_keyer.Text.Length + _keyer.PendingCode.Length != before || _keyer.PendingCode.Length == 0)
+        {
+            UpdateKeyerDisplay();
+        }
+    }
+
+    private void StartKeyerTone()
+    {
+        var frequency = (int)FrequencySlider.Value;
+        var volume = (int)VolumeSlider.Value;
+        if (_tonePlayer is null || _toneFrequency != frequency || _toneVolume != volume)
+        {
+            StopKeyerTone();
+            _toneStream = new MemoryStream(MorseAudioService.RenderTone(1, frequency, volume).WavBytes);
+            _tonePlayer = new SoundPlayer(_toneStream);
+            _tonePlayer.Load();
+            _toneFrequency = frequency;
+            _toneVolume = volume;
+        }
+
+        _tonePlayer.PlayLooping();
+    }
+
+    private void StopKeyerTone()
+    {
+        _tonePlayer?.Stop();
+        _tonePlayer?.Dispose();
+        _tonePlayer = null;
+        _toneStream?.Dispose();
+        _toneStream = null;
+    }
+
+    private void UpdateKeyerDisplay()
+    {
+        if (_keyer is null)
+        {
+            return;
+        }
+
+        var pending = _keyer.PendingCode.Replace('.', '•').Replace('-', '—');
+        KeyerCodeText.Text = pending.Length == 0 ? " " : pending;
+        KeyerOutputText.Text = _keyer.Text;
+        KeyerOutputText.CaretIndex = KeyerOutputText.Text.Length;
+    }
+
+    private void KeyPad_OnMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        KeyPad.CaptureMouse();
+        StartKeyPress();
+        e.Handled = true;
+    }
+
+    private void KeyPad_OnMouseUp(object sender, MouseButtonEventArgs e)
+    {
+        KeyPad.ReleaseMouseCapture();
+        EndKeyPress();
+        e.Handled = true;
+    }
+
+    private void KeyPad_OnMouseLeave(object sender, MouseEventArgs e)
+    {
+        if (_keyDown && !KeyPad.IsMouseCaptured)
+        {
+            EndKeyPress();
+        }
+    }
+
+    private void KeyPad_OnLostMouseCapture(object sender, MouseEventArgs e) => EndKeyPress();
+
+    private void KeyerModeCombo_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (KeyerNewTaskButton is null || KeyerCheckButton is null || KeyerTargetText is null)
+        {
+            return;
+        }
+
+        var taskMode = KeyerModeCombo.SelectedIndex == 1;
+        KeyerNewTaskButton.Visibility = taskMode ? Visibility.Visible : Visibility.Collapsed;
+        KeyerCheckButton.Visibility = taskMode ? Visibility.Visible : Visibility.Collapsed;
+        if (!taskMode)
+        {
+            _keyerTarget = string.Empty;
+            KeyerTargetText.Text = string.Empty;
+            KeyerResultText.Text = string.Empty;
+        }
+        else if (_keyerTarget.Length == 0)
+        {
+            KeyerNewTaskButton_OnClick(sender, e);
+        }
+    }
+
+    private void KeyerNewTaskButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        var settings = ReadSettings();
+        var alphabet = (AlphabetMode)Math.Clamp(settings.AlphabetIndex, 0, 2);
+        var content = (ContentMode)Math.Clamp(settings.ContentModeIndex, 0, 5);
+        var pool = MorseAlphabet.BuildPool(alphabet, content, _selectedSymbols, settings.KochLevel);
+        if (pool.Count == 0)
+        {
+            KeyerResultText.Text = "В выбранном наборе нет символов: измените состав задания на вкладке «Тренировка».";
+            return;
+        }
+
+        _keyerTarget = TrainingGenerator.Generate(pool, Math.Clamp(Math.Min(settings.GroupCount, 4), 1, 4));
+        KeyerTargetText.Text = _keyerTarget;
+        KeyerResultText.Text = "Передайте текст выше, затем нажмите «Проверить передачу».";
+        KeyerResultText.Foreground = (Brush)FindResource("MutedTextBrush");
+        KeyerClearButton_OnClick(sender, e);
+    }
+
+    private void KeyerCheckButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        if (_keyerTarget.Length == 0 || _keyer is null)
+        {
+            return;
+        }
+
+        _keyer.CommitSymbol();
+        UpdateKeyerDisplay();
+        var result = TrainingEvaluator.Evaluate(_keyerTarget, _keyer.Text);
+        if (result.IsPerfect)
+        {
+            KeyerResultText.Text = "Отлично: передано без ошибок.";
+            KeyerResultText.Foreground = (Brush)FindResource("PrimaryBrush");
+        }
+        else
+        {
+            var details = result.Mistakes.Take(8).Select(mistake => $"{mistake.Position}: {mistake.Expected}→{mistake.Actual?.ToString() ?? "∅"}");
+            KeyerResultText.Text = $"Точность {result.AccuracyPercent:0.#}%. Ошибки: {string.Join(", ", details)}{(result.Mistakes.Count > 8 ? " …" : string.Empty)}";
+            KeyerResultText.Foreground = (Brush)FindResource("DangerBrush");
+        }
+    }
+
+    private void KeyerBackspaceButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        _keyer?.Backspace();
+        UpdateKeyerDisplay();
+    }
+
+    private void KeyerClearButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        _keyer?.Clear();
+        _keyerLastRelease = -1;
+        UpdateKeyerDisplay();
+        if (KeyerCodeText is not null)
+        {
+            KeyerCodeText.Text = " ";
         }
     }
 

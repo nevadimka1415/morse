@@ -20,7 +20,9 @@ var tests = new (string Name, Action Run)[]
     ("Koch method", TestKochMethod),
     ("Weighted generation", TestWeightedGeneration),
     ("Farnsworth preset", TestFarnsworthPreset),
-    ("Profile transfer", TestProfileTransfer)
+    ("Profile transfer", TestProfileTransfer),
+    ("Keyer decoder", TestKeyerDecoder),
+    ("Loop tone", TestLoopTone)
 };
 
 var failures = new List<string>();
@@ -292,6 +294,50 @@ static void TestProfileTransfer()
     var merged = ProfileTransfer.Merge(existing, imported);
     Assert(merged.Count == 3, "Merge must keep other profiles and replace the same name case-insensitively.");
     Assert(merged.Single(profile => profile.Name.Equals("Быстрый", StringComparison.OrdinalIgnoreCase)).CharactersPerMinute == 120, "Imported profile must replace the existing one.");
+}
+
+static void TestKeyerDecoder()
+{
+    Assert(MorseAlphabet.TryGetSymbol(".", AlphabetMode.Russian, out var russianE) && russianE == 'Е', "Dot must decode to Russian Е.");
+    Assert(MorseAlphabet.TryGetSymbol("...", AlphabetMode.Latin, out var latinS) && latinS == 'S', "Three dots must decode to Latin S.");
+    Assert(MorseAlphabet.TryGetSymbol("-----", AlphabetMode.Latin, out var zero) && zero == '0', "Digits must decode in any alphabet.");
+    Assert(!MorseAlphabet.TryGetSymbol("......", AlphabetMode.Russian, out _), "Unknown code must not decode.");
+
+    var keyer = new KeyerDecoder(AlphabetMode.Russian, 60);
+    Assert(Math.Abs(keyer.UnitMilliseconds - 100) < 0.01, "60 cpm must give a 100 ms dot.");
+    keyer.Press(80);
+    keyer.Idle(100);
+    keyer.Press(320);
+    Assert(keyer.PendingCode == ".-" && keyer.Text.Length == 0, "Short and long presses must form dot and dash.");
+    keyer.Idle(350);
+    Assert(keyer.Text == "А" && keyer.PendingCode.Length == 0, "Three-unit pause must commit the symbol.");
+    keyer.Idle(500);
+    keyer.Idle(800);
+    Assert(keyer.Text == "А ", "Seven-unit pause must add exactly one space.");
+    keyer.Press(90);
+    keyer.Idle(90);
+    keyer.Press(90);
+    keyer.Idle(90);
+    keyer.Press(90);
+    keyer.Idle(400);
+    Assert(keyer.Text == "А С", "Dots after the gap must decode to С.");
+    keyer.Press(90);
+    keyer.Backspace();
+    Assert(keyer.PendingCode.Length == 0 && keyer.Text == "А С", "Backspace must drop the pending code first.");
+    keyer.Backspace();
+    Assert(keyer.Text == "А ", "Backspace must then remove the last symbol.");
+    keyer.Clear();
+    Assert(keyer.Text.Length == 0, "Clear must reset the decoder.");
+}
+
+static void TestLoopTone()
+{
+    var tone = MorseAudioService.RenderTone(1, 700, 70);
+    Assert(tone.WavBytes.Length > 44 && Encoding.ASCII.GetString(tone.WavBytes, 0, 4) == "RIFF", "Loop tone must be a WAV file.");
+    Assert(Math.Abs(tone.Duration.TotalSeconds - 1) < 0.01, "Loop tone must be about one second long.");
+    var first = BitConverter.ToInt16(tone.WavBytes, 44);
+    var last = BitConverter.ToInt16(tone.WavBytes, tone.WavBytes.Length - 2);
+    Assert(first == 0 && Math.Abs(last) < 2000, "Loop tone must start and end near zero crossing for a seamless loop.");
 }
 
 static string FindRepositoryRoot()

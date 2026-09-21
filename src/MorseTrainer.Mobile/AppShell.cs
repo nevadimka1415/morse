@@ -4,12 +4,13 @@ namespace MorseTrainer.Mobile;
 
 public sealed class AppShell : Shell
 {
-    public AppShell(TrainingPage trainingPage, LearningPage learningPage, ProgressPage progressPage, SettingsPage settingsPage)
+    public AppShell(TrainingPage trainingPage, LearningPage learningPage, KeyerPage keyerPage, ProgressPage progressPage, SettingsPage settingsPage)
     {
         FlyoutBehavior = FlyoutBehavior.Disabled;
         var tabs = new TabBar();
         tabs.Items.Add(CreateTab("Тренировка", "training", trainingPage));
         tabs.Items.Add(CreateTab("Обучение", "learning", learningPage));
+        tabs.Items.Add(CreateTab("Передача", "keyer", keyerPage));
         tabs.Items.Add(CreateTab("Прогресс", "progress", progressPage));
         tabs.Items.Add(CreateTab("Настройки", "settings", settingsPage));
         Items.Add(tabs);

@@ -48,6 +48,27 @@ public sealed class PlatformAudioPlaybackService : IAudioPlaybackService
         }
     }
 
+    public void StartLoop(string filePath)
+    {
+        Stop();
+        var session = AVAudioSession.SharedInstance();
+        session.SetCategory(AVAudioSessionCategory.Playback);
+        session.SetActive(true);
+        var player = AVAudioPlayer.FromUrl(NSUrl.FromFilename(filePath));
+        if (player is null)
+        {
+            throw new InvalidOperationException("iOS could not open the tone file.");
+        }
+
+        _player = player;
+        player.NumberOfLoops = -1;
+        if (!player.PrepareToPlay() || !player.Play())
+        {
+            Stop();
+            throw new InvalidOperationException("iOS could not start the tone.");
+        }
+    }
+
     public void Stop()
     {
         var completion = _completion;

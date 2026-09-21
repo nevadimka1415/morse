@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="MorseTrainer.Mobile.Pages.KeyerPage"
+             Title="Передача">
+    <ScrollView>
+        <VerticalStackLayout Padding="16" Spacing="14">
+            <Label Text="Передача ключом" FontSize="26" FontAttributes="Bold" />
+            <Label Text="Точка — короткое нажатие, тире — втрое длиннее. Пауза в 3 точки завершает символ, в 7 точек — группу. Скорость, алфавит и тон берутся из настроек."
+                   Opacity="0.65" LineBreakMode="WordWrap" />
+            <Label x:Name="TimingLabel" Text="Точка: 100 мс · тире от 200 мс" FontAttributes="Bold" />
+
+            <Button x:Name="KeyButton" Text="КЛЮЧ" HeightRequest="170" FontSize="30"
+                    BackgroundColor="{StaticResource PrimaryDark}" TextColor="{StaticResource Primary}"
+                    Pressed="KeyButton_OnPressed" Released="KeyButton_OnReleased" />
+            <Label x:Name="CodeLabel" Text=" " FontSize="30" FontAttributes="Bold" HorizontalTextAlignment="Center" />
+
+            <Border>
+                <VerticalStackLayout Spacing="8">
+                    <Label Text="Принято" Opacity="0.65" />
+                    <Label x:Name="OutputLabel" Text=" " FontSize="22" FontAttributes="Bold" FontFamily="monospace" LineBreakMode="WordWrap" />
+                    <Grid ColumnDefinitions="*,8,*">
+                        <Button Text="Стереть символ" Clicked="BackspaceButton_OnClicked" />
+                        <Button Grid.Column="2" Text="Очистить" Clicked="ClearButton_OnClicked" />
+                    </Grid>
+                </VerticalStackLayout>
+            </Border>
+
+            <Border>
+                <VerticalStackLayout Spacing="8">
+                    <Label Text="Задание" FontAttributes="Bold" />
+                    <Label Text="Сгенерируйте группы, передайте их ключом и проверьте." Opacity="0.65" LineBreakMode="WordWrap" />
+                    <Button Text="Новое задание" Clicked="NewTaskButton_OnClicked" />
+                    <Label x:Name="TargetLabel" Text="" FontSize="20" FontAttributes="Bold" FontFamily="monospace" LineBreakMode="WordWrap" />
+                    <Button x:Name="CheckButton" Text="Проверить передачу" BackgroundColor="{StaticResource Primary}" TextColor="#06231C"
+                            Clicked="CheckButton_OnClicked" IsEnabled="False" />
+                    <Label x:Name="ResultLabel" Text="" LineBreakMode="WordWrap" />
+                </VerticalStackLayout>
+            </Border>
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

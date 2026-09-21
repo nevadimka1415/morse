@@ -76,6 +76,34 @@ public static class MorseAudioService
         return new AudioClip(wavBytes, TimeSpan.FromSeconds(durationSeconds));
     }
 
+    /// <summary>
+    /// Непрерывный тон для ручного ключа: целое число периодов без огибающей, чтобы зацикленное
+    /// воспроизведение не щёлкало на стыке.
+    /// </summary>
+    public static AudioClip RenderTone(double durationSeconds, int frequencyHz, int volumePercent)
+    {
+        if (frequencyHz is < 300 or > 1_200)
+        {
+            throw new ArgumentOutOfRangeException(nameof(frequencyHz));
+        }
+
+        if (volumePercent is < 0 or > 100)
+        {
+            throw new ArgumentOutOfRangeException(nameof(volumePercent));
+        }
+
+        var periods = Math.Max(1, (int)Math.Round(Math.Max(0.05, durationSeconds) * frequencyHz));
+        var seconds = periods / (double)frequencyHz;
+        using var samples = new MemoryStream();
+        using (var writer = new BinaryWriter(samples, Encoding.ASCII, leaveOpen: true))
+        {
+            WriteTone(writer, seconds, frequencyHz, volumePercent, applyEnvelope: false);
+        }
+
+        var pcmBytes = samples.ToArray();
+        return new AudioClip(CreateWaveFile(pcmBytes), TimeSpan.FromSeconds(seconds));
+    }
+
     private static void WriteGroupedText(
         BinaryWriter writer,
         string groupedText,
@@ -118,10 +146,10 @@ public static class MorseAudioService
         }
     }
 
-    private static void WriteTone(BinaryWriter writer, double durationSeconds, int frequencyHz, int volumePercent)
+    private static void WriteTone(BinaryWriter writer, double durationSeconds, int frequencyHz, int volumePercent, bool applyEnvelope = true)
     {
         var sampleCount = Math.Max(1, (int)Math.Round(SampleRate * durationSeconds));
-        var rampSamples = Math.Min(sampleCount / 2, (int)(SampleRate * 0.005));
+        var rampSamples = applyEnvelope ? Math.Min(sampleCount / 2, (int)(SampleRate * 0.005)) : 0;
         var amplitude = short.MaxValue * 0.85 * (volumePercent / 100d);
 
         for (var sampleIndex = 0; sampleIndex < sampleCount; sampleIndex++)

@@ -9,7 +9,8 @@
         FontFamily="Segoe UI"
         Loaded="Window_OnLoaded"
         Closing="Window_OnClosing"
-        KeyDown="Window_OnKeyDown">
+        KeyDown="Window_OnKeyDown"
+        KeyUp="Window_OnKeyUp">
     <Grid Margin="26">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -466,6 +467,67 @@
                             </Border>
                         </Grid>
                     </Grid>
+                </Grid>
+            </TabItem>
+            <TabItem Header="Передача">
+                <Grid Margin="0,12,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="380" />
+                        <ColumnDefinition Width="18" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Border Grid.Column="0" Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource BorderBrush}"
+                            BorderThickness="1" CornerRadius="16" Padding="22">
+                        <StackPanel>
+                            <TextBlock Text="Передача ключом" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,12" />
+                            <TextBlock Text="Точка — короткое нажатие, тире — втрое длиннее. Пауза в 3 точки завершает символ, в 7 точек — группу. Скорость, алфавит и тон берутся из вкладки «Тренировка»."
+                                       Foreground="{DynamicResource MutedTextBrush}" TextWrapping="Wrap" Margin="0,0,0,10" />
+                            <TextBlock x:Name="KeyerTimingText" Text="Точка: 100 мс · тире от 200 мс" FontWeight="SemiBold" Margin="0,0,0,16" />
+
+                            <Label Content="Что передавать" />
+                            <ComboBox x:Name="KeyerModeCombo" SelectedIndex="0" Margin="0,0,0,12"
+                                      SelectionChanged="KeyerModeCombo_OnSelectionChanged">
+                                <ComboBoxItem Content="Свободная передача" />
+                                <ComboBoxItem Content="Задание: группы по 5 символов" />
+                            </ComboBox>
+                            <Button x:Name="KeyerNewTaskButton" Content="Новое задание" Click="KeyerNewTaskButton_OnClick"
+                                    Padding="12,7" HorizontalAlignment="Left" Visibility="Collapsed" Margin="0,0,0,10" />
+                            <TextBlock x:Name="KeyerTargetText" Text="" FontSize="20" FontFamily="Consolas" TextWrapping="Wrap" Margin="0,0,0,12" />
+                            <Button x:Name="KeyerCheckButton" Content="Проверить передачу" Click="KeyerCheckButton_OnClick"
+                                    Style="{StaticResource PrimaryButton}" Visibility="Collapsed" Margin="0,0,0,12" />
+                            <TextBlock x:Name="KeyerResultText" Text="" TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
+                    <Border Grid.Column="2" Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource BorderBrush}"
+                            BorderThickness="1" CornerRadius="16" Padding="22">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="*" />
+                                <RowDefinition Height="16" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="10" />
+                                <RowDefinition Height="150" />
+                                <RowDefinition Height="12" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <Border x:Name="KeyPad" Background="{DynamicResource PrimaryDarkBrush}" CornerRadius="18" Cursor="Hand"
+                                    PreviewMouseLeftButtonDown="KeyPad_OnMouseDown" PreviewMouseLeftButtonUp="KeyPad_OnMouseUp"
+                                    MouseLeave="KeyPad_OnMouseLeave" LostMouseCapture="KeyPad_OnLostMouseCapture">
+                                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                                    <TextBlock Text="КЛЮЧ" Foreground="{DynamicResource PrimaryBrush}" FontSize="34" FontWeight="Bold" HorizontalAlignment="Center" />
+                                    <TextBlock Text="нажимайте мышью здесь или удерживайте ПРОБЕЛ" Foreground="{DynamicResource PrimaryBrush}"
+                                               FontSize="12" HorizontalAlignment="Center" Margin="0,6,0,0" />
+                                </StackPanel>
+                            </Border>
+                            <TextBlock x:Name="KeyerCodeText" Grid.Row="2" Text=" " FontSize="30" FontWeight="Bold" HorizontalAlignment="Center" />
+                            <TextBox x:Name="KeyerOutputText" Grid.Row="4" IsReadOnly="True" FontSize="22" FontFamily="Consolas"
+                                     TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" />
+                            <StackPanel Grid.Row="6" Orientation="Horizontal">
+                                <Button x:Name="KeyerBackspaceButton" Content="Стереть символ" Click="KeyerBackspaceButton_OnClick" Padding="12,7" />
+                                <Button x:Name="KeyerClearButton" Content="Очистить" Click="KeyerClearButton_OnClick" Padding="12,7" Margin="10,0,0,0" />
+                            </StackPanel>
+                        </Grid>
+                    </Border>
                 </Grid>
             </TabItem>
             <TabItem Header="Прогресс">

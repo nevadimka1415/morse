@@ -17,6 +17,9 @@ const requiredFiles = [
   'src/MorseTrainer/Domain/KochMethod.cs',
   'src/MorseTrainer/Domain/TrainingPresets.cs',
   'src/MorseTrainer/Domain/ProfileTransfer.cs',
+  'src/MorseTrainer/Domain/KeyerDecoder.cs',
+  'src/MorseTrainer.Mobile/Pages/KeyerPage.xaml',
+  'src/MorseTrainer.Mobile/Pages/KeyerPage.xaml.cs',
   'src/MorseTrainer/Models/TrainingRecord.cs',
   'src/MorseTrainer/Services/TrainingHistoryStore.cs',
   'src/MorseTrainer.Mobile/Pages/ProgressPage.xaml',
@@ -86,7 +89,7 @@ verifyXamlCodeBehind(
   'src/MorseTrainer/SymbolSelectionWindow.xaml',
   'src/MorseTrainer/SymbolSelectionWindow.xaml.cs'
 );
-for (const page of ['TrainingPage', 'LearningPage', 'SettingsPage', 'ProgressPage']) {
+for (const page of ['TrainingPage', 'LearningPage', 'SettingsPage', 'ProgressPage', 'KeyerPage']) {
   verifyXamlCodeBehind(
     `src/MorseTrainer.Mobile/Pages/${page}.xaml`,
     `src/MorseTrainer.Mobile/Pages/${page}.xaml.cs`
@@ -103,6 +106,8 @@ for (const relativePath of [
   'src/MorseTrainer/Domain/KochMethod.cs',
   'src/MorseTrainer/Domain/TrainingPresets.cs',
   'src/MorseTrainer/Domain/ProfileTransfer.cs',
+  'src/MorseTrainer/Domain/KeyerDecoder.cs',
+  'src/MorseTrainer.Mobile/Pages/KeyerPage.xaml.cs',
   'src/MorseTrainer/Services/TrainingHistoryStore.cs',
   'src/MorseTrainer.Mobile/Pages/ProgressPage.xaml.cs',
   'src/MorseTrainer/Services/MorseAudioService.cs',
@@ -210,7 +215,7 @@ function verifyXamlCodeBehind(xamlPath, codeBehindPath) {
   const controlNames = [...xaml.matchAll(/x:Name="([^"]+)"/g)].map((match) => match[1]);
   assert(new Set(controlNames).size === controlNames.length, `${xamlPath} contains duplicate x:Name values.`);
 
-  const eventNames = [...xaml.matchAll(/(?:Click|Clicked|Loaded|Closing|KeyDown|ValueChanged|SelectionChanged|SelectedIndexChanged|TextChanged|Toggled)="([^"]+)"/g)]
+  const eventNames = [...xaml.matchAll(/(?:Click|Clicked|Loaded|Closing|KeyDown|KeyUp|ValueChanged|SelectionChanged|SelectedIndexChanged|TextChanged|Toggled|Pressed|Released|PreviewMouseLeftButtonDown|PreviewMouseLeftButtonUp|MouseLeave|LostMouseCapture)="([^"]+)"/g)]
     .map((match) => match[1]);
   for (const eventName of new Set(eventNames)) {
     assert(codeBehind.includes(`${eventName}(`), `Missing code-behind handler ${eventName} for ${xamlPath}.`);
