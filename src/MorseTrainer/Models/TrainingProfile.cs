@@ -14,6 +14,8 @@ public sealed class TrainingProfile
     public int StartPauseUnits { get; set; } = 21;
     public bool PlayStartSignal { get; set; } = true;
     public string CustomSymbols { get; set; } = "АБВГДЕЖЗИКЛМНОПРСТУ";
+    public int KochLevel { get; set; } = 2;
+    public bool EmphasizeProblemSymbols { get; set; } = true;
 
     public static TrainingProfile FromSettings(string name, AppSettings settings)
     {
@@ -31,7 +33,9 @@ public sealed class TrainingProfile
             GroupGapUnits = settings.GroupGapUnits,
             StartPauseUnits = settings.StartPauseUnits,
             PlayStartSignal = settings.PlayStartSignal,
-            CustomSymbols = settings.CustomSymbols
+            CustomSymbols = settings.CustomSymbols,
+            KochLevel = settings.KochLevel,
+            EmphasizeProblemSymbols = settings.EmphasizeProblemSymbols
         };
     }
 
@@ -49,6 +53,8 @@ public sealed class TrainingProfile
         settings.StartPauseUnits = StartPauseUnits;
         settings.PlayStartSignal = PlayStartSignal;
         settings.CustomSymbols = CustomSymbols;
+        settings.KochLevel = KochLevel;
+        settings.EmphasizeProblemSymbols = EmphasizeProblemSymbols;
         settings.ActiveProfileName = Name;
     }
 

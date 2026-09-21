@@ -14,6 +14,8 @@ const requiredFiles = [
   'src/MorseTrainer/Domain/LearningCatalog.cs',
   'src/MorseTrainer/Domain/VoiceClipCatalog.cs',
   'src/MorseTrainer/Domain/TrainingStatistics.cs',
+  'src/MorseTrainer/Domain/KochMethod.cs',
+  'src/MorseTrainer/Domain/TrainingPresets.cs',
   'src/MorseTrainer/Models/TrainingRecord.cs',
   'src/MorseTrainer/Services/TrainingHistoryStore.cs',
   'src/MorseTrainer.Mobile/Pages/ProgressPage.xaml',
@@ -97,6 +99,8 @@ for (const relativePath of [
   'src/MorseTrainer/Domain/LearningCatalog.cs',
   'src/MorseTrainer/Domain/VoiceClipCatalog.cs',
   'src/MorseTrainer/Domain/TrainingStatistics.cs',
+  'src/MorseTrainer/Domain/KochMethod.cs',
+  'src/MorseTrainer/Domain/TrainingPresets.cs',
   'src/MorseTrainer/Services/TrainingHistoryStore.cs',
   'src/MorseTrainer.Mobile/Pages/ProgressPage.xaml.cs',
   'src/MorseTrainer/Services/MorseAudioService.cs',
@@ -115,6 +119,10 @@ for (const relativePath of [
 ]) {
   assertBalancedBraces(read(relativePath), relativePath);
 }
+
+const contentModes = (read('src/MorseTrainer/MainWindow.xaml').match(/<ComboBoxItem Content="[^"]*" \/>/g) || []).length;
+assert(read('src/MorseTrainer/MainWindow.xaml').includes('Метод Коха: по уровням') && read('src/MorseTrainer.Mobile/Pages/SettingsPage.xaml').includes('<x:String>Метод Коха</x:String>'),
+  'Both apps must offer the Koch content mode.');
 
 const buildWorkflow = read('.github/workflows/build.yml');
 assert(buildWorkflow.includes('scripts\\build.ps1'), 'Build workflow does not call the build script.');

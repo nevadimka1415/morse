@@ -42,6 +42,11 @@ public partial class TrainingPage : ContentPage
         var settings = _settingsService.LoadSettings();
         ProfileLabel.Text = $"Профиль: {settings.ActiveProfileName}";
         var start = settings.PlayStartSignal ? $" · Ж Ж Ж + пауза {settings.StartPauseUnits}" : " · без сигнала старта";
+        if (settings.ContentModeIndex == (int)ContentMode.Koch)
+        {
+            start += $" · Кох: уровень {settings.KochLevel}";
+        }
+
         SettingsSummaryLabel.Text = $"{settings.GroupCount} групп × 5 · {settings.CharactersPerMinute} знаков/мин · " +
                                     $"{settings.FrequencyHz} Гц · паузы {settings.CharacterGapUnits}/{settings.GroupGapUnits}{start}";
     }
@@ -61,8 +66,8 @@ public partial class TrainingPage : ContentPage
         StopPlayback();
         var settings = _settingsService.LoadSettings();
         var alphabet = (AlphabetMode)Math.Clamp(settings.AlphabetIndex, 0, 2);
-        var content = (ContentMode)Math.Clamp(settings.ContentModeIndex, 0, 4);
-        var pool = MorseAlphabet.BuildPool(alphabet, content, settings.CustomSymbols);
+        var content = (ContentMode)Math.Clamp(settings.ContentModeIndex, 0, 5);
+        var pool = MorseAlphabet.BuildPool(alphabet, content, settings.CustomSymbols, settings.KochLevel);
         if (pool.Count == 0)
         {
             await DisplayAlertAsync("Нет символов", "Откройте настройки и выберите хотя бы один символ.", "Понятно");
@@ -73,7 +78,25 @@ public partial class TrainingPage : ContentPage
         PlaybackStatusLabel.Text = "Создаём задание…";
         try
         {
-            _currentTask = TrainingGenerator.Generate(pool, Math.Clamp(settings.GroupCount, 1, 100));
+            // Чаще звучат новый символ метода Коха и символы с ошибками из истории
+            var emphasized = new HashSet<char>();
+            if (content == ContentMode.Koch)
+            {
+                emphasized.Add(pool[^1]);
+            }
+
+            if (settings.EmphasizeProblemSymbols)
+            {
+                foreach (var problem in TrainingStatistics.ProblemSymbols(_historyStore.Load(), 6))
+                {
+                    if (pool.Contains(problem.Symbol))
+                    {
+                        emphasized.Add(problem.Symbol);
+                    }
+                }
+            }
+
+            _currentTask = TrainingGenerator.Generate(pool, Math.Clamp(settings.GroupCount, 1, 100), emphasized);
             _currentTaskRecorded = false;
             _currentGroupCount = Math.Clamp(settings.GroupCount, 1, 100);
             _currentClip = await Task.Run(() => MorseAudioService.Render(
@@ -189,6 +212,13 @@ public partial class TrainingPage : ContentPage
             ResultLabel.Text = "Ошибки: " + string.Join(", ", result.Mistakes.Take(8)
                 .Select(FormatMistake));
             ResultLabel.TextColor = (Color)Application.Current!.Resources["Danger"];
+        }
+
+        var checkedSettings = _settingsService.LoadSettings();
+        if (checkedSettings.ContentModeIndex == (int)ContentMode.Koch)
+        {
+            var kochAlphabet = (AlphabetMode)Math.Clamp(checkedSettings.AlphabetIndex, 0, 2);
+            ResultLabel.Text += "\n" + KochMethod.Advice(kochAlphabet, checkedSettings.KochLevel, result.AccuracyPercent);
         }
 
         _answerVisible = true;

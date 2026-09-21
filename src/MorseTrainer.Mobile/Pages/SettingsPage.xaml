@@ -54,8 +54,16 @@
                             <x:String>Буквы и цифры</x:String>
                             <x:String>Все символы</x:String>
                             <x:String>Выбранные символы</x:String>
+                            <x:String>Метод Коха</x:String>
                         </Picker.Items>
                     </Picker>
+                    <VerticalStackLayout x:Name="KochLayout" Spacing="6" IsVisible="False">
+                        <Label x:Name="KochLabel" Text="Метод Коха: уровень 2" FontAttributes="Bold" />
+                        <Stepper x:Name="KochStepper" Minimum="2" Maximum="42" Increment="1" Value="2" ValueChanged="SettingsControl_OnChanged" />
+                        <Label x:Name="KochSummaryLabel" Text="" Opacity="0.65" FontSize="13" LineBreakMode="WordWrap" />
+                        <Label Text="Новый символ добавляйте, когда точность держится на 90% и выше. Последний добавленный звучит чаще остальных."
+                               Opacity="0.65" FontSize="13" LineBreakMode="WordWrap" />
+                    </VerticalStackLayout>
                     <Label x:Name="SelectedSymbolsLabel" Text="Выбрано: 0" FontAttributes="Bold" />
                     <FlexLayout x:Name="SymbolsFlex" Direction="Row" Wrap="Wrap" AlignItems="Start" />
                     <Grid ColumnDefinitions="*,8,*">
@@ -106,6 +114,13 @@
                     </Grid>
                     <Slider x:Name="GroupGapSlider" Minimum="7" Maximum="30" ValueChanged="SettingsControl_OnChanged" />
 
+                    <Button Text="Пресет Фарнсворта" Clicked="FarnsworthButton_OnClicked" />
+                    <Label Text="Символы не медленнее 90 знаков/мин, паузы 9 и 21 точка: ухо запоминает ритм знака, а не считает точки."
+                           Opacity="0.65" FontSize="13" LineBreakMode="WordWrap" />
+                    <Grid ColumnDefinitions="*,Auto">
+                        <Label Text="Чаще повторять символы с ошибками" VerticalOptions="Center" LineBreakMode="WordWrap" />
+                        <Switch x:Name="EmphasizeSwitch" Grid.Column="1" Toggled="SettingsControl_OnChanged" />
+                    </Grid>
                     <Grid ColumnDefinitions="*,Auto">
                         <Label Text="Сигнал Ж Ж Ж перед заданием" VerticalOptions="Center" />
                         <Switch x:Name="StartSignalSwitch" Grid.Column="1" Toggled="SettingsControl_OnChanged" />

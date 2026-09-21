@@ -13,6 +13,8 @@ public sealed class AppSettings
     public int StartPauseUnits { get; set; } = 21;
     public bool PlayStartSignal { get; set; } = true;
     public string CustomSymbols { get; set; } = "АБВГДЕЖЗИКЛМНОПРСТУ";
+    public int KochLevel { get; set; } = 2;
+    public bool EmphasizeProblemSymbols { get; set; } = true;
     public int ThemeIndex { get; set; } = 0;
     public int LearningAlphabetIndex { get; set; } = 0;
     public int LearningAudioModeIndex { get; set; } = 1;

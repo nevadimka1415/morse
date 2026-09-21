@@ -233,6 +233,45 @@ public partial class MainWindow : Window
         RefreshProgress();
     }
 
+    private void AlphabetCombo_OnSelectionChanged(object sender, SelectionChangedEventArgs e) => UpdateKochSummary();
+
+    private void KochLevelSlider_OnValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        UpdateKochSummary();
+        if (_windowLoaded)
+        {
+            _settingsService.Save(ReadSettings());
+        }
+    }
+
+    private void UpdateKochSummary()
+    {
+        if (KochSummaryText is null || KochLevelSlider is null || AlphabetCombo is null)
+        {
+            return;
+        }
+
+        var alphabet = (AlphabetMode)Math.Clamp(AlphabetCombo.SelectedIndex, 0, 2);
+        KochLevelSlider.Maximum = KochMethod.MaxLevel(alphabet);
+        KochSummaryText.Text = KochMethod.Describe(alphabet, (int)KochLevelSlider.Value);
+    }
+
+    private void FarnsworthButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        var settings = ReadSettings();
+        TrainingPresets.ApplyFarnsworth(settings);
+        SpeedSlider.Value = settings.CharactersPerMinute;
+        CharacterGapSlider.Value = settings.CharacterGapUnits;
+        GroupGapSlider.Value = settings.GroupGapUnits;
+        UpdateSettingLabels();
+        ResultDetailsText.Text = TrainingPresets.FarnsworthDescription;
+        ResultDetailsText.Foreground = (Brush)FindResource("MutedTextBrush");
+        if (_windowLoaded)
+        {
+            _settingsService.Save(ReadSettings());
+        }
+    }
+
     private void ThemeCombo_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (ThemeCombo is null)
@@ -262,8 +301,8 @@ public partial class MainWindow : Window
         var settings = ReadSettings();
         settings.GroupCount = groupCount;
         var alphabet = (AlphabetMode)Math.Clamp(AlphabetCombo.SelectedIndex, 0, 2);
-        var content = (ContentMode)Math.Clamp(ContentModeCombo.SelectedIndex, 0, 4);
-        var pool = MorseAlphabet.BuildPool(alphabet, content, _selectedSymbols);
+        var content = (ContentMode)Math.Clamp(ContentModeCombo.SelectedIndex, 0, 5);
+        var pool = MorseAlphabet.BuildPool(alphabet, content, _selectedSymbols, settings.KochLevel);
         if (pool.Count == 0)
         {
             MessageBox.Show(
@@ -279,7 +318,25 @@ public partial class MainWindow : Window
 
         try
         {
-            var generatedTask = TrainingGenerator.Generate(pool, settings.GroupCount);
+            // Чаще звучат новый символ метода Коха и символы с ошибками из истории
+            var emphasized = new HashSet<char>();
+            if (content == ContentMode.Koch)
+            {
+                emphasized.Add(pool[^1]);
+            }
+
+            if (settings.EmphasizeProblemSymbols)
+            {
+                foreach (var problem in TrainingStatistics.ProblemSymbols(_history, 6))
+                {
+                    if (pool.Contains(problem.Symbol))
+                    {
+                        emphasized.Add(problem.Symbol);
+                    }
+                }
+            }
+
+            var generatedTask = TrainingGenerator.Generate(pool, settings.GroupCount, emphasized);
             var audio = await Task.Run(() => MorseAudioService.Render(
                 generatedTask,
                 settings.CharactersPerMinute,
@@ -491,6 +548,12 @@ public partial class MainWindow : Window
             ResultDetailsText.Text = $"Ошибки: {string.Join(", ", details)}{suffix}";
             ResultDetailsText.Foreground = (Brush)FindResource("DangerBrush");
             SetStatus("ЕСТЬ ОШИБКИ", isActive: false);
+        }
+
+        if (_currentSettings?.ContentModeIndex == (int)ContentMode.Koch)
+        {
+            var kochAlphabet = (AlphabetMode)Math.Clamp(_currentSettings.AlphabetIndex, 0, 2);
+            ResultDetailsText.Text += "\n" + KochMethod.Advice(kochAlphabet, _currentSettings.KochLevel, result.AccuracyPercent);
         }
 
         _answerVisible = true;
@@ -849,6 +912,13 @@ public partial class MainWindow : Window
                 ? Visibility.Visible
                 : Visibility.Collapsed;
         }
+
+        if (KochPanel is not null && ContentModeCombo is not null)
+        {
+            KochPanel.Visibility = ContentModeCombo.SelectedIndex == (int)ContentMode.Koch
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+        }
     }
 
     private void SettingSlider_OnValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
@@ -905,7 +975,9 @@ public partial class MainWindow : Window
         return new AppSettings
         {
             AlphabetIndex = Math.Clamp(AlphabetCombo.SelectedIndex, 0, 2),
-            ContentModeIndex = Math.Clamp(ContentModeCombo.SelectedIndex, 0, 4),
+            ContentModeIndex = Math.Clamp(ContentModeCombo.SelectedIndex, 0, 5),
+            KochLevel = (int)KochLevelSlider.Value,
+            EmphasizeProblemSymbols = EmphasizeProblemsCheckBox.IsChecked == true,
             GroupCount = groupCount,
             CharactersPerMinute = (int)SpeedSlider.Value,
             FrequencyHz = (int)FrequencySlider.Value,
@@ -927,7 +999,9 @@ public partial class MainWindow : Window
     private void ApplySettings(AppSettings settings)
     {
         AlphabetCombo.SelectedIndex = Math.Clamp(settings.AlphabetIndex, 0, 2);
-        ContentModeCombo.SelectedIndex = Math.Clamp(settings.ContentModeIndex, 0, 4);
+        ContentModeCombo.SelectedIndex = Math.Clamp(settings.ContentModeIndex, 0, 5);
+        KochLevelSlider.Value = KochMethod.ClampLevel((AlphabetMode)Math.Clamp(settings.AlphabetIndex, 0, 2), settings.KochLevel);
+        EmphasizeProblemsCheckBox.IsChecked = settings.EmphasizeProblemSymbols;
         GroupCountText.Text = Math.Clamp(settings.GroupCount, 1, 100).ToString(CultureInfo.InvariantCulture);
         SpeedSlider.Value = Math.Clamp(settings.CharactersPerMinute, 20, 300);
         FrequencySlider.Value = Math.Clamp(settings.FrequencyHz, 300, 1_200);
@@ -940,6 +1014,7 @@ public partial class MainWindow : Window
         ThemeCombo.SelectedIndex = Math.Clamp(settings.ThemeIndex, 0, 2);
         LearningAlphabetCombo.SelectedIndex = Math.Clamp(settings.LearningAlphabetIndex, 0, 3);
         LearningAudioModeCombo.SelectedIndex = Math.Clamp(settings.LearningAudioModeIndex, 0, 1);
+        UpdateKochSummary();
     }
 
     private void LoadProfiles(AppSettings settings)

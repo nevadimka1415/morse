@@ -78,7 +78,8 @@
                                 </Grid>
 
                                 <Label Content="Алфавит" />
-                                <ComboBox x:Name="AlphabetCombo" SelectedIndex="0" Margin="0,0,0,15">
+                                <ComboBox x:Name="AlphabetCombo" SelectedIndex="0" Margin="0,0,0,15"
+                                          SelectionChanged="AlphabetCombo_OnSelectionChanged">
                                     <ComboBoxItem Content="Русский" />
                                     <ComboBoxItem Content="Латинский" />
                                     <ComboBoxItem Content="Русский и латинский" />
@@ -92,6 +93,7 @@
                                     <ComboBoxItem Content="Буквы и цифры" />
                                     <ComboBoxItem Content="Буквы, цифры и знаки" />
                                     <ComboBoxItem Content="Выбранные символы" />
+                                    <ComboBoxItem Content="Метод Коха: по уровням" />
                                 </ComboBox>
 
                                 <Border x:Name="CustomSymbolsPanel" Visibility="Collapsed" Background="{DynamicResource CardAltBrush}"
@@ -101,6 +103,19 @@
                                         <TextBlock x:Name="SelectedSymbolsSummaryText" Text="Ничего не выбрано"
                                                    Foreground="{DynamicResource MutedTextBrush}" TextWrapping="Wrap" Margin="0,5,0,9" />
                                         <Button Content="Выбрать символы" Click="SelectSymbolsButton_OnClick" Padding="12,7" />
+                                    </StackPanel>
+                                </Border>
+
+                                <Border x:Name="KochPanel" Visibility="Collapsed" Background="{DynamicResource CardAltBrush}"
+                                        CornerRadius="10" Padding="12" Margin="0,0,0,15">
+                                    <StackPanel>
+                                        <TextBlock Text="Метод Коха" FontWeight="SemiBold" />
+                                        <TextBlock x:Name="KochSummaryText" Text="Уровень 2" Foreground="{DynamicResource MutedTextBrush}"
+                                                   TextWrapping="Wrap" Margin="0,5,0,6" />
+                                        <Slider x:Name="KochLevelSlider" Minimum="2" Maximum="42" Value="2" TickFrequency="1"
+                                                IsSnapToTickEnabled="True" ValueChanged="KochLevelSlider_OnValueChanged" />
+                                        <TextBlock Text="Новый символ добавляйте, когда точность держится на 90% и выше. Последний добавленный звучит чаще остальных."
+                                                   Foreground="{DynamicResource MutedTextBrush}" FontSize="11" TextWrapping="Wrap" Margin="0,6,0,0" />
                                     </StackPanel>
                                 </Border>
 
@@ -148,7 +163,13 @@
                                     <TextBlock x:Name="GroupGapValueText" Text="7 точек" HorizontalAlignment="Right" />
                                 </Grid>
                                 <Slider x:Name="GroupGapSlider" Minimum="7" Maximum="30" Value="7" TickFrequency="1"
-                                        IsSnapToTickEnabled="True" ValueChanged="SettingSlider_OnValueChanged" Margin="0,0,0,18" />
+                                        IsSnapToTickEnabled="True" ValueChanged="SettingSlider_OnValueChanged" Margin="0,0,0,10" />
+                                <Button x:Name="FarnsworthButton" Content="Пресет Фарнсворта" Click="FarnsworthButton_OnClick"
+                                        Padding="10,6" HorizontalAlignment="Left" Margin="0,0,0,14"
+                                        ToolTip="Символы не медленнее 90 знаков/мин, паузы 9 точек между символами и 21 между группами: ухо запоминает ритм знака, а не считает точки." />
+                                <CheckBox x:Name="EmphasizeProblemsCheckBox" Content="Чаще повторять символы с ошибками"
+                                          IsChecked="True" Margin="0,0,0,12"
+                                          ToolTip="Символы, в которых вы ошибались (по истории тренировок), попадают в задание втрое чаще." />
 
                                 <CheckBox x:Name="PlayStartSignalCheckBox" Content="Перед заданием проигрывать Ж Ж Ж"
                                           IsChecked="True" Margin="0,0,0,12" />

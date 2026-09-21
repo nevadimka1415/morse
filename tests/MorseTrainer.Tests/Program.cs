@@ -16,7 +16,10 @@ var tests = new (string Name, Action Run)[]
     ("Training profiles", TestTrainingProfile),
     ("Embedded voice pack", TestVoicePack),
     ("Update check", TestUpdateCheck),
-    ("Training history", TestTrainingHistory)
+    ("Training history", TestTrainingHistory),
+    ("Koch method", TestKochMethod),
+    ("Weighted generation", TestWeightedGeneration),
+    ("Farnsworth preset", TestFarnsworthPreset)
 };
 
 var failures = new List<string>();
@@ -144,7 +147,9 @@ static void TestTrainingProfile()
         GroupGapUnits = 12,
         StartPauseUnits = 25,
         PlayStartSignal = true,
-        CustomSymbols = "АГЖД"
+        CustomSymbols = "АГЖД",
+        KochLevel = 7,
+        EmphasizeProblemSymbols = false
     };
     var profile = TrainingProfile.FromSettings("Рабочий", settings);
     var restored = new AppSettings();
@@ -153,6 +158,7 @@ static void TestTrainingProfile()
     Assert(restored.GroupCount == 24 && restored.CharactersPerMinute == 90, "Profile timing was not restored.");
     Assert(restored.FrequencyHz == 800 && restored.VolumePercent == 55, "Profile audio was not restored.");
     Assert(restored.CustomSymbols == "АГЖД", "Profile symbols were not restored.");
+    Assert(restored.KochLevel == 7 && !restored.EmphasizeProblemSymbols, "Profile Koch level and emphasis were not restored.");
 }
 
 static void TestVoicePack()
@@ -223,6 +229,43 @@ static void TestTrainingHistory()
     {
         try { Directory.Delete(directory, recursive: true); } catch { }
     }
+}
+
+static void TestKochMethod()
+{
+    var russian = KochMethod.Sequence(AlphabetMode.Russian);
+    var latin = KochMethod.Sequence(AlphabetMode.Latin);
+    Assert(russian.Count == 42 && russian.Distinct().Count() == 42, "Russian Koch sequence must contain 42 unique symbols.");
+    Assert(latin.Count == 36 && latin.Distinct().Count() == 36, "Latin Koch sequence must contain 36 unique symbols.");
+    Assert(russian.Concat(latin).All(symbol => MorseAlphabet.TryGetCode(symbol, out _)), "Every Koch symbol must have a Morse code.");
+    Assert(KochMethod.Sequence(AlphabetMode.RussianAndLatin).Count == 42 + 26, "Mixed sequence must add Latin letters after Russian.");
+    Assert(new string(KochMethod.Pool(AlphabetMode.Russian, 5).ToArray()) == "КМРСУ", "Level 5 must contain the first five symbols.");
+    Assert(KochMethod.Pool(AlphabetMode.Russian, 0).Count == KochMethod.MinLevel, "Level below minimum must be clamped.");
+    Assert(KochMethod.NextSymbol(AlphabetMode.Russian, 5) == 'А', "Next symbol after level 5 must be А.");
+    Assert(KochMethod.NextSymbol(AlphabetMode.Latin, 36) is null, "Last level has no next symbol.");
+    Assert(MorseAlphabet.BuildPool(AlphabetMode.Latin, ContentMode.Koch, "", 3).SequenceEqual(new[] { 'K', 'M', 'R' }), "BuildPool must use the Koch level.");
+    Assert(KochMethod.Advice(AlphabetMode.Russian, 5, 95).Contains("уровень 6"), "High accuracy must suggest the next level.");
+    Assert(KochMethod.Advice(AlphabetMode.Russian, 5, 80).Contains("повторяйте уровень 5"), "Low accuracy must suggest repeating the level.");
+}
+
+static void TestWeightedGeneration()
+{
+    var generated = TrainingGenerator.Generate(new[] { 'А', 'Б' }, 100, new[] { 'А' }, emphasisWeight: 4);
+    var countA = generated.Count(symbol => symbol == 'А');
+    var countB = generated.Count(symbol => symbol == 'Б');
+    Assert(countA + countB == 500, "Weighted generation must keep the group structure.");
+    Assert(countA > countB * 2, $"Emphasized symbol must appear far more often (А={countA}, Б={countB}).");
+    Assert(TrainingGenerator.Generate(new[] { 'А' }, 2, Array.Empty<char>()).Replace(" ", "") == "АААААААААА", "Empty emphasis must not change generation.");
+}
+
+static void TestFarnsworthPreset()
+{
+    var slow = new AppSettings { CharactersPerMinute = 40, CharacterGapUnits = 3, GroupGapUnits = 7 };
+    TrainingPresets.ApplyFarnsworth(slow);
+    Assert(slow.CharactersPerMinute == 90 && slow.CharacterGapUnits == 9 && slow.GroupGapUnits == 21, "Farnsworth must raise speed and stretch gaps.");
+    var fast = new AppSettings { CharactersPerMinute = 120 };
+    TrainingPresets.ApplyFarnsworth(fast);
+    Assert(fast.CharactersPerMinute == 120, "Farnsworth must not slow down a faster setting.");
 }
 
 static string FindRepositoryRoot()

@@ -15,7 +15,8 @@ public enum ContentMode
     Digits,
     LettersAndDigits,
     AllSymbols,
-    Custom
+    Custom,
+    Koch
 }
 
 public static class MorseAlphabet
@@ -75,8 +76,14 @@ public static class MorseAlphabet
     public static IReadOnlyList<char> BuildPool(
         AlphabetMode alphabet,
         ContentMode content,
-        string customSymbols)
+        string customSymbols,
+        int kochLevel = KochMethod.MinLevel)
     {
+        if (content == ContentMode.Koch)
+        {
+            return KochMethod.Pool(alphabet, kochLevel);
+        }
+
         if (content == ContentMode.Custom)
         {
             return FilterSupportedSymbols(customSymbols);

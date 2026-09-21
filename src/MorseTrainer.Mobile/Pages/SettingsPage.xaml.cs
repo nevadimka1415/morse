@@ -53,7 +53,9 @@ public partial class SettingsPage : ContentPage
     {
         ThemePicker.SelectedIndex = Math.Clamp(_settings.ThemeIndex, 0, 2);
         AlphabetPicker.SelectedIndex = Math.Clamp(_settings.AlphabetIndex, 0, 2);
-        ContentPicker.SelectedIndex = Math.Clamp(_settings.ContentModeIndex, 0, 4);
+        ContentPicker.SelectedIndex = Math.Clamp(_settings.ContentModeIndex, 0, 5);
+        KochStepper.Value = KochMethod.ClampLevel((AlphabetMode)Math.Clamp(_settings.AlphabetIndex, 0, 2), _settings.KochLevel);
+        EmphasizeSwitch.IsToggled = _settings.EmphasizeProblemSymbols;
         GroupCountStepper.Value = Math.Clamp(_settings.GroupCount, 1, 100);
         SpeedSlider.Value = Math.Clamp(_settings.CharactersPerMinute, 20, 300);
         FrequencySlider.Value = Math.Clamp(_settings.FrequencyHz, 300, 1200);
@@ -145,7 +147,9 @@ public partial class SettingsPage : ContentPage
     {
         _settings.ThemeIndex = Math.Clamp(ThemePicker.SelectedIndex, 0, 2);
         _settings.AlphabetIndex = Math.Clamp(AlphabetPicker.SelectedIndex, 0, 2);
-        _settings.ContentModeIndex = Math.Clamp(ContentPicker.SelectedIndex, 0, 4);
+        _settings.ContentModeIndex = Math.Clamp(ContentPicker.SelectedIndex, 0, 5);
+        _settings.KochLevel = (int)KochStepper.Value;
+        _settings.EmphasizeProblemSymbols = EmphasizeSwitch.IsToggled;
         _settings.GroupCount = (int)Math.Round(GroupCountStepper.Value);
         _settings.CharactersPerMinute = Snap(SpeedSlider.Value, 10, 20, 300);
         _settings.FrequencyHz = Snap(FrequencySlider.Value, 50, 300, 1200);
@@ -171,6 +175,12 @@ public partial class SettingsPage : ContentPage
         GroupGapValue.Text = $"{(int)Math.Round(GroupGapSlider.Value)} точек";
         StartPauseValue.Text = $"{(int)Math.Round(StartPauseSlider.Value)} точек";
         SelectedSymbolsLabel.Text = $"Выбрано: {_selectedSymbols.Count}";
+        var kochAlphabet = (AlphabetMode)Math.Clamp(AlphabetPicker.SelectedIndex, 0, 2);
+        KochLayout.IsVisible = ContentPicker.SelectedIndex == (int)ContentMode.Koch;
+        KochStepper.Maximum = KochMethod.MaxLevel(kochAlphabet);
+        var kochLevel = KochMethod.ClampLevel(kochAlphabet, (int)KochStepper.Value);
+        KochLabel.Text = $"Метод Коха: уровень {kochLevel} из {KochMethod.MaxLevel(kochAlphabet)}";
+        KochSummaryLabel.Text = KochMethod.Describe(kochAlphabet, kochLevel);
         foreach (var button in SymbolsFlex.Children.OfType<Button>())
         {
             var selected = button.CommandParameter is char symbol && _selectedSymbols.Contains(symbol);
@@ -273,6 +283,19 @@ public partial class SettingsPage : ContentPage
                 button.IsEnabled = true;
             }
         }
+    }
+
+    private void FarnsworthButton_OnClicked(object sender, EventArgs e)
+    {
+        var preset = new AppSettings { CharactersPerMinute = Snap(SpeedSlider.Value, 10, 20, 300) };
+        TrainingPresets.ApplyFarnsworth(preset);
+        _ready = false;
+        SpeedSlider.Value = preset.CharactersPerMinute;
+        CharacterGapSlider.Value = preset.CharacterGapUnits;
+        GroupGapSlider.Value = preset.GroupGapUnits;
+        _ready = true;
+        SaveControlsToSettings();
+        SaveStatusLabel.Text = "Пресет Фарнсворта применён";
     }
 
     private static int Snap(double value, int step, int minimum, int maximum)
