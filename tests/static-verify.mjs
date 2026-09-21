@@ -146,6 +146,9 @@ assert(read('src/MorseTrainer.Core/MorseTrainer.Core.csproj').includes('Texts.cs
 
 const buildWorkflow = read('.github/workflows/build.yml');
 assert(buildWorkflow.includes('scripts\\build.ps1'), 'Build workflow does not call the build script.');
+const buildScript = read('scripts/build.ps1');
+assert((buildScript.match(/Assert-LastExitCode/g) || []).length >= 4, 'build.ps1 must fail fast after dotnet run, dotnet publish and ISCC.');
+assert(buildScript.includes('MorseTrainer.exe'), 'build.ps1 must verify that publish produced MorseTrainer.exe.');
 assert(buildWorkflow.includes('MorseTrainer-Setup-x64.exe'), 'Build workflow does not publish the installer.');
 
 assert(read('src/MorseTrainer/MorseTrainer.csproj').includes('<TargetFramework>net10.0-windows</TargetFramework>'), 'Windows project must target net10.0-windows.');

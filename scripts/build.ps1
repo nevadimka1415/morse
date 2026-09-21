@@ -16,8 +16,16 @@ if (Test-Path $dist) {
 
 New-Item -ItemType Directory -Path $portable -Force | Out-Null
 
+# PowerShell не считает ненулевой код выхода native-команды ошибкой: проверяем LASTEXITCODE сами
+function Assert-LastExitCode([string]$step) {
+    if ($LASTEXITCODE -ne 0) {
+        throw "$step failed with exit code $LASTEXITCODE"
+    }
+}
+
 Write-Host "Running tests..."
 dotnet run --project $tests --configuration Release
+Assert-LastExitCode "Tests"
 
 Write-Host "Publishing self-contained Windows application..."
 dotnet publish $project `
@@ -30,6 +38,10 @@ dotnet publish $project `
     -p:IncludeNativeLibrariesForSelfExtract=true `
     -p:DebugType=None `
     -p:DebugSymbols=false
+Assert-LastExitCode "Publish"
+if (-not (Test-Path (Join-Path $portable "MorseTrainer.exe"))) {
+    throw "Publish did not produce MorseTrainer.exe"
+}
 
 Copy-Item (Join-Path $repoRoot "README.md") $portable
 Copy-Item (Join-Path $repoRoot "LICENSE") $portable
@@ -49,6 +61,7 @@ if (-not $SkipInstaller) {
 
     Write-Host "Building installer..."
     & $iscc "/DAppVersion=$Version" (Join-Path $repoRoot "installer\MorseTrainer.iss")
+    Assert-LastExitCode "Inno Setup"
 }
 
 Write-Host "Build completed: $dist"
