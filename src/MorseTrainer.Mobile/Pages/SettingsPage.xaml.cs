@@ -35,7 +35,8 @@ public partial class SettingsPage : ContentPage
         _ready = false;
         _settings = _settingsService.LoadSettings();
         _profiles = _settingsService.LoadProfiles();
-        ProfilePicker.ItemsSource = _profiles;
+        // Picker.ItemsSource требует IList, а сервис отдаёт IReadOnlyList — копируем в список
+        ProfilePicker.ItemsSource = _profiles.ToList();
         ProfilePicker.SelectedItem = _profiles.FirstOrDefault(profile =>
             string.Equals(profile.Name, _settings.ActiveProfileName, StringComparison.OrdinalIgnoreCase)) ?? _profiles[0];
         ProfileNameEntry.Text = ((TrainingProfile)ProfilePicker.SelectedItem).Name;
@@ -173,7 +174,7 @@ public partial class SettingsPage : ContentPage
                 : Colors.Transparent;
             button.TextColor = selected
                 ? Color.FromArgb("#06231C")
-                : Application.Current.RequestedTheme == AppTheme.Dark ? Colors.White : Colors.Black;
+                : Application.Current!.RequestedTheme == AppTheme.Dark ? Colors.White : Colors.Black;
         }
     }
 
@@ -204,7 +205,7 @@ public partial class SettingsPage : ContentPage
         }
         catch (ArgumentException)
         {
-            await DisplayAlert("Название профиля", "Введите название профиля.", "Понятно");
+            await DisplayAlertAsync("Название профиля", "Введите название профиля.", "Понятно");
         }
     }
 

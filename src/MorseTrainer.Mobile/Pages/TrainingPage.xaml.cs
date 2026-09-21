@@ -60,7 +60,7 @@ public partial class TrainingPage : ContentPage
         var pool = MorseAlphabet.BuildPool(alphabet, content, settings.CustomSymbols);
         if (pool.Count == 0)
         {
-            await DisplayAlert("Нет символов", "Откройте настройки и выберите хотя бы один символ.", "Понятно");
+            await DisplayAlertAsync("Нет символов", "Откройте настройки и выберите хотя бы один символ.", "Понятно");
             return;
         }
 
@@ -90,7 +90,7 @@ public partial class TrainingPage : ContentPage
         }
         catch (Exception exception)
         {
-            await DisplayAlert("Ошибка", exception.Message, "Закрыть");
+            await DisplayAlertAsync("Ошибка", exception.Message, "Закрыть");
         }
         finally
         {

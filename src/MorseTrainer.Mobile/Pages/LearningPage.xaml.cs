@@ -68,7 +68,7 @@ public partial class LearningPage : ContentPage
         var path = await _voicePack.GetVoiceFileAsync(symbol);
         if (path is null)
         {
-            await DisplayAlert("Голос недоступен", "Для этого символа не найден встроенный напев.", "Закрыть");
+            await DisplayAlertAsync("Голос недоступен", "Для этого символа не найден встроенный напев.", "Закрыть");
             return;
         }
 
@@ -105,7 +105,7 @@ public partial class LearningPage : ContentPage
         }
         catch (Exception exception)
         {
-            await DisplayAlert("Не удалось воспроизвести", exception.Message, "Закрыть");
+            await DisplayAlertAsync("Не удалось воспроизвести", exception.Message, "Закрыть");
         }
     }
 
