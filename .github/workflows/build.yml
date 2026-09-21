@@ -46,7 +46,7 @@ jobs:
         run: .\scripts\build.ps1
 
       - name: Upload Windows packages
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: MorseTrainer-Windows-x64
           path: |

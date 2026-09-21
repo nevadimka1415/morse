@@ -99,7 +99,7 @@ jobs:
             Copy-Item -Destination .\mobile-artifacts\android
 
       - name: Upload Android APK
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: MorseTrainer-Android
           path: mobile-artifacts/android/*.apk
@@ -183,7 +183,7 @@ jobs:
           ls -la ./dist/MorseTrainer-iOS-unsigned.ipa
 
       - name: Upload unsigned IPA
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: MorseTrainer-iOS-unsigned
           path: dist/MorseTrainer-iOS-unsigned.ipa
