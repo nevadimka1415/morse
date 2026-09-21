@@ -37,7 +37,9 @@ const requiredFiles = [
   'src/MorseTrainer.Mobile/Pages/LearningPage.xaml.cs',
   'src/MorseTrainer.Mobile/Pages/SettingsPage.xaml',
   'src/MorseTrainer.Mobile/Pages/SettingsPage.xaml.cs',
-  '.github/workflows/mobile.yml'
+  '.github/workflows/mobile.yml',
+  '.github/dependabot.yml',
+  'docs/RUSTORE.md'
 ];
 
 for (const relativePath of requiredFiles) {
@@ -122,6 +124,10 @@ assert(mobileWorkflow.includes('iossimulator-arm64'), 'iOS job must build for th
 
 const releaseWorkflow = read('.github/workflows/release.yml');
 assert(releaseWorkflow.includes('gh release create'), 'Release workflow does not create a GitHub release.');
+assert(releaseWorkflow.includes('--notes-file'), 'Release workflow must take release notes from CHANGELOG.md.');
+for (const [name, workflow] of [['build', buildWorkflow], ['mobile', mobileWorkflow], ['release', releaseWorkflow]]) {
+  assert(!/uses: actions\/[a-z-]+@v[1-4]\b/.test(workflow), `The ${name} workflow uses an outdated action version (Node 20).`);
+}
 assert(releaseWorkflow.includes('MorseTrainer-Android.apk'), 'Release workflow does not attach the Android APK.');
 for (const [name, workflow] of [['mobile', mobileWorkflow], ['release', releaseWorkflow]]) {
   assert(workflow.includes('ANDROID_KEYSTORE_BASE64') && workflow.includes('AndroidSigningKeyAlias=morsetrainer'),

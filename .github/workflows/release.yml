@@ -8,6 +8,9 @@ on:
 permissions:
   contents: write
 
+env:
+  NUGET_PACKAGES: ${{ github.workspace }}/.nuget/packages
+
 jobs:
   release:
     runs-on: windows-latest
@@ -20,6 +23,13 @@ jobs:
         uses: actions/setup-dotnet@v6
         with:
           dotnet-version: 8.0.x
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v6
+        with:
+          path: ${{ env.NUGET_PACKAGES }}
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+          restore-keys: ${{ runner.os }}-nuget-
 
       - name: Install Inno Setup
         shell: powershell
@@ -35,16 +45,34 @@ jobs:
           $version = "${{ github.ref_name }}".TrimStart("v")
           .\scripts\build.ps1 -Version $version
 
+      # Описание релиза = раздел CHANGELOG.md для этой версии; если раздела нет — заметки из коммитов
       - name: Create GitHub release
         shell: powershell
         env:
           GH_TOKEN: ${{ github.token }}
-        run: >-
-          gh release create "${{ github.ref_name }}"
-          "dist/MorseTrainer-Windows-x64.zip"
-          "dist/MorseTrainer-Setup-x64.exe"
-          --title "Morse Trainer ${{ github.ref_name }}"
-          --generate-notes
+        run: |
+          $version = "${{ github.ref_name }}".TrimStart("v")
+          $lines = Get-Content .\CHANGELOG.md -Encoding UTF8
+          $start = -1
+          for ($i = 0; $i -lt $lines.Count; $i++) { if ($lines[$i] -match ("^## " + [regex]::Escape($version) + "\s*$")) { $start = $i + 1; break } }
+          $notesArgs = @("--generate-notes")
+          if ($start -ge 0) {
+            $body = @()
+            for ($i = $start; $i -lt $lines.Count; $i++) { if ($lines[$i] -match '^## ') { break }; $body += $lines[$i] }
+            $notes = ($body -join "`n").Trim()
+            if ($notes) {
+              [IO.File]::WriteAllText("dist\release-notes.md", $notes + "`n", (New-Object System.Text.UTF8Encoding $false))
+              $notesArgs = @("--notes-file", "dist/release-notes.md")
+              Write-Host "Release notes: CHANGELOG section $version"
+            }
+          }
+          if ($notesArgs[0] -eq "--generate-notes") { Write-Host "Release notes: generated from commits (no CHANGELOG section $version)" }
+          gh release create "${{ github.ref_name }}" `
+            "dist/MorseTrainer-Windows-x64.zip" `
+            "dist/MorseTrainer-Setup-x64.exe" `
+            --title "Morse Trainer ${{ github.ref_name }}" `
+            @notesArgs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
   # Android APK собирается отдельно и докладывается в уже созданный релиз:
   # так его можно скачать с телефона прямо со страницы Releases
@@ -69,6 +97,13 @@ jobs:
         uses: actions/setup-dotnet@v6
         with:
           dotnet-version: 10.0.x
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v6
+        with:
+          path: ${{ env.NUGET_PACKAGES }}
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+          restore-keys: ${{ runner.os }}-nuget-
 
       - name: Install Android workload
         shell: powershell

@@ -11,7 +11,7 @@
             <Border>
                 <VerticalStackLayout Spacing="10">
                     <Label Text="Профили" FontSize="18" FontAttributes="Bold" />
-                    <Picker x:Name="ProfilePicker" Title="Выберите профиль" x:DataType="models:TrainingProfile" ItemDisplayBinding="{Binding Name}"
+                    <Picker x:Name="ProfilePicker" Title="Выберите профиль" ItemDisplayBinding="{Binding Name, x:DataType=models:TrainingProfile}"
                             SelectedIndexChanged="ProfilePicker_OnChanged" />
                     <Entry x:Name="ProfileNameEntry" Placeholder="Название профиля" MaxLength="40" />
                     <Grid ColumnDefinitions="*,8,*">
