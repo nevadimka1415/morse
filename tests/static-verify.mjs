@@ -106,6 +106,18 @@ const buildWorkflow = read('.github/workflows/build.yml');
 assert(buildWorkflow.includes('scripts\\build.ps1'), 'Build workflow does not call the build script.');
 assert(buildWorkflow.includes('MorseTrainer-Setup-x64.exe'), 'Build workflow does not publish the installer.');
 
+const mobileProject = read('src/MorseTrainer.Mobile/MorseTrainer.Mobile.csproj');
+assert(mobileProject.includes('<TargetFrameworks>net10.0-android;net10.0-ios</TargetFrameworks>'),
+  'Mobile project must target net10.0-android and net10.0-ios.');
+assert(mobileProject.includes('Include="Microsoft.Maui.Controls"'),
+  'Mobile project must reference Microsoft.Maui.Controls explicitly (required since .NET 9).');
+
+const mobileWorkflow = read('.github/workflows/mobile.yml');
+assert(!mobileWorkflow.includes('net8.0'), 'Mobile workflow still references unsupported net8.0 mobile targets.');
+assert(mobileWorkflow.includes('-p:TargetFrameworks=net10.0-android'), 'Android job must restrict TargetFrameworks to net10.0-android.');
+assert(mobileWorkflow.includes('-p:TargetFrameworks=net10.0-ios'), 'iOS job must restrict TargetFrameworks to net10.0-ios.');
+assert(mobileWorkflow.includes('iossimulator-arm64'), 'iOS job must build for the ARM64 simulator.');
+
 const releaseWorkflow = read('.github/workflows/release.yml');
 assert(releaseWorkflow.includes('gh release create'), 'Release workflow does not create a GitHub release.');
 

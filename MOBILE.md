@@ -20,18 +20,20 @@ GitHub автоматически проверяет, что iPhone-версия
 
 ## Локальная сборка
 
+Мобильный проект собирается на .NET 10 (`net10.0-android`, `net10.0-ios`): для него нужен .NET SDK 10, а для Android ещё JDK 21 и Android SDK. Windows-приложение при этом по-прежнему собирается на .NET SDK 8.
+
 Android:
 
 ```powershell
 dotnet workload install maui-android
-dotnet publish .\src\MorseTrainer.Mobile\MorseTrainer.Mobile.csproj -f net8.0-android -c Release -p:AndroidPackageFormats=apk
+dotnet publish .\src\MorseTrainer.Mobile\MorseTrainer.Mobile.csproj -f net10.0-android -c Release -p:TargetFrameworks=net10.0-android -p:AndroidPackageFormats=apk
 ```
 
 iPhone на Mac:
 
 ```bash
 dotnet workload install maui-ios
-dotnet build ./src/MorseTrainer.Mobile/MorseTrainer.Mobile.csproj -f net8.0-ios -c Release
+dotnet build ./src/MorseTrainer.Mobile/MorseTrainer.Mobile.csproj -f net10.0-ios -c Release -p:TargetFrameworks=net10.0-ios
 ```
 
 Голосовые файлы уже находятся в проекте. Ни во время обучения, ни во время тренировки интернет не используется.

@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFrameworks>net8.0-android;net8.0-ios</TargetFrameworks>
+    <TargetFrameworks>net10.0-android;net10.0-ios</TargetFrameworks>
     <OutputType>Exe</OutputType>
     <RootNamespace>MorseTrainer.Mobile</RootNamespace>
     <UseMaui>true</UseMaui>
@@ -12,12 +12,16 @@
     <ApplicationDisplayVersion>2.2.0</ApplicationDisplayVersion>
     <ApplicationVersion>220</ApplicationVersion>
     <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">13.0</SupportedOSPlatformVersion>
-    <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">23.0</SupportedOSPlatformVersion>
+    <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">24.0</SupportedOSPlatformVersion>
   </PropertyGroup>
   <ItemGroup>
     <MauiIcon Include="Resources/AppIcon/appicon.svg" Color="#0F766E" />
     <MauiSplashScreen Include="Resources/Splash/splash.svg" Color="#071A17" BaseSize="256,256" />
     <MauiAsset Include="Resources/Raw/**" LogicalName="%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Начиная с .NET 9 workload MAUI не подключает пакет Controls неявно — ссылка обязательна -->
+    <PackageReference Include="Microsoft.Maui.Controls" Version="$(MauiVersion)" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../MorseTrainer.Core/MorseTrainer.Core.csproj" />

@@ -13,15 +13,21 @@ permissions:
 jobs:
   android:
     runs-on: windows-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
+
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
 
       - name: Set up .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v6
         with:
-          dotnet-version: 8.0.x
+          dotnet-version: 10.0.x
 
       - name: Install Android workload
         shell: powershell
@@ -31,46 +37,65 @@ jobs:
         shell: powershell
         run: node .\tests\static-verify.mjs
 
+      # Докачивает недостающие компоненты Android SDK (платформа, build-tools) под .NET 10
+      - name: Install Android SDK components
+        shell: powershell
+        run: >-
+          dotnet build .\src\MorseTrainer.Mobile\MorseTrainer.Mobile.csproj
+          -t:InstallAndroidDependencies
+          -f net10.0-android
+          -p:TargetFrameworks=net10.0-android
+          -p:AndroidSdkDirectory="$env:ANDROID_HOME"
+          -p:JavaSdkDirectory="$env:JAVA_HOME"
+          -p:AcceptAndroidSDKLicenses=True
+
+      # TargetFrameworks сужен до Android, чтобы Windows-раннер не пытался собирать iOS
       - name: Build Android APK
         shell: powershell
         run: >-
           dotnet publish .\src\MorseTrainer.Mobile\MorseTrainer.Mobile.csproj
-          -f net8.0-android -c Release
+          -f net10.0-android
+          -c Release
+          -p:TargetFrameworks=net10.0-android
           -p:AndroidPackageFormats=apk
+          -p:AndroidSdkDirectory="$env:ANDROID_HOME"
+          -p:JavaSdkDirectory="$env:JAVA_HOME"
 
       - name: Collect Android APK
         shell: powershell
         run: |
           New-Item -ItemType Directory -Path .\mobile-artifacts\android -Force | Out-Null
-          Get-ChildItem .\src\MorseTrainer.Mobile\bin\Release\net8.0-android -Recurse -Filter *.apk |
+          Get-ChildItem .\src\MorseTrainer.Mobile\bin\Release\net10.0-android -Recurse -Filter *.apk |
             Copy-Item -Destination .\mobile-artifacts\android
 
       - name: Upload Android APK
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: MorseTrainer-Android
           path: mobile-artifacts/android/*.apk
           if-no-files-found: error
 
   ios-simulator:
-    runs-on: macos-14
-    timeout-minutes: 45
+    runs-on: macos-26
+    timeout-minutes: 60
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v6
         with:
-          dotnet-version: 8.0.x
+          dotnet-version: 10.0.x
 
       - name: Install iOS workload
         run: dotnet workload install maui-ios
 
+      # Симуляторная сборка на ARM64-раннере, подпись не нужна: CodesignKey пустой
       - name: Build iPhone simulator app
         run: >-
           dotnet build ./src/MorseTrainer.Mobile/MorseTrainer.Mobile.csproj
-          -f net8.0-ios -c Release
-          -p:RuntimeIdentifier=iossimulator-x64
+          -f net10.0-ios
+          -c Release
+          -p:TargetFrameworks=net10.0-ios
+          -p:RuntimeIdentifier=iossimulator-arm64
           -p:CodesignKey=""
-
