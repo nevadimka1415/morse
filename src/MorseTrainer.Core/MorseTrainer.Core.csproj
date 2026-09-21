@@ -9,7 +9,9 @@
     <Compile Include="../MorseTrainer/Domain/*.cs" Link="Domain/%(Filename)%(Extension)" />
     <Compile Include="../MorseTrainer/Models/AppSettings.cs" Link="Models/AppSettings.cs" />
     <Compile Include="../MorseTrainer/Models/TrainingProfile.cs" Link="Models/TrainingProfile.cs" />
+    <Compile Include="../MorseTrainer/Models/TrainingRecord.cs" Link="Models/TrainingRecord.cs" />
     <Compile Include="../MorseTrainer/Services/MorseAudioService.cs" Link="Services/MorseAudioService.cs" />
     <Compile Include="../MorseTrainer/Services/UpdateService.cs" Link="Services/UpdateService.cs" />
+    <Compile Include="../MorseTrainer/Services/TrainingHistoryStore.cs" Link="Services/TrainingHistoryStore.cs" />
   </ItemGroup>
 </Project>

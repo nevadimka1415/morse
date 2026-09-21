@@ -15,7 +15,8 @@ var tests = new (string Name, Action Run)[]
     ("Start signal", TestStartSignal),
     ("Training profiles", TestTrainingProfile),
     ("Embedded voice pack", TestVoicePack),
-    ("Update check", TestUpdateCheck)
+    ("Update check", TestUpdateCheck),
+    ("Training history", TestTrainingHistory)
 };
 
 var failures = new List<string>();
@@ -177,6 +178,51 @@ static void TestVoicePack()
     using var stream = File.OpenRead(Path.Combine(root, "src", "MorseTrainer", "Assets", "Voice", "code_01.wav"));
     var header = new byte[4];
     Assert(stream.Read(header, 0, 4) == 4 && Encoding.ASCII.GetString(header) == "RIFF", "Voice clip must be a WAV file.");
+}
+
+static void TestTrainingHistory()
+{
+    var perfect = TrainingEvaluator.Evaluate("АБВГД", "АБВГД");
+    var flawed = TrainingEvaluator.Evaluate("АБВГД", "АБВГЖ");
+    var day1 = new DateTime(2026, 9, 21, 10, 0, 0);
+    var first = TrainingStatistics.CreateRecord(day1, "Основной", 60, 1, flawed);
+    Assert(first.ProblemSymbols == "Д" && Math.Abs(first.AccuracyPercent - 80) < 0.01, "Record must keep the mistaken symbol and accuracy.");
+
+    var history = TrainingStatistics.Add(Array.Empty<TrainingRecord>(), first);
+    history = TrainingStatistics.Add(history, TrainingStatistics.CreateRecord(day1.AddDays(1), "Быстрый", 90, 2, perfect));
+    var summary = TrainingStatistics.Summarize(history);
+    Assert(summary.Sessions == 2 && Math.Abs(summary.AverageAccuracy - 90) < 0.01 && Math.Abs(summary.BestAccuracy - 100) < 0.01,
+        "History summary is wrong.");
+    Assert(summary.TotalSymbols == 10 && summary.CorrectSymbols == 9, "Symbol totals are wrong.");
+    var problems = TrainingStatistics.ProblemSymbols(history);
+    Assert(problems.Count == 1 && problems[0].Symbol == 'Д' && problems[0].Count == 1, "Problem symbols are wrong.");
+    var days = TrainingStatistics.ByDay(history);
+    Assert(days.Count == 2 && days[0].Date == DateOnly.FromDateTime(day1) && days[1].Sessions == 1, "Daily grouping is wrong.");
+
+    var overflow = history;
+    for (var index = 0; index < TrainingStatistics.MaxRecords + 5; index++)
+    {
+        overflow = TrainingStatistics.Add(overflow, TrainingStatistics.CreateRecord(day1.AddMinutes(index), "Основной", 60, 1, perfect));
+    }
+
+    Assert(overflow.Count == TrainingStatistics.MaxRecords, "History must be trimmed to MaxRecords.");
+
+    var directory = Path.Combine(Path.GetTempPath(), "morse-tests-" + Guid.NewGuid().ToString("N"));
+    try
+    {
+        var store = new TrainingHistoryStore(Path.Combine(directory, "history.json"));
+        Assert(store.Load().Count == 0, "Empty store must return no records.");
+        store.Add(first);
+        var loaded = store.Add(history[1]);
+        Assert(loaded.Count == 2, "Store must append records.");
+        Assert(new TrainingHistoryStore(Path.Combine(directory, "history.json")).Load()[1].ProfileName == "Быстрый", "Store must persist records.");
+        store.Clear();
+        Assert(store.Load().Count == 0, "Clear must remove the history.");
+    }
+    finally
+    {
+        try { Directory.Delete(directory, recursive: true); } catch { }
+    }
 }
 
 static string FindRepositoryRoot()

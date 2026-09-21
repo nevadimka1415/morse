@@ -13,6 +13,11 @@ const requiredFiles = [
   'src/MorseTrainer/SymbolSelectionWindow.xaml.cs',
   'src/MorseTrainer/Domain/LearningCatalog.cs',
   'src/MorseTrainer/Domain/VoiceClipCatalog.cs',
+  'src/MorseTrainer/Domain/TrainingStatistics.cs',
+  'src/MorseTrainer/Models/TrainingRecord.cs',
+  'src/MorseTrainer/Services/TrainingHistoryStore.cs',
+  'src/MorseTrainer.Mobile/Pages/ProgressPage.xaml',
+  'src/MorseTrainer.Mobile/Pages/ProgressPage.xaml.cs',
   'src/MorseTrainer/Services/ThemeService.cs',
   'src/MorseTrainer/Services/SpeechService.cs',
   'src/MorseTrainer/Services/VoicePackService.cs',
@@ -78,7 +83,7 @@ verifyXamlCodeBehind(
   'src/MorseTrainer/SymbolSelectionWindow.xaml',
   'src/MorseTrainer/SymbolSelectionWindow.xaml.cs'
 );
-for (const page of ['TrainingPage', 'LearningPage', 'SettingsPage']) {
+for (const page of ['TrainingPage', 'LearningPage', 'SettingsPage', 'ProgressPage']) {
   verifyXamlCodeBehind(
     `src/MorseTrainer.Mobile/Pages/${page}.xaml`,
     `src/MorseTrainer.Mobile/Pages/${page}.xaml.cs`
@@ -91,6 +96,9 @@ for (const relativePath of [
   'src/MorseTrainer/Domain/TrainingEvaluator.cs',
   'src/MorseTrainer/Domain/LearningCatalog.cs',
   'src/MorseTrainer/Domain/VoiceClipCatalog.cs',
+  'src/MorseTrainer/Domain/TrainingStatistics.cs',
+  'src/MorseTrainer/Services/TrainingHistoryStore.cs',
+  'src/MorseTrainer.Mobile/Pages/ProgressPage.xaml.cs',
   'src/MorseTrainer/Services/MorseAudioService.cs',
   'src/MorseTrainer/Services/ThemeService.cs',
   'src/MorseTrainer/Services/SpeechService.cs',
@@ -120,7 +128,10 @@ assert(testsProject.includes('MorseTrainer.Core.csproj'), 'Tests must reference 
 assert(!buildWorkflow.includes('8.0.x'), 'Build workflow must use .NET SDK 10.');
 assert(existsSync(resolve(root, 'global.json')), 'global.json must pin the .NET SDK major version.');
 
-assert(read('src/MorseTrainer.Core/MorseTrainer.Core.csproj').includes('UpdateService.cs'), 'Core project must compile UpdateService.cs.');
+const coreProject = read('src/MorseTrainer.Core/MorseTrainer.Core.csproj');
+for (const file of ['UpdateService.cs', 'TrainingHistoryStore.cs', 'TrainingRecord.cs']) {
+  assert(coreProject.includes(file), `Core project must compile ${file}.`);
+}
 assert(read('src/MorseTrainer.Mobile/Platforms/Android/AndroidManifest.xml').includes('android.permission.INTERNET'), 'Android manifest must allow the update check to reach GitHub.');
 
 const mobileProject = read('src/MorseTrainer.Mobile/MorseTrainer.Mobile.csproj');

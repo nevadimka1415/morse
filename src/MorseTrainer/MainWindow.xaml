@@ -436,6 +436,80 @@
                     </Grid>
                 </Grid>
             </TabItem>
+            <TabItem Header="Прогресс">
+                <Grid Margin="0,12,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="18" />
+                        <ColumnDefinition Width="400" />
+                    </Grid.ColumnDefinitions>
+                    <Border Grid.Column="0" Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource BorderBrush}"
+                            BorderThickness="1" CornerRadius="16" Padding="22">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="14" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="14" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+                            <TextBlock Text="История тренировок" FontSize="18" FontWeight="SemiBold" />
+                            <UniformGrid Grid.Row="2" Columns="4">
+                                <Border Background="{DynamicResource CardAltBrush}" CornerRadius="10" Padding="14,10" Margin="0,0,10,0">
+                                    <StackPanel>
+                                        <TextBlock Text="ТРЕНИРОВОК" Foreground="{DynamicResource MutedTextBrush}" FontSize="10" />
+                                        <TextBlock x:Name="ProgressSessionsText" Text="0" FontSize="20" FontWeight="SemiBold" />
+                                    </StackPanel>
+                                </Border>
+                                <Border Background="{DynamicResource CardAltBrush}" CornerRadius="10" Padding="14,10" Margin="0,0,10,0">
+                                    <StackPanel>
+                                        <TextBlock Text="СРЕДНЯЯ ТОЧНОСТЬ" Foreground="{DynamicResource MutedTextBrush}" FontSize="10" />
+                                        <TextBlock x:Name="ProgressAverageText" Text="—" FontSize="20" FontWeight="SemiBold" />
+                                    </StackPanel>
+                                </Border>
+                                <Border Background="{DynamicResource CardAltBrush}" CornerRadius="10" Padding="14,10" Margin="0,0,10,0">
+                                    <StackPanel>
+                                        <TextBlock Text="ЛУЧШАЯ" Foreground="{DynamicResource MutedTextBrush}" FontSize="10" />
+                                        <TextBlock x:Name="ProgressBestText" Text="—" FontSize="20" FontWeight="SemiBold" />
+                                    </StackPanel>
+                                </Border>
+                                <Border Background="{DynamicResource CardAltBrush}" CornerRadius="10" Padding="14,10">
+                                    <StackPanel>
+                                        <TextBlock Text="ПРИНЯТО СИМВОЛОВ" Foreground="{DynamicResource MutedTextBrush}" FontSize="10" />
+                                        <TextBlock x:Name="ProgressSymbolsText" Text="—" FontSize="20" FontWeight="SemiBold" />
+                                    </StackPanel>
+                                </Border>
+                            </UniformGrid>
+                            <ListView x:Name="HistoryListView" Grid.Row="4" Background="Transparent" BorderThickness="0"
+                                      Foreground="{DynamicResource TextBrush}">
+                                <ListView.View>
+                                    <GridView>
+                                        <GridViewColumn Header="Когда" Width="130" DisplayMemberBinding="{Binding When}" />
+                                        <GridViewColumn Header="Профиль" Width="140" DisplayMemberBinding="{Binding Profile}" />
+                                        <GridViewColumn Header="Скорость" Width="100" DisplayMemberBinding="{Binding Speed}" />
+                                        <GridViewColumn Header="Групп" Width="60" DisplayMemberBinding="{Binding Groups}" />
+                                        <GridViewColumn Header="Точность" Width="80" DisplayMemberBinding="{Binding Accuracy}" />
+                                        <GridViewColumn Header="Ошибки" Width="180" DisplayMemberBinding="{Binding Errors}" />
+                                    </GridView>
+                                </ListView.View>
+                            </ListView>
+                        </Grid>
+                    </Border>
+                    <Border Grid.Column="2" Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource BorderBrush}"
+                            BorderThickness="1" CornerRadius="16" Padding="22">
+                        <StackPanel>
+                            <TextBlock Text="По дням" FontSize="18" FontWeight="SemiBold" />
+                            <StackPanel x:Name="DailyBarsPanel" Margin="0,12,0,0" />
+                            <TextBlock Text="СЛОЖНЫЕ СИМВОЛЫ ЗА ВСЁ ВРЕМЯ" Foreground="{DynamicResource MutedTextBrush}" FontSize="10" Margin="0,18,0,4" />
+                            <TextBlock x:Name="HistoryProblemSymbolsText" Text="—" FontSize="16" FontWeight="SemiBold" TextWrapping="Wrap" />
+                            <TextBlock Text="Результат записывается при первой проверке ответа по каждому заданию. История хранится только на этом компьютере."
+                                       Foreground="{DynamicResource MutedTextBrush}" FontSize="11" TextWrapping="Wrap" Margin="0,18,0,0" />
+                            <Button x:Name="ClearHistoryButton" Content="Очистить историю" Click="ClearHistoryButton_OnClick"
+                                    Margin="0,14,0,0" HorizontalAlignment="Left" />
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </TabItem>
         </TabControl>
 
         <TextBlock Grid.Row="3" Text="F5 — воспроизведение    Esc — остановка    Все данные хранятся только на этом компьютере"

@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:models="clr-namespace:MorseTrainer.Models;assembly=MorseTrainer.Core"
+             x:Class="MorseTrainer.Mobile.Pages.ProgressPage"
+             Title="Прогресс">
+    <ScrollView>
+        <VerticalStackLayout Padding="16" Spacing="14">
+            <Label Text="Прогресс" FontSize="26" FontAttributes="Bold" />
+
+            <Border BackgroundColor="{AppThemeBinding Light=#ECFDF5, Dark=#102F29}">
+                <VerticalStackLayout Spacing="6">
+                    <Label x:Name="SummaryLabel" Text="Тренировок пока нет" FontSize="18" FontAttributes="Bold" />
+                    <Label x:Name="DetailsLabel" Text="Проверьте ответ в тренировке, и результат появится здесь." LineBreakMode="WordWrap" />
+                    <Label x:Name="ProblemSymbolsLabel" Text="" LineBreakMode="WordWrap" />
+                </VerticalStackLayout>
+            </Border>
+
+            <Border>
+                <VerticalStackLayout x:Name="DailyLayout" Spacing="6">
+                    <Label Text="По дням" FontAttributes="Bold" />
+                </VerticalStackLayout>
+            </Border>
+
+            <Border>
+                <VerticalStackLayout Spacing="6">
+                    <Label Text="Последние тренировки" FontAttributes="Bold" />
+                    <CollectionView x:Name="HistoryView" SelectionMode="None" HeightRequest="360">
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate x:DataType="models:TrainingRecord">
+                                <Grid ColumnDefinitions="*,Auto" Padding="0,6">
+                                    <VerticalStackLayout>
+                                        <Label Text="{Binding CompletedAt, StringFormat='{0:dd.MM.yyyy HH:mm}'}" />
+                                        <Label Text="{Binding ProfileName}" Opacity="0.65" FontSize="13" />
+                                    </VerticalStackLayout>
+                                    <Label Grid.Column="1" Text="{Binding AccuracyPercent, StringFormat='{0:0.#}%'}"
+                                           FontAttributes="Bold" FontSize="18" VerticalOptions="Center" />
+                                </Grid>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+                </VerticalStackLayout>
+            </Border>
+
+            <Button Text="Очистить историю" Clicked="ClearButton_OnClicked" />
+            <Label Text="История хранится только на этом устройстве." HorizontalTextAlignment="Center" Opacity="0.65" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

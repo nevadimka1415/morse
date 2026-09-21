@@ -56,6 +56,7 @@
                 <VerticalStackLayout Spacing="6">
                     <Label x:Name="AccuracyLabel" Text="Точность: —" FontSize="20" FontAttributes="Bold" />
                     <Label x:Name="ResultLabel" Text="Пробелы между группами не учитываются" LineBreakMode="WordWrap" />
+                    <Label x:Name="HistoryLabel" Text="" Opacity="0.65" LineBreakMode="WordWrap" />
                 </VerticalStackLayout>
             </Border>
         </VerticalStackLayout>

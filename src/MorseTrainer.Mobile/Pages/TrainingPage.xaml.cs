@@ -9,16 +9,20 @@ public partial class TrainingPage : ContentPage
 {
     private readonly IAudioPlaybackService _audioPlayback;
     private readonly MobileSettingsService _settingsService;
+    private readonly TrainingHistoryStore _historyStore;
+    private bool _currentTaskRecorded;
+    private int _currentGroupCount;
     private CancellationTokenSource? _playbackCancellation;
     private AudioClip? _currentClip;
     private string _currentTask = string.Empty;
     private bool _answerVisible;
 
-    public TrainingPage(IAudioPlaybackService audioPlayback, MobileSettingsService settingsService)
+    public TrainingPage(IAudioPlaybackService audioPlayback, MobileSettingsService settingsService, TrainingHistoryStore historyStore)
     {
         InitializeComponent();
         _audioPlayback = audioPlayback;
         _settingsService = settingsService;
+        _historyStore = historyStore;
         _settingsService.SettingsChanged += (_, _) => MainThread.BeginInvokeOnMainThread(RefreshSettingsSummary);
     }
 
@@ -26,6 +30,7 @@ public partial class TrainingPage : ContentPage
     {
         base.OnAppearing();
         RefreshSettingsSummary();
+        UpdateHistoryLabel();
         if (string.IsNullOrEmpty(_currentTask))
         {
             await GenerateTaskAsync();
@@ -69,6 +74,8 @@ public partial class TrainingPage : ContentPage
         try
         {
             _currentTask = TrainingGenerator.Generate(pool, Math.Clamp(settings.GroupCount, 1, 100));
+            _currentTaskRecorded = false;
+            _currentGroupCount = Math.Clamp(settings.GroupCount, 1, 100);
             _currentClip = await Task.Run(() => MorseAudioService.Render(
                 _currentTask,
                 Math.Clamp(settings.CharactersPerMinute, 20, 300),
@@ -162,6 +169,15 @@ public partial class TrainingPage : ContentPage
         }
 
         var result = TrainingEvaluator.Evaluate(_currentTask, AnswerEditor.Text ?? string.Empty);
+        // В историю попадает только первая проверка каждого задания
+        if (!_currentTaskRecorded)
+        {
+            _currentTaskRecorded = true;
+            var settings = _settingsService.LoadSettings();
+            _historyStore.Add(TrainingStatistics.CreateRecord(DateTime.Now, settings.ActiveProfileName,
+                settings.CharactersPerMinute, _currentGroupCount, result));
+            UpdateHistoryLabel();
+        }
         AccuracyLabel.Text = $"Точность: {result.AccuracyPercent:0.#}%";
         if (result.IsPerfect)
         {
@@ -177,6 +193,14 @@ public partial class TrainingPage : ContentPage
 
         _answerVisible = true;
         UpdateTaskLabel();
+    }
+
+    private void UpdateHistoryLabel()
+    {
+        var summary = TrainingStatistics.Summarize(_historyStore.Load());
+        HistoryLabel.Text = summary.Sessions == 0
+            ? string.Empty
+            : $"За всё время: {summary.Sessions} · средняя точность {summary.AverageAccuracy:0.#}% · лучшая {summary.BestAccuracy:0.#}%";
     }
 
     private static string FormatMistake(CharacterMistake mistake)

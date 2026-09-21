@@ -21,6 +21,10 @@ public partial class MainWindow : Window
 {
     private static readonly HttpClient UpdateClient = new() { Timeout = TimeSpan.FromSeconds(15) };
     private readonly SettingsService _settingsService = new();
+    private readonly TrainingHistoryStore _historyStore = new(Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "MorseTrainer", "history.json"));
+    private IReadOnlyList<TrainingRecord> _history = Array.Empty<TrainingRecord>();
+    private bool _currentTaskRecorded;
     private readonly ProfileService _profileService = new();
     private readonly Dictionary<char, int> _problemSymbols = new();
     private SoundPlayer? _player;
@@ -62,6 +66,8 @@ public partial class MainWindow : Window
         UpdateCustomSymbolsVisibility();
         UpdateSelectedSymbolsSummary();
         RefreshLearningItems();
+        _history = _historyStore.Load();
+        RefreshProgress();
         _windowLoaded = true;
         await GenerateTaskAsync();
     }
@@ -143,6 +149,90 @@ public partial class MainWindow : Window
         Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
     }
 
+    private void RefreshProgress()
+    {
+        var summary = TrainingStatistics.Summarize(_history);
+        ProgressSessionsText.Text = summary.Sessions.ToString(CultureInfo.InvariantCulture);
+        ProgressAverageText.Text = summary.Sessions == 0 ? "—" : $"{summary.AverageAccuracy:0.#}%";
+        ProgressBestText.Text = summary.Sessions == 0 ? "—" : $"{summary.BestAccuracy:0.#}%";
+        ProgressSymbolsText.Text = summary.Sessions == 0 ? "—" : $"{summary.CorrectSymbols} / {summary.TotalSymbols}";
+        var problems = TrainingStatistics.ProblemSymbols(_history);
+        HistoryProblemSymbolsText.Text = problems.Count == 0
+            ? "—"
+            : string.Join("  ", problems.Select(item => $"{item.Symbol} ×{item.Count}"));
+        HistoryListView.ItemsSource = _history
+            .OrderByDescending(item => item.CompletedAt)
+            .Take(50)
+            .Select(item => new HistoryRow(
+                item.CompletedAt.ToString("dd.MM.yyyy HH:mm", CultureInfo.CurrentCulture),
+                item.ProfileName,
+                $"{item.CharactersPerMinute} зн/мин",
+                item.GroupCount.ToString(CultureInfo.InvariantCulture),
+                $"{item.AccuracyPercent:0.#}%",
+                item.ProblemSymbols.Length == 0 ? "—" : string.Join(" ", item.ProblemSymbols.Distinct())))
+            .ToList();
+
+        DailyBarsPanel.Children.Clear();
+        var days = TrainingStatistics.ByDay(_history);
+        if (days.Count == 0)
+        {
+            DailyBarsPanel.Children.Add(new TextBlock { Text = "Пока пусто", Foreground = (Brush)FindResource("MutedTextBrush") });
+            return;
+        }
+
+        foreach (var day in days)
+        {
+            var row = new Grid { Margin = new Thickness(0, 0, 0, 6) };
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(48) });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(78) });
+            var label = new TextBlock { Text = day.Date.ToString("dd.MM", CultureInfo.CurrentCulture), VerticalAlignment = VerticalAlignment.Center };
+            var fill = new Border
+            {
+                Background = (Brush)FindResource("PrimaryBrush"),
+                CornerRadius = new CornerRadius(5),
+                Height = 12,
+                HorizontalAlignment = HorizontalAlignment.Left,
+                Width = Math.Max(4, 220 * day.AverageAccuracy / 100)
+            };
+            var track = new Border
+            {
+                Background = (Brush)FindResource("CardAltBrush"),
+                CornerRadius = new CornerRadius(5),
+                Height = 12,
+                VerticalAlignment = VerticalAlignment.Center,
+                Child = fill
+            };
+            var value = new TextBlock
+            {
+                Text = $"{day.AverageAccuracy:0.#}% · {day.Sessions}",
+                VerticalAlignment = VerticalAlignment.Center,
+                HorizontalAlignment = HorizontalAlignment.Right,
+                Foreground = (Brush)FindResource("MutedTextBrush")
+            };
+            Grid.SetColumn(track, 1);
+            Grid.SetColumn(value, 2);
+            row.Children.Add(label);
+            row.Children.Add(track);
+            row.Children.Add(value);
+            DailyBarsPanel.Children.Add(row);
+        }
+    }
+
+    private void ClearHistoryButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        var answer = MessageBox.Show(this, "Удалить все записи о тренировках на этом компьютере?", "Очистить историю",
+            MessageBoxButton.YesNo, MessageBoxImage.Question);
+        if (answer != MessageBoxResult.Yes)
+        {
+            return;
+        }
+
+        _historyStore.Clear();
+        _history = Array.Empty<TrainingRecord>();
+        RefreshProgress();
+    }
+
     private void ThemeCombo_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (ThemeCombo is null)
@@ -201,6 +291,7 @@ public partial class MainWindow : Window
                 settings.StartPauseUnits));
 
             _currentTask = generatedTask;
+            _currentTaskRecorded = false;
             _currentClip = audio;
             _currentSettings = settings;
             _answerVisible = false;
@@ -364,6 +455,16 @@ public partial class MainWindow : Window
         var result = TrainingEvaluator.Evaluate(_currentTask, UserAnswerText.Text);
         _attempts++;
         AttemptsText.Text = _attempts.ToString(CultureInfo.InvariantCulture);
+        // В историю попадает только первая проверка каждого задания
+        if (!_currentTaskRecorded)
+        {
+            _currentTaskRecorded = true;
+            var taskSettings = _currentSettings ?? ReadSettings();
+            var record = TrainingStatistics.CreateRecord(DateTime.Now, taskSettings.ActiveProfileName,
+                taskSettings.CharactersPerMinute, _currentTask.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length, result);
+            _history = _historyStore.Add(record);
+            RefreshProgress();
+        }
         AccuracyText.Text = $"{result.AccuracyPercent:0.#}%";
 
         foreach (var mistake in result.Mistakes.Where(item => item.Expected != '\u2205'))
@@ -957,3 +1058,6 @@ public partial class MainWindow : Window
         ? value
         : value[..maxLength] + "…";
 }
+
+/// <summary>Строка таблицы истории на вкладке «Прогресс».</summary>
+public sealed record HistoryRow(string When, string Profile, string Speed, string Groups, string Accuracy, string Errors);
