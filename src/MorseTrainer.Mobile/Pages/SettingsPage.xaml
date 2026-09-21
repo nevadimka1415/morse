@@ -5,7 +5,7 @@
              x:Class="MorseTrainer.Mobile.Pages.SettingsPage"
              Title="Настройки">
     <ScrollView>
-        <VerticalStackLayout Padding="16" Spacing="14">
+        <VerticalStackLayout x:Name="RootLayout" Padding="16" Spacing="14">
             <Label Text="Настройки" FontSize="26" FontAttributes="Bold" />
 
             <Border>

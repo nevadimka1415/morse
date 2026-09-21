@@ -5,7 +5,7 @@
              x:Class="MorseTrainer.Mobile.Pages.ProgressPage"
              Title="Прогресс">
     <ScrollView>
-        <VerticalStackLayout Padding="16" Spacing="14">
+        <VerticalStackLayout x:Name="RootLayout" Padding="16" Spacing="14">
             <Label Text="Прогресс" FontSize="26" FontAttributes="Bold" />
 
             <Border BackgroundColor="{AppThemeBinding Light=#ECFDF5, Dark=#102F29}">

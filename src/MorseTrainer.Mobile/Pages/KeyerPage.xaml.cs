@@ -212,4 +212,14 @@ public partial class KeyerPage : ContentPage
             ResultLabel.TextColor = (Color)Application.Current!.Resources["Danger"];
         }
     }
+
+    // Планшет или альбомная ориентация: центрируем контент полосой до 720 px
+    protected override void OnSizeAllocated(double width, double height)
+    {
+        base.OnSizeAllocated(width, height);
+        if (width > 0)
+        {
+            RootLayout.Padding = TabletLayout.PaddingFor(width);
+        }
+    }
 }

@@ -4,7 +4,7 @@
              x:Class="MorseTrainer.Mobile.Pages.TrainingPage"
              Title="Тренировка">
     <ScrollView>
-        <VerticalStackLayout Padding="16" Spacing="14">
+        <VerticalStackLayout x:Name="RootLayout" Padding="16" Spacing="14">
             <Grid ColumnDefinitions="*,Auto">
                 <VerticalStackLayout Spacing="2">
                     <Label Text="Тренировка" FontSize="26" FontAttributes="Bold" />

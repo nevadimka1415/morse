@@ -4,7 +4,7 @@
              xmlns:domain="clr-namespace:MorseTrainer.Domain;assembly=MorseTrainer.Core"
              x:Class="MorseTrainer.Mobile.Pages.LearningPage"
              Title="Обучение">
-    <Grid Padding="14" RowDefinitions="Auto,Auto,*,Auto" RowSpacing="10">
+    <Grid x:Name="RootLayout" Padding="14" RowDefinitions="Auto,Auto,*,Auto" RowSpacing="10">
         <VerticalStackLayout>
             <Label Text="Обучение" FontSize="26" FontAttributes="Bold" />
             <Label Text="Напевы сохранены в приложении и работают без интернета" Opacity="0.65" />
@@ -26,7 +26,7 @@
 
         <CollectionView x:Name="CardsView" Grid.Row="2" SelectionMode="None">
             <CollectionView.ItemsLayout>
-                <GridItemsLayout Orientation="Vertical" Span="2" HorizontalItemSpacing="8" VerticalItemSpacing="8" />
+                <GridItemsLayout x:Name="CardsLayout" Orientation="Vertical" Span="2" HorizontalItemSpacing="8" VerticalItemSpacing="8" />
             </CollectionView.ItemsLayout>
             <CollectionView.ItemTemplate>
                 <DataTemplate x:DataType="domain:LearningSymbolItem">

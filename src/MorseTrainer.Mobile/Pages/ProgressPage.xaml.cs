@@ -2,6 +2,8 @@ using MorseTrainer.Domain;
 using MorseTrainer.Models;
 using MorseTrainer.Services;
 
+using MorseTrainer.Mobile.Services;
+
 namespace MorseTrainer.Mobile.Pages;
 
 public partial class ProgressPage : ContentPage
@@ -85,5 +87,15 @@ public partial class ProgressPage : ContentPage
         if (mod10 == 1 && mod100 != 11) return one;
         if (mod10 is >= 2 and <= 4 && mod100 is < 12 or > 14) return few;
         return many;
+    }
+
+    // Планшет или альбомная ориентация: центрируем контент полосой до 720 px
+    protected override void OnSizeAllocated(double width, double height)
+    {
+        base.OnSizeAllocated(width, height);
+        if (width > 0)
+        {
+            RootLayout.Padding = TabletLayout.PaddingFor(width);
+        }
     }
 }
