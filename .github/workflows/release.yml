@@ -166,3 +166,55 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh release upload "${{ github.ref_name }}" "dist/MorseTrainer-Android.apk" --clobber
+
+  # Неподписанный IPA для установки на iPhone через Sideloadly/AltStore
+  ios:
+    needs: release
+    runs-on: macos-26
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v6
+        with:
+          path: ${{ env.NUGET_PACKAGES }}
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+          restore-keys: ${{ runner.os }}-nuget-
+
+      - name: Install iOS workload
+        run: dotnet workload install maui-ios
+
+      # Сборка под настоящий iPhone (ios-arm64) без подписи Apple: подписать можно на своём
+      # компьютере обычным Apple ID через Sideloadly/AltStore (см. MOBILE.md)
+      - name: Build unsigned iPhone app
+        run: >-
+          dotnet build ./src/MorseTrainer.Mobile/MorseTrainer.Mobile.csproj
+          -f net10.0-ios
+          -c Release
+          -p:MobileTargetFrameworks=net10.0-ios
+          -p:RuntimeIdentifier=ios-arm64
+          -p:EnableCodeSigning=false
+          -p:CodesignRequireProvisioningProfile=false
+          -p:CodesignKey=""
+
+      - name: Package unsigned IPA
+        run: |
+          set -e
+          app=$(find ./src/MorseTrainer.Mobile/bin/Release/net10.0-ios/ios-arm64 -maxdepth 1 -name "*.app" -type d | head -n 1)
+          test -n "$app" || { echo "Не найдено .app после сборки"; exit 1; }
+          rm -rf ./dist/ipa && mkdir -p ./dist/ipa/Payload
+          cp -R "$app" ./dist/ipa/Payload/
+          (cd ./dist/ipa && zip -qr ../MorseTrainer-iOS-unsigned.ipa Payload)
+          ls -la ./dist/MorseTrainer-iOS-unsigned.ipa
+
+      - name: Attach IPA to GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ github.ref_name }}" "dist/MorseTrainer-iOS-unsigned.ipa" --clobber

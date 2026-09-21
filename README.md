@@ -35,7 +35,8 @@
 
 - `MorseTrainer-Setup-x64.exe` — обычная установка с ярлыком;
 - `MorseTrainer-Windows-x64.zip` — переносная версия без установки;
-- `MorseTrainer-Android.apk` — приложение для Android: откройте страницу Releases в браузере телефона и нажмите на файл, затем разрешите установку.
+- `MorseTrainer-Android.apk` — приложение для Android: откройте страницу Releases в браузере телефона и нажмите на файл, затем разрешите установку;
+- `MorseTrainer-iOS-unsigned.ipa` — сборка для iPhone без подписи Apple: ставится через Sideloadly или AltStore со своим Apple ID, подробности в [MOBILE.md](MOBILE.md).
 
 Прямая ссылка на последний APK для телефона: <https://github.com/nevadimka1415/morse/releases/latest/download/MorseTrainer-Android.apk>
 
