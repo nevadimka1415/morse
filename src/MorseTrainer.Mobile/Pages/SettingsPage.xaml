@@ -118,6 +118,16 @@
                 </VerticalStackLayout>
             </Border>
 
+            <Border>
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="О программе" FontSize="18" FontAttributes="Bold" />
+                    <Label x:Name="VersionLabel" Text="Morse Trainer" />
+                    <Button Text="Проверить обновления" Clicked="CheckUpdatesButton_OnClicked" />
+                    <Label Text="Интернет нужен только для этой проверки, всё остальное работает без сети."
+                           Opacity="0.65" FontSize="13" />
+                </VerticalStackLayout>
+            </Border>
+
             <Label x:Name="SaveStatusLabel" Text="Настройки сохраняются автоматически"
                    HorizontalTextAlignment="Center" Opacity="0.65" />
         </VerticalStackLayout>

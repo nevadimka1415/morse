@@ -14,7 +14,8 @@ var tests = new (string Name, Action Run)[]
     ("WAV rendering", TestWaveRendering),
     ("Start signal", TestStartSignal),
     ("Training profiles", TestTrainingProfile),
-    ("Embedded voice pack", TestVoicePack)
+    ("Embedded voice pack", TestVoicePack),
+    ("Update check", TestUpdateCheck)
 };
 
 var failures = new List<string>();
@@ -161,6 +162,28 @@ static void TestVoicePack()
     Assert(russian is { Length: > 44 }, "Russian voice clip is missing.");
     Assert(latin is { Length: > 44 }, "Latin voice clip reuse is missing.");
     Assert(digit is { Length: > 44 }, "Digit voice clip is missing.");
+}
+
+static void TestUpdateCheck()
+{
+    Assert(UpdateService.ParseVersion("v2.3.0") == new Version(2, 3, 0), "Tag v2.3.0 must parse to 2.3.0.");
+    Assert(UpdateService.ParseVersion("2.10") == new Version(2, 10, 0), "Two-part version must get patch 0.");
+    Assert(UpdateService.ParseVersion("release") is null, "Text without a number must not parse.");
+    Assert(UpdateService.IsNewer(new Version(2, 2, 1, 0), new Version(2, 3, 0)), "2.3.0 must be newer than assembly 2.2.1.0.");
+    Assert(!UpdateService.IsNewer(new Version(2, 3, 0, 0), new Version(2, 3, 0)), "Assembly 2.3.0.0 must equal tag 2.3.0.");
+    Assert(!UpdateService.IsNewer(new Version(2, 3, 1), new Version(2, 3, 0)), "Older release must not be reported as newer.");
+
+    const string json = @"{ ""tag_name"": ""v2.3.0"", ""html_url"": ""https://github.com/nevadimka1415/morse/releases/tag/v2.3.0"", " +
+        @"""body"": ""- Проверка обновлений  "", ""assets"": [ " +
+        @"{ ""name"": ""MorseTrainer-Android.apk"", ""browser_download_url"": ""https://example.test/MorseTrainer-Android.apk"" }, " +
+        @"{ ""name"": ""MorseTrainer-Setup-x64.exe"", ""browser_download_url"": ""https://example.test/MorseTrainer-Setup-x64.exe"" }, " +
+        @"{ ""name"": ""MorseTrainer-Windows-x64.zip"", ""browser_download_url"": ""https://example.test/MorseTrainer-Windows-x64.zip"" } ] }";
+    var info = UpdateService.ParseRelease(json);
+    Assert(info.LatestVersion == new Version(2, 3, 0), "Release version was not parsed.");
+    Assert(info.AndroidApkUrl == "https://example.test/MorseTrainer-Android.apk", "APK asset was not found.");
+    Assert(info.WindowsInstallerUrl == "https://example.test/MorseTrainer-Setup-x64.exe", "Installer asset was not found.");
+    Assert(info.ReleasePageUrl.EndsWith("/v2.3.0", StringComparison.Ordinal), "Release page URL was not parsed.");
+    Assert(info.Notes == "- Проверка обновлений", "Release notes must be trimmed.");
 }
 
 static void Assert(bool condition, string message)

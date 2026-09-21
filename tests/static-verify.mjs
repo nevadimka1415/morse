@@ -16,6 +16,7 @@ const requiredFiles = [
   'src/MorseTrainer/Services/SpeechService.cs',
   'src/MorseTrainer/Services/VoicePackService.cs',
   'src/MorseTrainer/Services/ProfileService.cs',
+  'src/MorseTrainer/Services/UpdateService.cs',
   'src/MorseTrainer/Models/TrainingProfile.cs',
   'src/MorseTrainer/App.xaml.cs',
   'src/MorseTrainer/Assets/MorseTrainer.ico',
@@ -94,6 +95,7 @@ for (const relativePath of [
   'src/MorseTrainer/Services/SettingsService.cs',
   'src/MorseTrainer/Services/ProfileService.cs',
   'src/MorseTrainer/Services/VoicePackService.cs',
+  'src/MorseTrainer/Services/UpdateService.cs',
   'src/MorseTrainer/MainWindow.xaml.cs',
   'tests/MorseTrainer.Tests/Program.cs',
   'src/MorseTrainer.Mobile/MauiProgram.cs',
@@ -113,6 +115,9 @@ assert(read('src/MorseTrainer.Core/MorseTrainer.Core.csproj').includes('<TargetF
 assert(read('tests/MorseTrainer.Tests/MorseTrainer.Tests.csproj').includes('<TargetFramework>net10.0-windows</TargetFramework>'), 'Tests project must target net10.0-windows.');
 assert(!buildWorkflow.includes('8.0.x'), 'Build workflow must use .NET SDK 10.');
 assert(existsSync(resolve(root, 'global.json')), 'global.json must pin the .NET SDK major version.');
+
+assert(read('src/MorseTrainer.Core/MorseTrainer.Core.csproj').includes('UpdateService.cs'), 'Core project must compile UpdateService.cs.');
+assert(read('src/MorseTrainer.Mobile/Platforms/Android/AndroidManifest.xml').includes('android.permission.INTERNET'), 'Android manifest must allow the update check to reach GitHub.');
 
 const mobileProject = read('src/MorseTrainer.Mobile/MorseTrainer.Mobile.csproj');
 assert(mobileProject.includes('<TargetFrameworks>net10.0-android;net10.0-ios</TargetFrameworks>'),
@@ -188,18 +193,73 @@ function verifyXamlCodeBehind(xamlPath, codeBehindPath) {
 }
 
 function assertBalancedBraces(source, relativePath) {
-  const withoutStringsAndComments = source
-    .replace(/\/\/.*$/gm, '')
-    .replace(/\/\*[\s\S]*?\*\//g, '')
-    .replace(/@?"(?:""|\\.|[^"\\])*"/g, '""')
-    .replace(/'(?:\\.|[^'\\])'/g, "''");
   let balance = 0;
-  for (const character of withoutStringsAndComments) {
+  for (const character of stripStringsAndComments(source)) {
     if (character === '{') balance += 1;
     if (character === '}') balance -= 1;
     assert(balance >= 0, `Unexpected closing brace in ${relativePath}.`);
   }
   assert(balance === 0, `Unbalanced braces in ${relativePath}.`);
+}
+
+// Убирает строки, символьные литералы и комментарии C#, чтобы скобки внутри них не считались.
+// Понимает обычные строки с \-экранированием, verbatim @"..." с "", сырые """...""" и $-интерполяцию
+// (фигурные скобки внутри интерполяции тоже не считаются: их баланс проверяет компилятор).
+function stripStringsAndComments(source) {
+  let out = '';
+  let i = 0;
+  while (i < source.length) {
+    const c = source[i];
+    const next = source[i + 1];
+    if (c === '/' && next === '/') {
+      while (i < source.length && source[i] !== '\n') i += 1;
+      continue;
+    }
+    if (c === '/' && next === '*') {
+      const end = source.indexOf('*/', i + 2);
+      i = end < 0 ? source.length : end + 2;
+      continue;
+    }
+    if (c === '\'' ) {
+      let j = i + 1;
+      if (source[j] === '\\') j += 2; else j += 1;
+      if (source[j] === '\'') { i = j + 1; continue; }
+      out += c; i += 1; continue;
+    }
+    let k = i;
+    while (source[k] === '$' || source[k] === '@') k += 1;
+    if (source[k] === '"') {
+      const prefix = source.slice(i, k);
+      const verbatim = prefix.includes('@');
+      if (!verbatim && source.startsWith('"""', k)) {
+        let quotes = 0;
+        while (source[k + quotes] === '"') quotes += 1;
+        const closing = '"'.repeat(quotes);
+        const end = source.indexOf(closing, k + quotes);
+        i = end < 0 ? source.length : end + quotes;
+        out += '""';
+        continue;
+      }
+      let j = k + 1;
+      while (j < source.length) {
+        if (verbatim) {
+          if (source[j] === '"' && source[j + 1] === '"') { j += 2; continue; }
+          if (source[j] === '"') break;
+          j += 1;
+        } else {
+          if (source[j] === '\\') { j += 2; continue; }
+          if (source[j] === '"' || source[j] === '\n') break;
+          j += 1;
+        }
+      }
+      i = j + 1;
+      out += '""';
+      continue;
+    }
+    out += c;
+    i += 1;
+  }
+  return out;
 }
 
 function assert(condition, message) {

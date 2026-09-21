@@ -1,11 +1,15 @@
+using Microsoft.Maui.ApplicationModel;
+using Microsoft.Maui.Devices;
 using MorseTrainer.Domain;
 using MorseTrainer.Models;
 using MorseTrainer.Mobile.Services;
+using MorseTrainer.Services;
 
 namespace MorseTrainer.Mobile.Pages;
 
 public partial class SettingsPage : ContentPage
 {
+    private static readonly HttpClient UpdateClient = new() { Timeout = TimeSpan.FromSeconds(15) };
     private readonly MobileSettingsService _settingsService;
     private AppSettings _settings = new();
     private IReadOnlyList<TrainingProfile> _profiles = Array.Empty<TrainingProfile>();
@@ -16,6 +20,7 @@ public partial class SettingsPage : ContentPage
     {
         InitializeComponent();
         _settingsService = settingsService;
+        VersionLabel.Text = $"Morse Trainer {CurrentVersion}";
         BuildSymbolButtons();
         LoadAll();
         _ready = true;
@@ -221,6 +226,53 @@ public partial class SettingsPage : ContentPage
         _profiles[0].ApplyTo(_settings);
         _settingsService.SaveSettings(_settings);
         LoadAll();
+    }
+
+    private static Version CurrentVersion =>
+        UpdateService.ParseVersion(AppInfo.Current.VersionString) ?? new Version(0, 0, 0);
+
+    // Единственный выход в интернет, и только по нажатию кнопки
+    private async void CheckUpdatesButton_OnClicked(object sender, EventArgs e)
+    {
+        var button = sender as Button;
+        if (button is not null)
+        {
+            button.IsEnabled = false;
+        }
+
+        try
+        {
+            var info = await UpdateService.FetchLatestAsync(UpdateClient, CancellationToken.None);
+            if (UpdateService.IsNewer(CurrentVersion, info.LatestVersion))
+            {
+                var notes = string.IsNullOrWhiteSpace(info.Notes) ? string.Empty : "\n\n" + info.Notes;
+                var download = await DisplayAlertAsync("Есть обновление",
+                    $"Доступна версия {info.LatestVersion}, у вас {CurrentVersion}.{notes}", "Скачать", "Позже");
+                if (download)
+                {
+                    var url = DeviceInfo.Current.Platform == DevicePlatform.Android
+                        ? info.AndroidApkUrl ?? info.ReleasePageUrl
+                        : info.ReleasePageUrl;
+                    await Launcher.Default.OpenAsync(new Uri(url));
+                }
+            }
+            else
+            {
+                await DisplayAlertAsync("Обновлений нет", $"У вас последняя версия {CurrentVersion}.", "Понятно");
+            }
+        }
+        catch (Exception exception)
+        {
+            await DisplayAlertAsync("Не удалось проверить",
+                $"Проверьте подключение к интернету.\n\n{exception.Message}", "Закрыть");
+        }
+        finally
+        {
+            if (button is not null)
+            {
+                button.IsEnabled = true;
+            }
+        }
     }
 
     private static int Snap(double value, int step, int minimum, int maximum)

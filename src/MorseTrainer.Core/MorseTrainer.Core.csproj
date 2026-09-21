@@ -10,5 +10,6 @@
     <Compile Include="../MorseTrainer/Models/AppSettings.cs" Link="Models/AppSettings.cs" />
     <Compile Include="../MorseTrainer/Models/TrainingProfile.cs" Link="Models/TrainingProfile.cs" />
     <Compile Include="../MorseTrainer/Services/MorseAudioService.cs" Link="Services/MorseAudioService.cs" />
+    <Compile Include="../MorseTrainer/Services/UpdateService.cs" Link="Services/UpdateService.cs" />
   </ItemGroup>
 </Project>

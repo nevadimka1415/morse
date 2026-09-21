@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Media;
@@ -18,6 +19,7 @@ namespace MorseTrainer;
 
 public partial class MainWindow : Window
 {
+    private static readonly HttpClient UpdateClient = new() { Timeout = TimeSpan.FromSeconds(15) };
     private readonly SettingsService _settingsService = new();
     private readonly ProfileService _profileService = new();
     private readonly Dictionary<char, int> _problemSymbols = new();
@@ -48,6 +50,7 @@ public partial class MainWindow : Window
 
     private async void Window_OnLoaded(object sender, RoutedEventArgs e)
     {
+        SubtitleText.Text = $"Тренировка и изучение азбуки Морзе · версия {CurrentVersion}";
         var settings = _settingsService.Load();
         ApplySettings(settings);
         LoadProfiles(settings);
@@ -92,6 +95,52 @@ public partial class MainWindow : Window
             StopLearningPlayback();
             e.Handled = true;
         }
+    }
+
+    private static Version CurrentVersion =>
+        UpdateService.Normalize(typeof(App).Assembly.GetName().Version ?? new Version(0, 0, 0));
+
+    // Единственное место, где приложение выходит в интернет, и только по нажатию кнопки
+    private async void CheckUpdatesButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        CheckUpdatesButton.IsEnabled = false;
+        CheckUpdatesButton.Content = "Проверяю…";
+        try
+        {
+            var info = await UpdateService.FetchLatestAsync(UpdateClient, CancellationToken.None);
+            if (UpdateService.IsNewer(CurrentVersion, info.LatestVersion))
+            {
+                var notes = string.IsNullOrWhiteSpace(info.Notes) ? string.Empty : "\n\n" + Truncate(info.Notes, 600);
+                var answer = MessageBox.Show(this,
+                    $"Доступна версия {info.LatestVersion}, у вас {CurrentVersion}.{notes}\n\nОткрыть страницу загрузки?",
+                    "Обновление Morse Trainer", MessageBoxButton.YesNo, MessageBoxImage.Information);
+                if (answer == MessageBoxResult.Yes)
+                {
+                    OpenInBrowser(info.WindowsInstallerUrl ?? info.ReleasePageUrl);
+                }
+            }
+            else
+            {
+                MessageBox.Show(this, $"У вас последняя версия {CurrentVersion}.", "Обновление Morse Trainer",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+        }
+        catch (Exception exception)
+        {
+            MessageBox.Show(this,
+                $"Не удалось проверить обновления. Проверьте подключение к интернету.\n\n{exception.Message}",
+                "Обновление Morse Trainer", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+        finally
+        {
+            CheckUpdatesButton.Content = "Обновления";
+            CheckUpdatesButton.IsEnabled = true;
+        }
+    }
+
+    private static void OpenInBrowser(string url)
+    {
+        Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
     }
 
     private void ThemeCombo_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
