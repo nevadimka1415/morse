@@ -123,6 +123,10 @@ assert(mobileWorkflow.includes('iossimulator-arm64'), 'iOS job must build for th
 const releaseWorkflow = read('.github/workflows/release.yml');
 assert(releaseWorkflow.includes('gh release create'), 'Release workflow does not create a GitHub release.');
 assert(releaseWorkflow.includes('MorseTrainer-Android.apk'), 'Release workflow does not attach the Android APK.');
+for (const [name, workflow] of [['mobile', mobileWorkflow], ['release', releaseWorkflow]]) {
+  assert(workflow.includes('ANDROID_KEYSTORE_BASE64') && workflow.includes('AndroidSigningKeyAlias=morsetrainer'),
+    `The ${name} workflow must sign the APK with the release keystore from secrets.`);
+}
 
 const exeBuilder = read('BUILD-EXE.cmd');
 assert(exeBuilder.includes('--self-contained false'), 'Local EXE builder must use the installed .NET runtime.');

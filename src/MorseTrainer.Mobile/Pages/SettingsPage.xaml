@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:models="clr-namespace:MorseTrainer.Models;assembly=MorseTrainer.Core"
              x:Class="MorseTrainer.Mobile.Pages.SettingsPage"
              Title="Настройки">
     <ScrollView>
@@ -10,7 +11,7 @@
             <Border>
                 <VerticalStackLayout Spacing="10">
                     <Label Text="Профили" FontSize="18" FontAttributes="Bold" />
-                    <Picker x:Name="ProfilePicker" Title="Выберите профиль" ItemDisplayBinding="{Binding Name}"
+                    <Picker x:Name="ProfilePicker" Title="Выберите профиль" x:DataType="models:TrainingProfile" ItemDisplayBinding="{Binding Name}"
                             SelectedIndexChanged="ProfilePicker_OnChanged" />
                     <Entry x:Name="ProfileNameEntry" Placeholder="Название профиля" MaxLength="40" />
                     <Grid ColumnDefinitions="*,8,*">
