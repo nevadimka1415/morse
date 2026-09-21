@@ -1069,6 +1069,56 @@ public partial class MainWindow : Window
         }
     }
 
+    private void ExportProfilesButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        var dialog = new SaveFileDialog
+        {
+            Title = "Экспорт профилей",
+            Filter = "Профили Morse Trainer (*.json)|*.json",
+            FileName = $"morse-profiles-{DateTime.Now:yyyy-MM-dd}.json",
+            AddExtension = true
+        };
+        if (dialog.ShowDialog(this) != true)
+        {
+            return;
+        }
+
+        try
+        {
+            File.WriteAllText(dialog.FileName, ProfileTransfer.Export(_profiles), new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+            SetStatus("ПРОФИЛИ ЭКСПОРТИРОВАНЫ", isActive: true);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            MessageBox.Show(this, exception.Message, "Экспорт профилей", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    private void ImportProfilesButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        var dialog = new OpenFileDialog
+        {
+            Title = "Импорт профилей",
+            Filter = "Профили Morse Trainer (*.json)|*.json|Все файлы (*.*)|*.*"
+        };
+        if (dialog.ShowDialog(this) != true)
+        {
+            return;
+        }
+
+        try
+        {
+            var imported = ProfileTransfer.Import(File.ReadAllText(dialog.FileName));
+            _profiles = _profileService.Import(imported);
+            LoadProfiles(ReadSettings());
+            MessageBox.Show(this, $"Импортировано профилей: {imported.Count}.", "Профили", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception exception) when (exception is FormatException or IOException or UnauthorizedAccessException)
+        {
+            MessageBox.Show(this, exception.Message, "Импорт профилей", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
     private void DeleteProfileButton_OnClick(object sender, RoutedEventArgs e)
     {
         if (ProfileCombo.SelectedItem is not TrainingProfile profile)

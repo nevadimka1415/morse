@@ -1,4 +1,5 @@
 using System.Text.Json;
+using MorseTrainer.Domain;
 using MorseTrainer.Models;
 
 namespace MorseTrainer.Mobile.Services;
@@ -86,6 +87,13 @@ public sealed class MobileSettingsService
 
         WriteProfiles(profiles);
         return profiles;
+    }
+
+    public IReadOnlyList<TrainingProfile> ImportProfiles(IEnumerable<TrainingProfile> imported)
+    {
+        var merged = ProfileTransfer.Merge(LoadProfiles(), imported);
+        WriteProfiles(merged);
+        return merged;
     }
 
     private static void WriteProfiles(IEnumerable<TrainingProfile> profiles)

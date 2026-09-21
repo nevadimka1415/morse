@@ -19,7 +19,8 @@ var tests = new (string Name, Action Run)[]
     ("Training history", TestTrainingHistory),
     ("Koch method", TestKochMethod),
     ("Weighted generation", TestWeightedGeneration),
-    ("Farnsworth preset", TestFarnsworthPreset)
+    ("Farnsworth preset", TestFarnsworthPreset),
+    ("Profile transfer", TestProfileTransfer)
 };
 
 var failures = new List<string>();
@@ -266,6 +267,31 @@ static void TestFarnsworthPreset()
     var fast = new AppSettings { CharactersPerMinute = 120 };
     TrainingPresets.ApplyFarnsworth(fast);
     Assert(fast.CharactersPerMinute == 120, "Farnsworth must not slow down a faster setting.");
+}
+
+static void TestProfileTransfer()
+{
+    var fast = TrainingProfile.FromSettings("Быстрый", new AppSettings { CharactersPerMinute = 120, CustomSymbols = "АБВ" });
+    var slow = TrainingProfile.FromSettings("Медленный", new AppSettings { CharactersPerMinute = 40 });
+    var exported = ProfileTransfer.Export(new[] { fast, slow });
+    Assert(exported.Contains("\"App\": \"MorseTrainer\"") && exported.Contains("Быстрый"), "Export must produce the MorseTrainer envelope.");
+
+    var imported = ProfileTransfer.Import(exported);
+    Assert(imported.Count == 2 && imported[0].Name == "Быстрый" && imported[0].CharactersPerMinute == 120, "Import must restore profiles from the envelope.");
+    Assert(ProfileTransfer.Import("[{\"Name\":\"Тест\",\"CharactersPerMinute\":999,\"CustomSymbols\":\"а1?x\"}]") is [{ CharactersPerMinute: 300, CustomSymbols: "А1?X" }],
+        "Bare array must be accepted and clamped.");
+
+    var failed = false;
+    try { ProfileTransfer.Import("не json"); } catch (FormatException) { failed = true; }
+    Assert(failed, "Garbage must be rejected with FormatException.");
+    failed = false;
+    try { ProfileTransfer.Import("[{\"Name\":\"   \",\"CharactersPerMinute\":60}]"); } catch (FormatException) { failed = true; }
+    Assert(failed, "Profiles with blank names must be rejected.");
+
+    var existing = new[] { TrainingProfile.FromSettings("быстрый", new AppSettings { CharactersPerMinute = 60 }), TrainingProfile.FromSettings("Ночной", new AppSettings()) };
+    var merged = ProfileTransfer.Merge(existing, imported);
+    Assert(merged.Count == 3, "Merge must keep other profiles and replace the same name case-insensitively.");
+    Assert(merged.Single(profile => profile.Name.Equals("Быстрый", StringComparison.OrdinalIgnoreCase)).CharactersPerMinute == 120, "Imported profile must replace the existing one.");
 }
 
 static string FindRepositoryRoot()

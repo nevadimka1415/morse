@@ -1,5 +1,6 @@
 using System.IO;
 using System.Text.Json;
+using MorseTrainer.Domain;
 using MorseTrainer.Models;
 
 namespace MorseTrainer.Services;
@@ -65,6 +66,13 @@ public sealed class ProfileService
             .ToArray();
         Write(profiles);
         return profiles;
+    }
+
+    public IReadOnlyList<TrainingProfile> Import(IEnumerable<TrainingProfile> imported)
+    {
+        var merged = ProfileTransfer.Merge(Load(), imported);
+        Write(merged);
+        return merged;
     }
 
     private void Write(IEnumerable<TrainingProfile> profiles)

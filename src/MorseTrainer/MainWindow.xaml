@@ -76,6 +76,17 @@
                                     <Button Content="Сохранить профиль" Click="SaveProfileButton_OnClick" Padding="10,7" />
                                     <Button Grid.Column="2" Content="Удалить" Click="DeleteProfileButton_OnClick" Padding="10,7" />
                                 </Grid>
+                                <Grid Margin="0,-7,0,15">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="8" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Button Content="Экспорт…" Click="ExportProfilesButton_OnClick" Padding="10,7"
+                                            ToolTip="Сохранить все профили в файл, чтобы перенести на другой компьютер или телефон" />
+                                    <Button Grid.Column="2" Content="Импорт…" Click="ImportProfilesButton_OnClick" Padding="10,7"
+                                            ToolTip="Загрузить профили из файла; одноимённые профили будут заменены" />
+                                </Grid>
 
                                 <Label Content="Алфавит" />
                                 <ComboBox x:Name="AlphabetCombo" SelectedIndex="0" Margin="0,0,0,15"

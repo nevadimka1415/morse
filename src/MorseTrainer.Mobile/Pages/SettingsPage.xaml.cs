@@ -1,4 +1,5 @@
 using Microsoft.Maui.ApplicationModel;
+using Microsoft.Maui.ApplicationModel.DataTransfer;
 using Microsoft.Maui.Devices;
 using MorseTrainer.Domain;
 using MorseTrainer.Models;
@@ -221,6 +222,38 @@ public partial class SettingsPage : ContentPage
         catch (ArgumentException)
         {
             await DisplayAlertAsync("Название профиля", "Введите название профиля.", "Понятно");
+        }
+    }
+
+    private async void ShareProfilesButton_OnClicked(object sender, EventArgs e)
+    {
+        try
+        {
+            var text = ProfileTransfer.Export(_profiles);
+            await Clipboard.Default.SetTextAsync(text);
+            await Share.Default.RequestAsync(new ShareTextRequest { Title = "Профили Morse Trainer", Text = text });
+            SaveStatusLabel.Text = "Профили скопированы в буфер и отправлены";
+        }
+        catch (Exception exception)
+        {
+            await DisplayAlertAsync("Не удалось поделиться", exception.Message, "Закрыть");
+        }
+    }
+
+    private async void ImportProfilesButton_OnClicked(object sender, EventArgs e)
+    {
+        try
+        {
+            var text = await Clipboard.Default.GetTextAsync();
+            var imported = ProfileTransfer.Import(text ?? string.Empty);
+            _profiles = _settingsService.ImportProfiles(imported);
+            LoadAll();
+            SaveStatusLabel.Text = $"Импортировано профилей: {imported.Count}";
+        }
+        catch (FormatException exception)
+        {
+            await DisplayAlertAsync("Импорт профилей",
+                $"{exception.Message}\nСкопируйте текст профилей (из «Поделиться» на другом устройстве) и нажмите кнопку снова.", "Понятно");
         }
     }
 

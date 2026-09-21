@@ -19,6 +19,12 @@
                                 Clicked="SaveProfileButton_OnClicked" />
                         <Button Grid.Column="2" Text="Удалить" Clicked="DeleteProfileButton_OnClicked" />
                     </Grid>
+                    <Grid ColumnDefinitions="*,8,*">
+                        <Button Text="Поделиться" Clicked="ShareProfilesButton_OnClicked" />
+                        <Button Grid.Column="2" Text="Вставить из буфера" Clicked="ImportProfilesButton_OnClicked" />
+                    </Grid>
+                    <Label Text="«Поделиться» отправляет профили текстом (например, себе в мессенджер) и копирует его в буфер; «Вставить из буфера» принимает такой текст на другом устройстве. Одноимённые профили заменяются."
+                           Opacity="0.65" FontSize="13" LineBreakMode="WordWrap" />
                 </VerticalStackLayout>
             </Border>
 
