@@ -14,10 +14,10 @@ jobs:
     timeout-minutes: 20
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v6
         with:
           dotnet-version: 8.0.x
 
@@ -45,3 +45,70 @@ jobs:
           "dist/MorseTrainer-Setup-x64.exe"
           --title "Morse Trainer ${{ github.ref_name }}"
           --generate-notes
+
+  # Android APK собирается отдельно и докладывается в уже созданный релиз:
+  # так его можно скачать с телефона прямо со страницы Releases
+  android:
+    needs: release
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Install Android workload
+        shell: powershell
+        run: dotnet workload install maui-android
+
+      - name: Install Android SDK components
+        shell: powershell
+        run: >-
+          dotnet build .\src\MorseTrainer.Mobile\MorseTrainer.Mobile.csproj
+          -t:InstallAndroidDependencies
+          -f net10.0-android
+          -p:MobileTargetFrameworks=net10.0-android
+          -p:AndroidSdkDirectory="$env:ANDROID_HOME"
+          -p:JavaSdkDirectory="$env:JAVA_HOME"
+          -p:AcceptAndroidSDKLicenses=True
+
+      # Версия берётся из тега: v2.2.1 -> 2.2.1, а versionCode = 2*10000 + 2*100 + 1 = 20201,
+      # чтобы каждый следующий релиз Android считал обновлением
+      - name: Build Android APK
+        shell: powershell
+        run: |
+          $version = "${{ github.ref_name }}".TrimStart("v")
+          $m = [regex]::Match($version, '^(\d+)\.(\d+)\.(\d+)')
+          $code = [int]$m.Groups[1].Value * 10000 + [int]$m.Groups[2].Value * 100 + [int]$m.Groups[3].Value
+          dotnet publish .\src\MorseTrainer.Mobile\MorseTrainer.Mobile.csproj `
+            -f net10.0-android `
+            -c Release `
+            -p:MobileTargetFrameworks=net10.0-android `
+            -p:AndroidPackageFormats=apk `
+            -p:ApplicationDisplayVersion=$version `
+            -p:ApplicationVersion=$code `
+            -p:AndroidSdkDirectory="$env:ANDROID_HOME" `
+            -p:JavaSdkDirectory="$env:JAVA_HOME"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          New-Item -ItemType Directory -Path .\dist -Force | Out-Null
+          $apk = Get-ChildItem .\src\MorseTrainer.Mobile\bin\Release\net10.0-android -Recurse -Filter *-Signed.apk | Select-Object -First 1
+          if (-not $apk) { $apk = Get-ChildItem .\src\MorseTrainer.Mobile\bin\Release\net10.0-android -Recurse -Filter *.apk | Select-Object -First 1 }
+          if (-not $apk) { throw "APK not found" }
+          Copy-Item $apk.FullName .\dist\MorseTrainer-Android.apk
+          Get-Item .\dist\MorseTrainer-Android.apk | Format-List Name, Length
+
+      - name: Attach APK to GitHub release
+        shell: powershell
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ github.ref_name }}" "dist/MorseTrainer-Android.apk" --clobber

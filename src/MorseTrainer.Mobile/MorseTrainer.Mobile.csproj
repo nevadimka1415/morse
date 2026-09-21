@@ -1,6 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFrameworks>net10.0-android;net10.0-ios</TargetFrameworks>
+    <!-- Один TFM на раннер: Windows собирает только Android, macOS только iOS. Задаётся снаружи через
+         -p:MobileTargetFrameworks=..., а не -p:TargetFrameworks: глобальное свойство утекает
+         в MorseTrainer.Core (net8.0) и ломает его restore (NETSDK1005) -->
+    <TargetFrameworks Condition="'$(MobileTargetFrameworks)' != ''">$(MobileTargetFrameworks)</TargetFrameworks>
     <OutputType>Exe</OutputType>
     <RootNamespace>MorseTrainer.Mobile</RootNamespace>
     <UseMaui>true</UseMaui>

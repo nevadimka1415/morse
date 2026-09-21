@@ -44,19 +44,19 @@ jobs:
           dotnet build .\src\MorseTrainer.Mobile\MorseTrainer.Mobile.csproj
           -t:InstallAndroidDependencies
           -f net10.0-android
-          -p:TargetFrameworks=net10.0-android
+          -p:MobileTargetFrameworks=net10.0-android
           -p:AndroidSdkDirectory="$env:ANDROID_HOME"
           -p:JavaSdkDirectory="$env:JAVA_HOME"
           -p:AcceptAndroidSDKLicenses=True
 
-      # TargetFrameworks сужен до Android, чтобы Windows-раннер не пытался собирать iOS
+      # MobileTargetFrameworks сужает сборку до Android, чтобы Windows-раннер не пытался собирать iOS
       - name: Build Android APK
         shell: powershell
         run: >-
           dotnet publish .\src\MorseTrainer.Mobile\MorseTrainer.Mobile.csproj
           -f net10.0-android
           -c Release
-          -p:TargetFrameworks=net10.0-android
+          -p:MobileTargetFrameworks=net10.0-android
           -p:AndroidPackageFormats=apk
           -p:AndroidSdkDirectory="$env:ANDROID_HOME"
           -p:JavaSdkDirectory="$env:JAVA_HOME"
@@ -96,6 +96,6 @@ jobs:
           dotnet build ./src/MorseTrainer.Mobile/MorseTrainer.Mobile.csproj
           -f net10.0-ios
           -c Release
-          -p:TargetFrameworks=net10.0-ios
+          -p:MobileTargetFrameworks=net10.0-ios
           -p:RuntimeIdentifier=iossimulator-arm64
           -p:CodesignKey=""

@@ -33,7 +33,10 @@
 Откройте **Releases** в репозитории и выберите один из файлов:
 
 - `MorseTrainer-Setup-x64.exe` — обычная установка с ярлыком;
-- `MorseTrainer-Windows-x64.zip` — переносная версия без установки.
+- `MorseTrainer-Windows-x64.zip` — переносная версия без установки;
+- `MorseTrainer-Android.apk` — приложение для Android: откройте страницу Releases в браузере телефона и нажмите на файл, затем разрешите установку.
+
+Прямая ссылка на последний APK для телефона: <https://github.com/nevadimka1415/morse/releases/latest/download/MorseTrainer-Android.apk>
 
 Приложение собирается как self-contained EXE: устанавливать .NET пользователю не требуется.
 

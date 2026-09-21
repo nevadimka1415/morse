@@ -114,12 +114,15 @@ assert(mobileProject.includes('Include="Microsoft.Maui.Controls"'),
 
 const mobileWorkflow = read('.github/workflows/mobile.yml');
 assert(!mobileWorkflow.includes('net8.0'), 'Mobile workflow still references unsupported net8.0 mobile targets.');
-assert(mobileWorkflow.includes('-p:TargetFrameworks=net10.0-android'), 'Android job must restrict TargetFrameworks to net10.0-android.');
-assert(mobileWorkflow.includes('-p:TargetFrameworks=net10.0-ios'), 'iOS job must restrict TargetFrameworks to net10.0-ios.');
+assert(mobileWorkflow.includes('-p:MobileTargetFrameworks=net10.0-android'), 'Android job must restrict the build to net10.0-android via MobileTargetFrameworks.');
+assert(mobileWorkflow.includes('-p:MobileTargetFrameworks=net10.0-ios'), 'iOS job must restrict the build to net10.0-ios via MobileTargetFrameworks.');
+assert(!mobileWorkflow.includes('-p:TargetFrameworks='), 'Do not pass TargetFrameworks globally: it breaks restore of MorseTrainer.Core.');
+assert(mobileProject.includes("'$(MobileTargetFrameworks)' != ''"), 'Mobile project must honour MobileTargetFrameworks.');
 assert(mobileWorkflow.includes('iossimulator-arm64'), 'iOS job must build for the ARM64 simulator.');
 
 const releaseWorkflow = read('.github/workflows/release.yml');
 assert(releaseWorkflow.includes('gh release create'), 'Release workflow does not create a GitHub release.');
+assert(releaseWorkflow.includes('MorseTrainer-Android.apk'), 'Release workflow does not attach the Android APK.');
 
 const exeBuilder = read('BUILD-EXE.cmd');
 assert(exeBuilder.includes('--self-contained false'), 'Local EXE builder must use the installed .NET runtime.');

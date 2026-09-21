@@ -4,9 +4,13 @@
 
 ## Android
 
-После загрузки проекта на GitHub откройте **Actions → Build mobile apps**, дождитесь зелёной отметки и скачайте артефакт `MorseTrainer-Android`. Внутри находится APK, который можно передать на телефон и установить.
+Готовый APK лежит в каждом релизе: откройте на телефоне страницу **Releases** репозитория, нажмите `MorseTrainer-Android.apk`, после загрузки откройте файл и подтвердите установку. Релиз создаётся автоматически при отправке тега вида `v2.2.1`.
 
-Android может показать предупреждение об установке приложения не из Google Play. Разрешение нужно выдать только приложению, через которое открыт APK, а после установки его можно снова отключить.
+Android может показать предупреждение об установке приложения не из Google Play. Разрешение нужно выдать только приложению, через которое открыт APK (обычно браузеру), а после установки его можно снова отключить.
+
+Пробные сборки без релиза лежат в **Actions → Build mobile apps** как артефакт `MorseTrainer-Android`: для скачивания нужен вход в GitHub, внутри zip с APK.
+
+APK подписывается временным ключом сборки, поэтому перед установкой новой версии поверх старой приложение придётся удалить. Постоянный ключ подписи можно добавить позже через секреты репозитория.
 
 ## iPhone
 
@@ -26,14 +30,14 @@ Android:
 
 ```powershell
 dotnet workload install maui-android
-dotnet publish .\src\MorseTrainer.Mobile\MorseTrainer.Mobile.csproj -f net10.0-android -c Release -p:TargetFrameworks=net10.0-android -p:AndroidPackageFormats=apk
+dotnet publish .\src\MorseTrainer.Mobile\MorseTrainer.Mobile.csproj -f net10.0-android -c Release -p:MobileTargetFrameworks=net10.0-android -p:AndroidPackageFormats=apk
 ```
 
 iPhone на Mac:
 
 ```bash
 dotnet workload install maui-ios
-dotnet build ./src/MorseTrainer.Mobile/MorseTrainer.Mobile.csproj -f net10.0-ios -c Release -p:TargetFrameworks=net10.0-ios
+dotnet build ./src/MorseTrainer.Mobile/MorseTrainer.Mobile.csproj -f net10.0-ios -c Release -p:MobileTargetFrameworks=net10.0-ios
 ```
 
 Голосовые файлы уже находятся в проекте. Ни во время обучения, ни во время тренировки интернет не используется.
