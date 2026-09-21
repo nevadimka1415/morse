@@ -8,12 +8,13 @@ public static class VoicePackService
 {
     public static MemoryStream? Open(char symbol)
     {
-        if (!MorseAlphabet.TryGetCode(symbol, out var code))
+        var clipName = VoiceClipCatalog.GetClipName(symbol);
+        if (clipName is null)
         {
             return null;
         }
 
-        var suffix = $"Assets.Voice.code_{string.Concat(code.Select(item => item == '.' ? '0' : '1'))}.wav";
+        var suffix = $"Assets.Voice.{clipName}.wav";
         var assembly = Assembly.GetExecutingAssembly();
         var resourceName = assembly.GetManifestResourceNames()
             .FirstOrDefault(name => name.EndsWith(suffix, StringComparison.OrdinalIgnoreCase));

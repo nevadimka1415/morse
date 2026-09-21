@@ -12,6 +12,7 @@ const requiredFiles = [
   'src/MorseTrainer/SymbolSelectionWindow.xaml',
   'src/MorseTrainer/SymbolSelectionWindow.xaml.cs',
   'src/MorseTrainer/Domain/LearningCatalog.cs',
+  'src/MorseTrainer/Domain/VoiceClipCatalog.cs',
   'src/MorseTrainer/Services/ThemeService.cs',
   'src/MorseTrainer/Services/SpeechService.cs',
   'src/MorseTrainer/Services/VoicePackService.cs',
@@ -89,6 +90,7 @@ for (const relativePath of [
   'src/MorseTrainer/Domain/TrainingGenerator.cs',
   'src/MorseTrainer/Domain/TrainingEvaluator.cs',
   'src/MorseTrainer/Domain/LearningCatalog.cs',
+  'src/MorseTrainer/Domain/VoiceClipCatalog.cs',
   'src/MorseTrainer/Services/MorseAudioService.cs',
   'src/MorseTrainer/Services/ThemeService.cs',
   'src/MorseTrainer/Services/SpeechService.cs',
@@ -112,7 +114,9 @@ assert(buildWorkflow.includes('MorseTrainer-Setup-x64.exe'), 'Build workflow doe
 
 assert(read('src/MorseTrainer/MorseTrainer.csproj').includes('<TargetFramework>net10.0-windows</TargetFramework>'), 'Windows project must target net10.0-windows.');
 assert(read('src/MorseTrainer.Core/MorseTrainer.Core.csproj').includes('<TargetFramework>net10.0</TargetFramework>'), 'Core project must target net10.0.');
-assert(read('tests/MorseTrainer.Tests/MorseTrainer.Tests.csproj').includes('<TargetFramework>net10.0-windows</TargetFramework>'), 'Tests project must target net10.0-windows.');
+const testsProject = read('tests/MorseTrainer.Tests/MorseTrainer.Tests.csproj');
+assert(testsProject.includes('<TargetFramework>net10.0</TargetFramework>'), 'Tests project must target cross-platform net10.0.');
+assert(testsProject.includes('MorseTrainer.Core.csproj'), 'Tests must reference MorseTrainer.Core, not the WPF app.');
 assert(!buildWorkflow.includes('8.0.x'), 'Build workflow must use .NET SDK 10.');
 assert(existsSync(resolve(root, 'global.json')), 'global.json must pin the .NET SDK major version.');
 

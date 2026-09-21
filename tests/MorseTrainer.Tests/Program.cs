@@ -156,12 +156,43 @@ static void TestTrainingProfile()
 
 static void TestVoicePack()
 {
-    using var russian = VoicePackService.Open('Й');
-    using var latin = VoicePackService.Open('W');
-    using var digit = VoicePackService.Open('7');
-    Assert(russian is { Length: > 44 }, "Russian voice clip is missing.");
-    Assert(latin is { Length: > 44 }, "Latin voice clip reuse is missing.");
-    Assert(digit is { Length: > 44 }, "Digit voice clip is missing.");
+    Assert(VoiceClipCatalog.GetClipName('А') == "code_01", "Clip name for А must be code_01.");
+    Assert(VoiceClipCatalog.GetClipName('Й') == VoiceClipCatalog.GetClipName('J'), "Й and J share the same Morse code and clip.");
+    Assert(VoiceClipCatalog.GetClipName('W') == "code_011", "Clip name for W must be code_011.");
+    Assert(VoiceClipCatalog.GetClipName('7') == "code_11000", "Clip name for 7 must be code_11000.");
+    Assert(VoiceClipCatalog.GetClipName('~') is null, "Unknown symbol must have no clip.");
+
+    // Оба голосовых пакета лежат в репозитории: проверяем файлы на диске, без Windows-ресурсов
+    var root = FindRepositoryRoot();
+    var required = VoiceClipCatalog.RequiredClipNames();
+    Assert(required.Count == 42, $"Letters and digits must need 42 clips, got {required.Count}.");
+    foreach (var name in required)
+    {
+        var wav = Path.Combine(root, "src", "MorseTrainer", "Assets", "Voice", name + ".wav");
+        var m4a = Path.Combine(root, "src", "MorseTrainer.Mobile", "Resources", "Raw", "voice", name + ".m4a");
+        Assert(File.Exists(wav) && new FileInfo(wav).Length > 44, $"Desktop voice clip is missing: {name}.wav");
+        Assert(File.Exists(m4a) && new FileInfo(m4a).Length > 1000, $"Mobile voice clip is missing: {name}.m4a");
+    }
+
+    using var stream = File.OpenRead(Path.Combine(root, "src", "MorseTrainer", "Assets", "Voice", "code_01.wav"));
+    var header = new byte[4];
+    Assert(stream.Read(header, 0, 4) == 4 && Encoding.ASCII.GetString(header) == "RIFF", "Voice clip must be a WAV file.");
+}
+
+static string FindRepositoryRoot()
+{
+    var directory = new DirectoryInfo(AppContext.BaseDirectory);
+    while (directory is not null)
+    {
+        if (Directory.Exists(Path.Combine(directory.FullName, "src", "MorseTrainer")))
+        {
+            return directory.FullName;
+        }
+
+        directory = directory.Parent;
+    }
+
+    throw new InvalidOperationException("Repository root with src/MorseTrainer was not found.");
 }
 
 static void TestUpdateCheck()

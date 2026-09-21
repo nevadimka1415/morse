@@ -6,12 +6,13 @@ public sealed class VoicePackService
 {
     public async Task<string?> GetVoiceFileAsync(char symbol, CancellationToken cancellationToken = default)
     {
-        if (!MorseAlphabet.TryGetCode(symbol, out var code))
+        var clipName = VoiceClipCatalog.GetClipName(symbol);
+        if (clipName is null)
         {
             return null;
         }
 
-        var fileName = $"code_{string.Concat(code.Select(item => item == '.' ? '0' : '1'))}.m4a";
+        var fileName = $"{clipName}.m4a";
         var target = Path.Combine(FileSystem.CacheDirectory, fileName);
         if (File.Exists(target))
         {
