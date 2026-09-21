@@ -21,6 +21,9 @@ const requiredFiles = [
   'src/MorseTrainer.Mobile/Pages/KeyerPage.xaml',
   'src/MorseTrainer.Mobile/Pages/KeyerPage.xaml.cs',
   'src/MorseTrainer.Mobile/Services/TabletLayout.cs',
+  'src/MorseTrainer/Localization/Texts.cs',
+  'src/MorseTrainer/Localization/LocExtension.cs',
+  'src/MorseTrainer.Mobile/Localization/LocExtension.cs',
   'src/MorseTrainer/Models/TrainingRecord.cs',
   'src/MorseTrainer/Services/TrainingHistoryStore.cs',
   'src/MorseTrainer.Mobile/Pages/ProgressPage.xaml',
@@ -110,6 +113,7 @@ for (const relativePath of [
   'src/MorseTrainer/Domain/KeyerDecoder.cs',
   'src/MorseTrainer.Mobile/Pages/KeyerPage.xaml.cs',
   'src/MorseTrainer.Mobile/Services/TabletLayout.cs',
+  'src/MorseTrainer/Localization/Texts.cs',
   'src/MorseTrainer/Services/TrainingHistoryStore.cs',
   'src/MorseTrainer.Mobile/Pages/ProgressPage.xaml.cs',
   'src/MorseTrainer/Services/MorseAudioService.cs',
@@ -130,8 +134,15 @@ for (const relativePath of [
 }
 
 const contentModes = (read('src/MorseTrainer/MainWindow.xaml').match(/<ComboBoxItem Content="[^"]*" \/>/g) || []).length;
-assert(read('src/MorseTrainer/MainWindow.xaml').includes('Метод Коха: по уровням') && read('src/MorseTrainer.Mobile/Pages/SettingsPage.xaml').includes('<x:String>Метод Коха</x:String>'),
+assert(read('src/MorseTrainer/MainWindow.xaml').includes('Метод Коха: по уровням') && read('src/MorseTrainer.Mobile/Pages/SettingsPage.xaml.cs').includes('Texts.T("Метод Коха")'),
   'Both apps must offer the Koch content mode.');
+
+for (const file of ['src/MorseTrainer/MainWindow.xaml', 'src/MorseTrainer/SymbolSelectionWindow.xaml', ...['TrainingPage', 'LearningPage', 'SettingsPage', 'ProgressPage', 'KeyerPage'].map((page) => `src/MorseTrainer.Mobile/Pages/${page}.xaml`)]) {
+  const xaml = read(file);
+  assert(!/\b(Text|Content|Header|Title|ToolTip|Placeholder)="[^"{]*[А-Яа-яЁё]/.test(xaml), `${file} has untranslated Russian text; use {loc:Loc '…'}.`);
+  assert(!/<x:String>[^<]*[А-Яа-яЁё]/.test(xaml), `${file} has Russian picker items in XAML; set ItemsSource in code with Texts.T.`);
+}
+assert(read('src/MorseTrainer.Core/MorseTrainer.Core.csproj').includes('Texts.cs'), 'Core project must compile Localization/Texts.cs.');
 
 const buildWorkflow = read('.github/workflows/build.yml');
 assert(buildWorkflow.includes('scripts\\build.ps1'), 'Build workflow does not call the build script.');

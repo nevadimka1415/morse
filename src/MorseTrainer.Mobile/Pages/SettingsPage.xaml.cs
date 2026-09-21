@@ -2,6 +2,7 @@ using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.ApplicationModel.DataTransfer;
 using Microsoft.Maui.Devices;
 using MorseTrainer.Domain;
+using MorseTrainer.Localization;
 using MorseTrainer.Models;
 using MorseTrainer.Mobile.Services;
 using MorseTrainer.Services;
@@ -21,6 +22,15 @@ public partial class SettingsPage : ContentPage
     {
         InitializeComponent();
         _settingsService = settingsService;
+        // Списки пикеров задаются кодом, чтобы переводиться вместе с интерфейсом
+        ThemePicker.ItemsSource = new[] { Texts.T("Системная"), Texts.T("Тёмная"), Texts.T("Светлая") };
+        LanguagePicker.ItemsSource = new[] { Texts.T("Системный"), Texts.T("Русский (Russian)"), Texts.T("English") };
+        AlphabetPicker.ItemsSource = new[] { Texts.T("Русский"), Texts.T("Латинский"), Texts.T("Русский и латинский") };
+        ContentPicker.ItemsSource = new[]
+        {
+            Texts.T("Только буквы"), Texts.T("Только цифры"), Texts.T("Буквы и цифры"),
+            Texts.T("Все символы"), Texts.T("Выбранные символы"), Texts.T("Метод Коха")
+        };
         VersionLabel.Text = $"Morse Trainer {CurrentVersion}";
         BuildSymbolButtons();
         LoadAll();
@@ -53,6 +63,7 @@ public partial class SettingsPage : ContentPage
     private void ApplySettingsToControls()
     {
         ThemePicker.SelectedIndex = Math.Clamp(_settings.ThemeIndex, 0, 2);
+        LanguagePicker.SelectedIndex = Math.Clamp(_settings.LanguageIndex, 0, 2);
         AlphabetPicker.SelectedIndex = Math.Clamp(_settings.AlphabetIndex, 0, 2);
         ContentPicker.SelectedIndex = Math.Clamp(_settings.ContentModeIndex, 0, 5);
         KochStepper.Value = KochMethod.ClampLevel((AlphabetMode)Math.Clamp(_settings.AlphabetIndex, 0, 2), _settings.KochLevel);
@@ -136,6 +147,17 @@ public partial class SettingsPage : ContentPage
         SaveControlsToSettings();
     }
 
+    private async void LanguagePicker_OnChanged(object sender, EventArgs e)
+    {
+        if (!_ready)
+        {
+            return;
+        }
+
+        SaveControlsToSettings();
+        await DisplayAlertAsync("Morse Trainer", Texts.T("Язык интерфейса изменится после перезапуска приложения."), Texts.T("Понятно"));
+    }
+
     private void SettingsControl_OnChanged(object sender, EventArgs e)
     {
         if (_ready)
@@ -147,6 +169,7 @@ public partial class SettingsPage : ContentPage
     private void SaveControlsToSettings()
     {
         _settings.ThemeIndex = Math.Clamp(ThemePicker.SelectedIndex, 0, 2);
+        _settings.LanguageIndex = Math.Clamp(LanguagePicker.SelectedIndex, 0, 2);
         _settings.AlphabetIndex = Math.Clamp(AlphabetPicker.SelectedIndex, 0, 2);
         _settings.ContentModeIndex = Math.Clamp(ContentPicker.SelectedIndex, 0, 5);
         _settings.KochLevel = (int)KochStepper.Value;
@@ -163,24 +186,24 @@ public partial class SettingsPage : ContentPage
         ApplyTheme(_settings.ThemeIndex);
         UpdateLabelsAndSymbols();
         _settingsService.SaveSettings(_settings);
-        SaveStatusLabel.Text = $"Сохранено {DateTime.Now:HH:mm}";
+        SaveStatusLabel.Text = Texts.F("Сохранено {0:HH:mm}", DateTime.Now);
     }
 
     private void UpdateLabelsAndSymbols()
     {
         GroupCountValue.Text = ((int)Math.Round(GroupCountStepper.Value)).ToString();
-        SpeedValue.Text = $"{Snap(SpeedSlider.Value, 10, 20, 300)} зн/мин";
-        FrequencyValue.Text = $"{Snap(FrequencySlider.Value, 50, 300, 1200)} Гц";
+        SpeedValue.Text = Texts.F("{0} зн/мин", Snap(SpeedSlider.Value, 10, 20, 300));
+        FrequencyValue.Text = Texts.F("{0} Гц", Snap(FrequencySlider.Value, 50, 300, 1200));
         VolumeValue.Text = $"{Snap(VolumeSlider.Value, 5, 0, 100)}%";
-        CharacterGapValue.Text = $"{(int)Math.Round(CharacterGapSlider.Value)} точек";
-        GroupGapValue.Text = $"{(int)Math.Round(GroupGapSlider.Value)} точек";
-        StartPauseValue.Text = $"{(int)Math.Round(StartPauseSlider.Value)} точек";
-        SelectedSymbolsLabel.Text = $"Выбрано: {_selectedSymbols.Count}";
+        CharacterGapValue.Text = Texts.F("{0} точек", (int)Math.Round(CharacterGapSlider.Value));
+        GroupGapValue.Text = Texts.F("{0} точек", (int)Math.Round(GroupGapSlider.Value));
+        StartPauseValue.Text = Texts.F("{0} точек", (int)Math.Round(StartPauseSlider.Value));
+        SelectedSymbolsLabel.Text = Texts.F("Выбрано: {0}", _selectedSymbols.Count);
         var kochAlphabet = (AlphabetMode)Math.Clamp(AlphabetPicker.SelectedIndex, 0, 2);
         KochLayout.IsVisible = ContentPicker.SelectedIndex == (int)ContentMode.Koch;
         KochStepper.Maximum = KochMethod.MaxLevel(kochAlphabet);
         var kochLevel = KochMethod.ClampLevel(kochAlphabet, (int)KochStepper.Value);
-        KochLabel.Text = $"Метод Коха: уровень {kochLevel} из {KochMethod.MaxLevel(kochAlphabet)}";
+        KochLabel.Text = Texts.F("Метод Коха: уровень {0} из {1}", kochLevel, KochMethod.MaxLevel(kochAlphabet));
         KochSummaryLabel.Text = KochMethod.Describe(kochAlphabet, kochLevel);
         foreach (var button in SymbolsFlex.Children.OfType<Button>())
         {
@@ -217,11 +240,11 @@ public partial class SettingsPage : ContentPage
             var name = TrainingProfile.NormalizeName(ProfileNameEntry.Text);
             _profiles = _settingsService.SaveProfile(name, _settings);
             LoadAll();
-            SaveStatusLabel.Text = $"Профиль «{name}» сохранён";
+            SaveStatusLabel.Text = Texts.F("Профиль «{0}» сохранён", name);
         }
         catch (ArgumentException)
         {
-            await DisplayAlertAsync("Название профиля", "Введите название профиля.", "Понятно");
+            await DisplayAlertAsync(Texts.T("Название профиля"), Texts.T("Введите название профиля."), Texts.T("Понятно"));
         }
     }
 
@@ -231,12 +254,12 @@ public partial class SettingsPage : ContentPage
         {
             var text = ProfileTransfer.Export(_profiles);
             await Clipboard.Default.SetTextAsync(text);
-            await Share.Default.RequestAsync(new ShareTextRequest { Title = "Профили Morse Trainer", Text = text });
-            SaveStatusLabel.Text = "Профили скопированы в буфер и отправлены";
+            await Share.Default.RequestAsync(new ShareTextRequest { Title = Texts.T("Профили Morse Trainer"), Text = text });
+            SaveStatusLabel.Text = Texts.T("Профили скопированы в буфер и отправлены");
         }
         catch (Exception exception)
         {
-            await DisplayAlertAsync("Не удалось поделиться", exception.Message, "Закрыть");
+            await DisplayAlertAsync(Texts.T("Не удалось поделиться"), exception.Message, Texts.T("Закрыть"));
         }
     }
 
@@ -248,12 +271,12 @@ public partial class SettingsPage : ContentPage
             var imported = ProfileTransfer.Import(text ?? string.Empty);
             _profiles = _settingsService.ImportProfiles(imported);
             LoadAll();
-            SaveStatusLabel.Text = $"Импортировано профилей: {imported.Count}";
+            SaveStatusLabel.Text = Texts.F("Импортировано профилей: {0}", imported.Count);
         }
         catch (FormatException exception)
         {
-            await DisplayAlertAsync("Импорт профилей",
-                $"{exception.Message}\nСкопируйте текст профилей (из «Поделиться» на другом устройстве) и нажмите кнопку снова.", "Понятно");
+            await DisplayAlertAsync(Texts.T("Импорт профилей"),
+                Texts.F("{0}\nСкопируйте текст профилей (из «Поделиться» на другом устройстве) и нажмите кнопку снова.", exception.Message), Texts.T("Понятно"));
         }
     }
 
@@ -289,8 +312,8 @@ public partial class SettingsPage : ContentPage
             if (UpdateService.IsNewer(CurrentVersion, info.LatestVersion))
             {
                 var notes = string.IsNullOrWhiteSpace(info.Notes) ? string.Empty : "\n\n" + info.Notes;
-                var download = await DisplayAlertAsync("Есть обновление",
-                    $"Доступна версия {info.LatestVersion}, у вас {CurrentVersion}.{notes}", "Скачать", "Позже");
+                var download = await DisplayAlertAsync(Texts.T("Есть обновление"),
+                    Texts.F("Доступна версия {0}, у вас {1}.{2}", info.LatestVersion, CurrentVersion, notes), Texts.T("Скачать"), Texts.T("Позже"));
                 if (download)
                 {
                     var url = DeviceInfo.Current.Platform == DevicePlatform.Android
@@ -301,13 +324,13 @@ public partial class SettingsPage : ContentPage
             }
             else
             {
-                await DisplayAlertAsync("Обновлений нет", $"У вас последняя версия {CurrentVersion}.", "Понятно");
+                await DisplayAlertAsync(Texts.T("Обновлений нет"), Texts.F("У вас последняя версия {0}.", CurrentVersion), Texts.T("Понятно"));
             }
         }
         catch (Exception exception)
         {
-            await DisplayAlertAsync("Не удалось проверить",
-                $"Проверьте подключение к интернету.\n\n{exception.Message}", "Закрыть");
+            await DisplayAlertAsync(Texts.T("Не удалось проверить"),
+                Texts.F("Проверьте подключение к интернету.\n\n{0}", exception.Message), Texts.T("Закрыть"));
         }
         finally
         {
@@ -328,7 +351,7 @@ public partial class SettingsPage : ContentPage
         GroupGapSlider.Value = preset.GroupGapUnits;
         _ready = true;
         SaveControlsToSettings();
-        SaveStatusLabel.Text = "Пресет Фарнсворта применён";
+        SaveStatusLabel.Text = Texts.T("Пресет Фарнсворта применён");
     }
 
     private static int Snap(double value, int step, int minimum, int maximum)

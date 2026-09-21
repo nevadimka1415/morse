@@ -1,6 +1,7 @@
 <Window x:Class="MorseTrainer.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="clr-namespace:MorseTrainer.Localization"
         Title="Morse Trainer"
         Width="1240" Height="860" MinWidth="1040" MinHeight="720"
         WindowStartupLocation="CenterScreen"
@@ -32,17 +33,23 @@
             </Border>
             <StackPanel Grid.Column="2" VerticalAlignment="Center">
                 <TextBlock Text="Morse Trainer" FontSize="25" FontWeight="SemiBold" />
-                <TextBlock x:Name="SubtitleText" Text="Тренировка и изучение азбуки Морзе" Foreground="{DynamicResource MutedTextBrush}" FontSize="13" />
+                <TextBlock x:Name="SubtitleText" Text="{loc:Loc 'Тренировка и изучение азбуки Морзе'}" Foreground="{DynamicResource MutedTextBrush}" FontSize="13" />
             </StackPanel>
             <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center">
+                <ComboBox x:Name="LanguageCombo" Width="150" SelectedIndex="0" Margin="0,0,10,0"
+                          SelectionChanged="LanguageCombo_OnSelectionChanged">
+                    <ComboBoxItem Content="{loc:Loc 'Язык: системный'}" />
+                    <ComboBoxItem Content="{loc:Loc 'Язык: русский'}" />
+                    <ComboBoxItem Content="{loc:Loc 'Язык: English'}" />
+                </ComboBox>
                 <ComboBox x:Name="ThemeCombo" Width="145" SelectedIndex="0"
                           SelectionChanged="ThemeCombo_OnSelectionChanged">
-                    <ComboBoxItem Content="Тема: системная" />
-                    <ComboBoxItem Content="Тема: тёмная" />
-                    <ComboBoxItem Content="Тема: светлая" />
+                    <ComboBoxItem Content="{loc:Loc 'Тема: системная'}" />
+                    <ComboBoxItem Content="{loc:Loc 'Тема: тёмная'}" />
+                    <ComboBoxItem Content="{loc:Loc 'Тема: светлая'}" />
                 </ComboBox>
-                <Button x:Name="CheckUpdatesButton" Content="Обновления" Margin="10,0,0,0" Padding="12,6"
-                        ToolTip="Проверить, вышла ли новая версия на GitHub. Интернет нужен только для этой проверки."
+                <Button x:Name="CheckUpdatesButton" Content="{loc:Loc 'Обновления'}" Margin="10,0,0,0" Padding="12,6"
+                        ToolTip="{loc:Loc 'Проверить, вышла ли новая версия на GitHub. Интернет нужен только для этой проверки.'}"
                         Click="CheckUpdatesButton_OnClick" />
                 <Border Background="{DynamicResource PrimaryDarkBrush}" CornerRadius="13" Padding="13,7" Margin="10,0,0,0">
                     <TextBlock Text="OFFLINE" Foreground="{DynamicResource PrimaryBrush}" FontWeight="SemiBold" FontSize="11" />
@@ -51,7 +58,7 @@
         </Grid>
 
         <TabControl x:Name="MainTabs" Grid.Row="2">
-            <TabItem Header="Тренировка">
+            <TabItem Header="{loc:Loc 'Тренировка'}">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="380" />
@@ -63,9 +70,9 @@
                             BorderThickness="1" CornerRadius="16" Padding="22">
                         <ScrollViewer VerticalScrollBarVisibility="Auto">
                             <StackPanel>
-                                <TextBlock Text="Параметры задания" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,20" />
+                                <TextBlock Text="{loc:Loc 'Параметры задания'}" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,20" />
 
-                                <Label Content="Профиль настроек" />
+                                <Label Content="{loc:Loc 'Профиль настроек'}" />
                                 <ComboBox x:Name="ProfileCombo" IsEditable="True" IsTextSearchEnabled="True"
                                           SelectionChanged="ProfileCombo_OnSelectionChanged" Margin="0,0,0,8" />
                                 <Grid Margin="0,0,0,15">
@@ -74,8 +81,8 @@
                                         <ColumnDefinition Width="8" />
                                         <ColumnDefinition Width="*" />
                                     </Grid.ColumnDefinitions>
-                                    <Button Content="Сохранить профиль" Click="SaveProfileButton_OnClick" Padding="10,7" />
-                                    <Button Grid.Column="2" Content="Удалить" Click="DeleteProfileButton_OnClick" Padding="10,7" />
+                                    <Button Content="{loc:Loc 'Сохранить профиль'}" Click="SaveProfileButton_OnClick" Padding="10,7" />
+                                    <Button Grid.Column="2" Content="{loc:Loc 'Удалить'}" Click="DeleteProfileButton_OnClick" Padding="10,7" />
                                 </Grid>
                                 <Grid Margin="0,-7,0,15">
                                     <Grid.ColumnDefinitions>
@@ -83,50 +90,50 @@
                                         <ColumnDefinition Width="8" />
                                         <ColumnDefinition Width="*" />
                                     </Grid.ColumnDefinitions>
-                                    <Button Content="Экспорт…" Click="ExportProfilesButton_OnClick" Padding="10,7"
-                                            ToolTip="Сохранить все профили в файл, чтобы перенести на другой компьютер или телефон" />
-                                    <Button Grid.Column="2" Content="Импорт…" Click="ImportProfilesButton_OnClick" Padding="10,7"
-                                            ToolTip="Загрузить профили из файла; одноимённые профили будут заменены" />
+                                    <Button Content="{loc:Loc 'Экспорт…'}" Click="ExportProfilesButton_OnClick" Padding="10,7"
+                                            ToolTip="{loc:Loc 'Сохранить все профили в файл, чтобы перенести на другой компьютер или телефон'}" />
+                                    <Button Grid.Column="2" Content="{loc:Loc 'Импорт…'}" Click="ImportProfilesButton_OnClick" Padding="10,7"
+                                            ToolTip="{loc:Loc 'Загрузить профили из файла; одноимённые профили будут заменены'}" />
                                 </Grid>
 
-                                <Label Content="Алфавит" />
+                                <Label Content="{loc:Loc 'Алфавит'}" />
                                 <ComboBox x:Name="AlphabetCombo" SelectedIndex="0" Margin="0,0,0,15"
                                           SelectionChanged="AlphabetCombo_OnSelectionChanged">
-                                    <ComboBoxItem Content="Русский" />
-                                    <ComboBoxItem Content="Латинский" />
-                                    <ComboBoxItem Content="Русский и латинский" />
+                                    <ComboBoxItem Content="{loc:Loc 'Русский'}" />
+                                    <ComboBoxItem Content="{loc:Loc 'Латинский'}" />
+                                    <ComboBoxItem Content="{loc:Loc 'Русский и латинский'}" />
                                 </ComboBox>
 
-                                <Label Content="Состав задания" />
+                                <Label Content="{loc:Loc 'Состав задания'}" />
                                 <ComboBox x:Name="ContentModeCombo" SelectedIndex="2" Margin="0,0,0,15"
                                           SelectionChanged="ContentModeCombo_OnSelectionChanged">
-                                    <ComboBoxItem Content="Только буквы" />
-                                    <ComboBoxItem Content="Только цифры" />
-                                    <ComboBoxItem Content="Буквы и цифры" />
-                                    <ComboBoxItem Content="Буквы, цифры и знаки" />
-                                    <ComboBoxItem Content="Выбранные символы" />
-                                    <ComboBoxItem Content="Метод Коха: по уровням" />
+                                    <ComboBoxItem Content="{loc:Loc 'Только буквы'}" />
+                                    <ComboBoxItem Content="{loc:Loc 'Только цифры'}" />
+                                    <ComboBoxItem Content="{loc:Loc 'Буквы и цифры'}" />
+                                    <ComboBoxItem Content="{loc:Loc 'Буквы, цифры и знаки'}" />
+                                    <ComboBoxItem Content="{loc:Loc 'Выбранные символы'}" />
+                                    <ComboBoxItem Content="{loc:Loc 'Метод Коха: по уровням'}" />
                                 </ComboBox>
 
                                 <Border x:Name="CustomSymbolsPanel" Visibility="Collapsed" Background="{DynamicResource CardAltBrush}"
                                         CornerRadius="10" Padding="12" Margin="0,0,0,15">
                                     <StackPanel>
-                                        <TextBlock Text="Собственный набор" FontWeight="SemiBold" />
-                                        <TextBlock x:Name="SelectedSymbolsSummaryText" Text="Ничего не выбрано"
+                                        <TextBlock Text="{loc:Loc 'Собственный набор'}" FontWeight="SemiBold" />
+                                        <TextBlock x:Name="SelectedSymbolsSummaryText" Text="{loc:Loc 'Ничего не выбрано'}"
                                                    Foreground="{DynamicResource MutedTextBrush}" TextWrapping="Wrap" Margin="0,5,0,9" />
-                                        <Button Content="Выбрать символы" Click="SelectSymbolsButton_OnClick" Padding="12,7" />
+                                        <Button Content="{loc:Loc 'Выбрать символы'}" Click="SelectSymbolsButton_OnClick" Padding="12,7" />
                                     </StackPanel>
                                 </Border>
 
                                 <Border x:Name="KochPanel" Visibility="Collapsed" Background="{DynamicResource CardAltBrush}"
                                         CornerRadius="10" Padding="12" Margin="0,0,0,15">
                                     <StackPanel>
-                                        <TextBlock Text="Метод Коха" FontWeight="SemiBold" />
-                                        <TextBlock x:Name="KochSummaryText" Text="Уровень 2" Foreground="{DynamicResource MutedTextBrush}"
+                                        <TextBlock Text="{loc:Loc 'Метод Коха'}" FontWeight="SemiBold" />
+                                        <TextBlock x:Name="KochSummaryText" Text="{loc:Loc 'Уровень 2'}" Foreground="{DynamicResource MutedTextBrush}"
                                                    TextWrapping="Wrap" Margin="0,5,0,6" />
                                         <Slider x:Name="KochLevelSlider" Minimum="2" Maximum="42" Value="2" TickFrequency="1"
                                                 IsSnapToTickEnabled="True" ValueChanged="KochLevelSlider_OnValueChanged" />
-                                        <TextBlock Text="Новый символ добавляйте, когда точность держится на 90% и выше. Последний добавленный звучит чаще остальных."
+                                        <TextBlock Text="{loc:Loc 'Новый символ добавляйте, когда точность держится на 90% и выше. Последний добавленный звучит чаще остальных.'}"
                                                    Foreground="{DynamicResource MutedTextBrush}" FontSize="11" TextWrapping="Wrap" Margin="0,6,0,0" />
                                     </StackPanel>
                                 </Border>
@@ -136,65 +143,65 @@
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="110" />
                                     </Grid.ColumnDefinitions>
-                                    <Label Content="Количество групп" VerticalAlignment="Center" Padding="0" />
+                                    <Label Content="{loc:Loc 'Количество групп'}" VerticalAlignment="Center" Padding="0" />
                                     <TextBox x:Name="GroupCountText" Grid.Column="1" Text="10" HorizontalContentAlignment="Center" />
                                 </Grid>
-                                <TextBlock Text="В каждой группе 5 символов" Foreground="{DynamicResource MutedTextBrush}"
+                                <TextBlock Text="{loc:Loc 'В каждой группе 5 символов'}" Foreground="{DynamicResource MutedTextBrush}"
                                            FontSize="11" Margin="0,-9,0,15" />
 
                                 <Grid Margin="0,0,0,5">
-                                    <TextBlock Text="Скорость знака" Foreground="{DynamicResource MutedTextBrush}" />
-                                    <TextBlock x:Name="SpeedValueText" Text="60 знаков/мин" HorizontalAlignment="Right" />
+                                    <TextBlock Text="{loc:Loc 'Скорость знака'}" Foreground="{DynamicResource MutedTextBrush}" />
+                                    <TextBlock x:Name="SpeedValueText" Text="{loc:Loc '60 знаков/мин'}" HorizontalAlignment="Right" />
                                 </Grid>
                                 <Slider x:Name="SpeedSlider" Minimum="20" Maximum="300" Value="60" TickFrequency="10"
                                         IsSnapToTickEnabled="True" ValueChanged="SettingSlider_OnValueChanged" Margin="0,0,0,17" />
 
                                 <Grid Margin="0,0,0,5">
-                                    <TextBlock Text="Тональность" Foreground="{DynamicResource MutedTextBrush}" />
-                                    <TextBlock x:Name="FrequencyValueText" Text="700 Гц" HorizontalAlignment="Right" />
+                                    <TextBlock Text="{loc:Loc 'Тональность'}" Foreground="{DynamicResource MutedTextBrush}" />
+                                    <TextBlock x:Name="FrequencyValueText" Text="{loc:Loc '700 Гц'}" HorizontalAlignment="Right" />
                                 </Grid>
                                 <Slider x:Name="FrequencySlider" Minimum="300" Maximum="1200" Value="700" TickFrequency="50"
                                         IsSnapToTickEnabled="True" ValueChanged="SettingSlider_OnValueChanged" Margin="0,0,0,17" />
 
                                 <Grid Margin="0,0,0,5">
-                                    <TextBlock Text="Громкость" Foreground="{DynamicResource MutedTextBrush}" />
+                                    <TextBlock Text="{loc:Loc 'Громкость'}" Foreground="{DynamicResource MutedTextBrush}" />
                                     <TextBlock x:Name="VolumeValueText" Text="70%" HorizontalAlignment="Right" />
                                 </Grid>
                                 <Slider x:Name="VolumeSlider" Minimum="0" Maximum="100" Value="70" TickFrequency="5"
                                         IsSnapToTickEnabled="True" ValueChanged="SettingSlider_OnValueChanged" Margin="0,0,0,17" />
 
                                 <Grid Margin="0,0,0,5">
-                                    <TextBlock Text="Пауза между символами" Foreground="{DynamicResource MutedTextBrush}" />
-                                    <TextBlock x:Name="CharacterGapValueText" Text="3 точки" HorizontalAlignment="Right" />
+                                    <TextBlock Text="{loc:Loc 'Пауза между символами'}" Foreground="{DynamicResource MutedTextBrush}" />
+                                    <TextBlock x:Name="CharacterGapValueText" Text="{loc:Loc '3 точки'}" HorizontalAlignment="Right" />
                                 </Grid>
                                 <Slider x:Name="CharacterGapSlider" Minimum="3" Maximum="20" Value="3" TickFrequency="1"
                                         IsSnapToTickEnabled="True" ValueChanged="SettingSlider_OnValueChanged" Margin="0,0,0,17" />
 
                                 <Grid Margin="0,0,0,5">
-                                    <TextBlock Text="Пауза между группами" Foreground="{DynamicResource MutedTextBrush}" />
-                                    <TextBlock x:Name="GroupGapValueText" Text="7 точек" HorizontalAlignment="Right" />
+                                    <TextBlock Text="{loc:Loc 'Пауза между группами'}" Foreground="{DynamicResource MutedTextBrush}" />
+                                    <TextBlock x:Name="GroupGapValueText" Text="{loc:Loc '7 точек'}" HorizontalAlignment="Right" />
                                 </Grid>
                                 <Slider x:Name="GroupGapSlider" Minimum="7" Maximum="30" Value="7" TickFrequency="1"
                                         IsSnapToTickEnabled="True" ValueChanged="SettingSlider_OnValueChanged" Margin="0,0,0,10" />
-                                <Button x:Name="FarnsworthButton" Content="Пресет Фарнсворта" Click="FarnsworthButton_OnClick"
+                                <Button x:Name="FarnsworthButton" Content="{loc:Loc 'Пресет Фарнсворта'}" Click="FarnsworthButton_OnClick"
                                         Padding="10,6" HorizontalAlignment="Left" Margin="0,0,0,14"
-                                        ToolTip="Символы не медленнее 90 знаков/мин, паузы 9 точек между символами и 21 между группами: ухо запоминает ритм знака, а не считает точки." />
-                                <CheckBox x:Name="EmphasizeProblemsCheckBox" Content="Чаще повторять символы с ошибками"
+                                        ToolTip="{loc:Loc 'Символы не медленнее 90 знаков/мин, паузы 9 точек между символами и 21 между группами: ухо запоминает ритм знака, а не считает точки.'}" />
+                                <CheckBox x:Name="EmphasizeProblemsCheckBox" Content="{loc:Loc 'Чаще повторять символы с ошибками'}"
                                           IsChecked="True" Margin="0,0,0,12"
-                                          ToolTip="Символы, в которых вы ошибались (по истории тренировок), попадают в задание втрое чаще." />
+                                          ToolTip="{loc:Loc 'Символы, в которых вы ошибались (по истории тренировок), попадают в задание втрое чаще.'}" />
 
-                                <CheckBox x:Name="PlayStartSignalCheckBox" Content="Перед заданием проигрывать Ж Ж Ж"
+                                <CheckBox x:Name="PlayStartSignalCheckBox" Content="{loc:Loc 'Перед заданием проигрывать Ж Ж Ж'}"
                                           IsChecked="True" Margin="0,0,0,12" />
                                 <Grid Margin="0,0,0,5">
-                                    <TextBlock Text="Пауза после Ж Ж Ж" Foreground="{DynamicResource MutedTextBrush}" />
-                                    <TextBlock x:Name="StartPauseValueText" Text="21 точка" HorizontalAlignment="Right" />
+                                    <TextBlock Text="{loc:Loc 'Пауза после Ж Ж Ж'}" Foreground="{DynamicResource MutedTextBrush}" />
+                                    <TextBlock x:Name="StartPauseValueText" Text="{loc:Loc '21 точка'}" HorizontalAlignment="Right" />
                                 </Grid>
                                 <Slider x:Name="StartPauseSlider" Minimum="7" Maximum="60" Value="21" TickFrequency="1"
                                         IsSnapToTickEnabled="True" ValueChanged="SettingSlider_OnValueChanged" Margin="0,0,0,18" />
 
-                                <Button x:Name="GenerateButton" Content="Сгенерировать задание" Style="{StaticResource PrimaryButton}"
+                                <Button x:Name="GenerateButton" Content="{loc:Loc 'Сгенерировать задание'}" Style="{StaticResource PrimaryButton}"
                                         Click="GenerateButton_OnClick" Padding="16,13" />
-                                <TextBlock Text="Ctrl+G — создать новое задание" Foreground="{DynamicResource MutedTextBrush}"
+                                <TextBlock Text="{loc:Loc 'Ctrl+G — создать новое задание'}" Foreground="{DynamicResource MutedTextBrush}"
                                            FontSize="11" HorizontalAlignment="Center" Margin="0,8,0,0" />
                             </StackPanel>
                         </ScrollViewer>
@@ -217,13 +224,13 @@
 
                             <Grid Grid.Row="0">
                                 <StackPanel>
-                                    <TextBlock Text="Тренировка" FontSize="18" FontWeight="SemiBold" />
-                                    <TextBlock x:Name="TaskMetaText" Text="Подготавливаем задание…"
+                                    <TextBlock Text="{loc:Loc 'Тренировка'}" FontSize="18" FontWeight="SemiBold" />
+                                    <TextBlock x:Name="TaskMetaText" Text="{loc:Loc 'Подготавливаем задание…'}"
                                                Foreground="{DynamicResource MutedTextBrush}" FontSize="12" Margin="0,4,0,0" />
                                 </StackPanel>
                                 <Border x:Name="StatusBadge" Background="{DynamicResource CardAltBrush}" CornerRadius="12"
                                         Padding="12,6" HorizontalAlignment="Right" VerticalAlignment="Top">
-                                    <TextBlock x:Name="StatusBadgeText" Text="НЕ ГОТОВО" Foreground="{DynamicResource MutedTextBrush}"
+                                    <TextBlock x:Name="StatusBadgeText" Text="{loc:Loc 'НЕ ГОТОВО'}" Foreground="{DynamicResource MutedTextBrush}"
                                                FontWeight="SemiBold" FontSize="10" />
                                 </Border>
                             </Grid>
@@ -237,8 +244,8 @@
                                         <RowDefinition Height="Auto" />
                                     </Grid.RowDefinitions>
                                     <Grid>
-                                        <TextBlock Text="Правильный ответ" Foreground="{DynamicResource MutedTextBrush}" />
-                                        <Button x:Name="ToggleAnswerButton" Content="Показать" HorizontalAlignment="Right"
+                                        <TextBlock Text="{loc:Loc 'Правильный ответ'}" Foreground="{DynamicResource MutedTextBrush}" />
+                                        <Button x:Name="ToggleAnswerButton" Content="{loc:Loc 'Показать'}" HorizontalAlignment="Right"
                                                 Padding="12,5" Click="ToggleAnswerButton_OnClick" IsEnabled="False" />
                                     </Grid>
                                     <TextBlock x:Name="AnswerDisplayText" Grid.Row="2" Text="••••• ••••• •••••"
@@ -256,13 +263,13 @@
                                     <ColumnDefinition Width="18" />
                                     <ColumnDefinition Width="*" />
                                 </Grid.ColumnDefinitions>
-                                <Button x:Name="PlayButton" Content="▶  Слушать" Style="{StaticResource PrimaryButton}"
+                                <Button x:Name="PlayButton" Content="{loc:Loc '▶  Слушать'}" Style="{StaticResource PrimaryButton}"
                                         Click="PlayButton_OnClick" IsEnabled="False" />
-                                <Button x:Name="StopButton" Grid.Column="2" Content="■  Стоп" Click="StopButton_OnClick" IsEnabled="False" />
-                                <Button x:Name="RepeatButton" Grid.Column="4" Content="↻  Повторить" Click="PlayButton_OnClick" IsEnabled="False" />
+                                <Button x:Name="StopButton" Grid.Column="2" Content="{loc:Loc '■  Стоп'}" Click="StopButton_OnClick" IsEnabled="False" />
+                                <Button x:Name="RepeatButton" Grid.Column="4" Content="{loc:Loc '↻  Повторить'}" Click="PlayButton_OnClick" IsEnabled="False" />
                                 <StackPanel Grid.Column="6" VerticalAlignment="Center">
                                     <ProgressBar x:Name="PlaybackProgress" Height="6" Minimum="0" Maximum="100" Value="0" />
-                                    <TextBlock x:Name="PlaybackStatusText" Text="Ожидание задания" Foreground="{DynamicResource MutedTextBrush}"
+                                    <TextBlock x:Name="PlaybackStatusText" Text="{loc:Loc 'Ожидание задания'}" Foreground="{DynamicResource MutedTextBrush}"
                                                FontSize="11" Margin="0,6,0,0" HorizontalAlignment="Right" />
                                 </StackPanel>
                             </Grid>
@@ -275,13 +282,13 @@
                                     <RowDefinition Height="10" />
                                     <RowDefinition Height="Auto" />
                                 </Grid.RowDefinitions>
-                                <TextBlock Text="Введите то, что услышали" Foreground="{DynamicResource MutedTextBrush}" />
+                                <TextBlock Text="{loc:Loc 'Введите то, что услышали'}" Foreground="{DynamicResource MutedTextBrush}" />
                                 <TextBox x:Name="UserAnswerText" Grid.Row="2" AcceptsReturn="True" TextWrapping="Wrap"
                                          VerticalScrollBarVisibility="Auto" FontFamily="Cascadia Mono, Consolas" FontSize="18" IsEnabled="False" />
                                 <Grid Grid.Row="4">
-                                    <Button x:Name="CheckAnswerButton" Content="Проверить ответ" Style="{StaticResource PrimaryButton}"
+                                    <Button x:Name="CheckAnswerButton" Content="{loc:Loc 'Проверить ответ'}" Style="{StaticResource PrimaryButton}"
                                             Click="CheckAnswerButton_OnClick" IsEnabled="False" HorizontalAlignment="Left" />
-                                    <TextBlock x:Name="ResultDetailsText" Text="Пробелы между группами при проверке не учитываются"
+                                    <TextBlock x:Name="ResultDetailsText" Text="{loc:Loc 'Пробелы между группами при проверке не учитываются'}"
                                                Foreground="{DynamicResource MutedTextBrush}" TextWrapping="Wrap" VerticalAlignment="Center"
                                                HorizontalAlignment="Right" MaxWidth="430" FontSize="11" />
                                 </Grid>
@@ -301,31 +308,31 @@
                                 </Grid.ColumnDefinitions>
                                 <Border Background="{DynamicResource CardAltBrush}" CornerRadius="10" Padding="14,10">
                                     <StackPanel>
-                                        <TextBlock Text="ТОЧНОСТЬ" Foreground="{DynamicResource MutedTextBrush}" FontSize="10" />
+                                        <TextBlock Text="{loc:Loc 'ТОЧНОСТЬ'}" Foreground="{DynamicResource MutedTextBrush}" FontSize="10" />
                                         <TextBlock x:Name="AccuracyText" Text="—" FontSize="20" FontWeight="SemiBold" />
                                     </StackPanel>
                                 </Border>
                                 <Border Grid.Column="2" Background="{DynamicResource CardAltBrush}" CornerRadius="10" Padding="14,10">
                                     <StackPanel>
-                                        <TextBlock Text="ПОПЫТКИ" Foreground="{DynamicResource MutedTextBrush}" FontSize="10" />
+                                        <TextBlock Text="{loc:Loc 'ПОПЫТКИ'}" Foreground="{DynamicResource MutedTextBrush}" FontSize="10" />
                                         <TextBlock x:Name="AttemptsText" Text="0" FontSize="20" FontWeight="SemiBold" />
                                     </StackPanel>
                                 </Border>
                                 <Border Grid.Column="4" Background="{DynamicResource CardAltBrush}" CornerRadius="10" Padding="14,10">
                                     <StackPanel>
-                                        <TextBlock Text="СЛОЖНЫЕ СИМВОЛЫ" Foreground="{DynamicResource MutedTextBrush}" FontSize="10" />
+                                        <TextBlock Text="{loc:Loc 'СЛОЖНЫЕ СИМВОЛЫ'}" Foreground="{DynamicResource MutedTextBrush}" FontSize="10" />
                                         <TextBlock x:Name="ProblemSymbolsText" Text="—" FontSize="16" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
                                     </StackPanel>
                                 </Border>
-                                <Button x:Name="SaveTaskButton" Grid.Column="6" Content="Сохранить TXT" Click="SaveTaskButton_OnClick" IsEnabled="False" />
-                                <Button x:Name="ExportWavButton" Grid.Column="8" Content="Экспорт WAV" Click="ExportWavButton_OnClick" IsEnabled="False" />
+                                <Button x:Name="SaveTaskButton" Grid.Column="6" Content="{loc:Loc 'Сохранить TXT'}" Click="SaveTaskButton_OnClick" IsEnabled="False" />
+                                <Button x:Name="ExportWavButton" Grid.Column="8" Content="{loc:Loc 'Экспорт WAV'}" Click="ExportWavButton_OnClick" IsEnabled="False" />
                             </Grid>
                         </Grid>
                     </Border>
                 </Grid>
             </TabItem>
 
-            <TabItem Header="Обучение">
+            <TabItem Header="{loc:Loc 'Обучение'}">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
@@ -347,21 +354,21 @@
                                 <ColumnDefinition Width="18" />
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
-                            <TextBlock Text="Раздел" Foreground="{DynamicResource MutedTextBrush}" VerticalAlignment="Center" />
+                            <TextBlock Text="{loc:Loc 'Раздел'}" Foreground="{DynamicResource MutedTextBrush}" VerticalAlignment="Center" />
                             <ComboBox x:Name="LearningAlphabetCombo" Grid.Column="2" SelectedIndex="0"
                                       SelectionChanged="LearningFilter_OnSelectionChanged">
-                                <ComboBoxItem Content="Русские буквы" />
-                                <ComboBoxItem Content="Латинские буквы" />
-                                <ComboBoxItem Content="Русский и латинский" />
-                                <ComboBoxItem Content="Цифры" />
+                                <ComboBoxItem Content="{loc:Loc 'Русские буквы'}" />
+                                <ComboBoxItem Content="{loc:Loc 'Латинские буквы'}" />
+                                <ComboBoxItem Content="{loc:Loc 'Русский и латинский'}" />
+                                <ComboBoxItem Content="{loc:Loc 'Цифры'}" />
                             </ComboBox>
-                            <TextBlock Grid.Column="4" Text="Воспроизведение" Foreground="{DynamicResource MutedTextBrush}" VerticalAlignment="Center" />
+                            <TextBlock Grid.Column="4" Text="{loc:Loc 'Воспроизведение'}" Foreground="{DynamicResource MutedTextBrush}" VerticalAlignment="Center" />
                             <ComboBox x:Name="LearningAudioModeCombo" Grid.Column="6" SelectedIndex="0">
-                                <ComboBoxItem Content="Напев на экране + сигнал" />
-                                <ComboBoxItem Content="Естественный офлайн-голос + сигнал" />
+                                <ComboBoxItem Content="{loc:Loc 'Напев на экране + сигнал'}" />
+                                <ComboBoxItem Content="{loc:Loc 'Естественный офлайн-голос + сигнал'}" />
                             </ComboBox>
                             <TextBox x:Name="LearningSearchText" Grid.Column="8" TextChanged="LearningFilter_OnTextChanged"
-                                     ToolTip="Поиск по букве или напеву" />
+                                     ToolTip="{loc:Loc 'Поиск по букве или напеву'}" />
                         </Grid>
                     </Border>
 
@@ -402,7 +409,7 @@
                                                                TextWrapping="Wrap" Margin="0,8,0,5" />
                                                     <TextBlock Grid.Row="2" Text="{Binding Category}" Foreground="{DynamicResource MutedTextBrush}"
                                                                FontSize="10" />
-                                                    <Button Grid.Row="3" Content="▶  Слушать" Tag="{Binding Symbol}"
+                                                    <Button Grid.Row="3" Content="{loc:Loc '▶  Слушать'}" Tag="{Binding Symbol}"
                                                             Click="LearningCardPlay_OnClick" Padding="10,7" Margin="0,9,0,0" />
                                                 </Grid>
                                             </Border>
@@ -422,15 +429,15 @@
                             <Border Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource BorderBrush}"
                                     BorderThickness="1" CornerRadius="14" Padding="20">
                                 <StackPanel>
-                                    <TextBlock Text="Сейчас изучаем" Foreground="{DynamicResource MutedTextBrush}" />
+                                    <TextBlock Text="{loc:Loc 'Сейчас изучаем'}" Foreground="{DynamicResource MutedTextBrush}" />
                                     <Grid Margin="0,8,0,4">
-                                        <TextBlock x:Name="LearningNowSymbolText" Text="А" FontSize="44" FontWeight="Bold" />
+                                        <TextBlock x:Name="LearningNowSymbolText" Text="{loc:Loc 'А'}" FontSize="44" FontWeight="Bold" />
                                         <TextBlock x:Name="LearningNowCodeText" Text=".-" FontFamily="Cascadia Mono, Consolas"
                                                    FontSize="28" Foreground="{DynamicResource PrimaryBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" />
                                     </Grid>
-                                    <TextBlock x:Name="LearningHighlightedChantText" Text="ай-даа" FontSize="21" FontWeight="SemiBold"
+                                    <TextBlock x:Name="LearningHighlightedChantText" Text="{loc:Loc 'ай-даа'}" FontSize="21" FontWeight="SemiBold"
                                                TextWrapping="Wrap" Margin="0,4,0,8" />
-                                    <TextBlock x:Name="LearningPlaybackStatusText" Text="Выберите карточку"
+                                    <TextBlock x:Name="LearningPlaybackStatusText" Text="{loc:Loc 'Выберите карточку'}"
                                                Foreground="{DynamicResource MutedTextBrush}" FontSize="11" />
                                 </StackPanel>
                             </Border>
@@ -449,16 +456,16 @@
                                     </Grid.RowDefinitions>
                                     <Grid>
                                         <StackPanel>
-                                            <TextBlock Text="Проверочное задание" FontSize="18" FontWeight="SemiBold" />
-                                            <TextBlock Text="Прослушайте сигнал и выберите символ"
+                                            <TextBlock Text="{loc:Loc 'Проверочное задание'}" FontSize="18" FontWeight="SemiBold" />
+                                            <TextBlock Text="{loc:Loc 'Прослушайте сигнал и выберите символ'}"
                                                        Foreground="{DynamicResource MutedTextBrush}" FontSize="11" />
                                         </StackPanel>
                                         <TextBlock x:Name="QuizScoreText" Text="0 / 0" HorizontalAlignment="Right"
                                                    Foreground="{DynamicResource PrimaryBrush}" FontSize="18" FontWeight="SemiBold" />
                                     </Grid>
-                                    <Button x:Name="QuizPlayButton" Grid.Row="2" Content="▶  Новое задание"
+                                    <Button x:Name="QuizPlayButton" Grid.Row="2" Content="{loc:Loc '▶  Новое задание'}"
                                             Style="{StaticResource PrimaryButton}" Click="QuizPlayButton_OnClick" />
-                                    <TextBlock x:Name="QuizPromptText" Grid.Row="4" Text="Нажмите «Новое задание»"
+                                    <TextBlock x:Name="QuizPromptText" Grid.Row="4" Text="{loc:Loc 'Нажмите «Новое задание»'}"
                                                HorizontalAlignment="Center" Foreground="{DynamicResource MutedTextBrush}" />
                                     <UniformGrid x:Name="QuizAnswersPanel" Grid.Row="5" Columns="2" Margin="-4,8,-4,8" />
                                     <TextBlock x:Name="QuizResultText" Grid.Row="6" Text=" " HorizontalAlignment="Center"
@@ -469,7 +476,7 @@
                     </Grid>
                 </Grid>
             </TabItem>
-            <TabItem Header="Передача">
+            <TabItem Header="{loc:Loc 'Передача'}">
                 <Grid Margin="0,12,0,0">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="380" />
@@ -479,21 +486,21 @@
                     <Border Grid.Column="0" Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource BorderBrush}"
                             BorderThickness="1" CornerRadius="16" Padding="22">
                         <StackPanel>
-                            <TextBlock Text="Передача ключом" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,12" />
-                            <TextBlock Text="Точка — короткое нажатие, тире — втрое длиннее. Пауза в 3 точки завершает символ, в 7 точек — группу. Скорость, алфавит и тон берутся из вкладки «Тренировка»."
+                            <TextBlock Text="{loc:Loc 'Передача ключом'}" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,12" />
+                            <TextBlock Text="{loc:Loc 'Точка — короткое нажатие, тире — втрое длиннее. Пауза в 3 точки завершает символ, в 7 точек — группу. Скорость, алфавит и тон берутся из вкладки «Тренировка».'}"
                                        Foreground="{DynamicResource MutedTextBrush}" TextWrapping="Wrap" Margin="0,0,0,10" />
-                            <TextBlock x:Name="KeyerTimingText" Text="Точка: 100 мс · тире от 200 мс" FontWeight="SemiBold" Margin="0,0,0,16" />
+                            <TextBlock x:Name="KeyerTimingText" Text="{loc:Loc 'Точка: 100 мс · тире от 200 мс'}" FontWeight="SemiBold" Margin="0,0,0,16" />
 
-                            <Label Content="Что передавать" />
+                            <Label Content="{loc:Loc 'Что передавать'}" />
                             <ComboBox x:Name="KeyerModeCombo" SelectedIndex="0" Margin="0,0,0,12"
                                       SelectionChanged="KeyerModeCombo_OnSelectionChanged">
-                                <ComboBoxItem Content="Свободная передача" />
-                                <ComboBoxItem Content="Задание: группы по 5 символов" />
+                                <ComboBoxItem Content="{loc:Loc 'Свободная передача'}" />
+                                <ComboBoxItem Content="{loc:Loc 'Задание: группы по 5 символов'}" />
                             </ComboBox>
-                            <Button x:Name="KeyerNewTaskButton" Content="Новое задание" Click="KeyerNewTaskButton_OnClick"
+                            <Button x:Name="KeyerNewTaskButton" Content="{loc:Loc 'Новое задание'}" Click="KeyerNewTaskButton_OnClick"
                                     Padding="12,7" HorizontalAlignment="Left" Visibility="Collapsed" Margin="0,0,0,10" />
                             <TextBlock x:Name="KeyerTargetText" Text="" FontSize="20" FontFamily="Consolas" TextWrapping="Wrap" Margin="0,0,0,12" />
-                            <Button x:Name="KeyerCheckButton" Content="Проверить передачу" Click="KeyerCheckButton_OnClick"
+                            <Button x:Name="KeyerCheckButton" Content="{loc:Loc 'Проверить передачу'}" Click="KeyerCheckButton_OnClick"
                                     Style="{StaticResource PrimaryButton}" Visibility="Collapsed" Margin="0,0,0,12" />
                             <TextBlock x:Name="KeyerResultText" Text="" TextWrapping="Wrap" />
                         </StackPanel>
@@ -514,8 +521,8 @@
                                     PreviewMouseLeftButtonDown="KeyPad_OnMouseDown" PreviewMouseLeftButtonUp="KeyPad_OnMouseUp"
                                     MouseLeave="KeyPad_OnMouseLeave" LostMouseCapture="KeyPad_OnLostMouseCapture">
                                 <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
-                                    <TextBlock Text="КЛЮЧ" Foreground="{DynamicResource PrimaryBrush}" FontSize="34" FontWeight="Bold" HorizontalAlignment="Center" />
-                                    <TextBlock Text="нажимайте мышью здесь или удерживайте ПРОБЕЛ" Foreground="{DynamicResource PrimaryBrush}"
+                                    <TextBlock Text="{loc:Loc 'КЛЮЧ'}" Foreground="{DynamicResource PrimaryBrush}" FontSize="34" FontWeight="Bold" HorizontalAlignment="Center" />
+                                    <TextBlock Text="{loc:Loc 'нажимайте мышью здесь или удерживайте ПРОБЕЛ'}" Foreground="{DynamicResource PrimaryBrush}"
                                                FontSize="12" HorizontalAlignment="Center" Margin="0,6,0,0" />
                                 </StackPanel>
                             </Border>
@@ -523,14 +530,14 @@
                             <TextBox x:Name="KeyerOutputText" Grid.Row="4" IsReadOnly="True" FontSize="22" FontFamily="Consolas"
                                      TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" />
                             <StackPanel Grid.Row="6" Orientation="Horizontal">
-                                <Button x:Name="KeyerBackspaceButton" Content="Стереть символ" Click="KeyerBackspaceButton_OnClick" Padding="12,7" />
-                                <Button x:Name="KeyerClearButton" Content="Очистить" Click="KeyerClearButton_OnClick" Padding="12,7" Margin="10,0,0,0" />
+                                <Button x:Name="KeyerBackspaceButton" Content="{loc:Loc 'Стереть символ'}" Click="KeyerBackspaceButton_OnClick" Padding="12,7" />
+                                <Button x:Name="KeyerClearButton" Content="{loc:Loc 'Очистить'}" Click="KeyerClearButton_OnClick" Padding="12,7" Margin="10,0,0,0" />
                             </StackPanel>
                         </Grid>
                     </Border>
                 </Grid>
             </TabItem>
-            <TabItem Header="Прогресс">
+            <TabItem Header="{loc:Loc 'Прогресс'}">
                 <Grid Margin="0,12,0,0">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
@@ -547,29 +554,29 @@
                                 <RowDefinition Height="14" />
                                 <RowDefinition Height="*" />
                             </Grid.RowDefinitions>
-                            <TextBlock Text="История тренировок" FontSize="18" FontWeight="SemiBold" />
+                            <TextBlock Text="{loc:Loc 'История тренировок'}" FontSize="18" FontWeight="SemiBold" />
                             <UniformGrid Grid.Row="2" Columns="4">
                                 <Border Background="{DynamicResource CardAltBrush}" CornerRadius="10" Padding="14,10" Margin="0,0,10,0">
                                     <StackPanel>
-                                        <TextBlock Text="ТРЕНИРОВОК" Foreground="{DynamicResource MutedTextBrush}" FontSize="10" />
+                                        <TextBlock Text="{loc:Loc 'ТРЕНИРОВОК'}" Foreground="{DynamicResource MutedTextBrush}" FontSize="10" />
                                         <TextBlock x:Name="ProgressSessionsText" Text="0" FontSize="20" FontWeight="SemiBold" />
                                     </StackPanel>
                                 </Border>
                                 <Border Background="{DynamicResource CardAltBrush}" CornerRadius="10" Padding="14,10" Margin="0,0,10,0">
                                     <StackPanel>
-                                        <TextBlock Text="СРЕДНЯЯ ТОЧНОСТЬ" Foreground="{DynamicResource MutedTextBrush}" FontSize="10" />
+                                        <TextBlock Text="{loc:Loc 'СРЕДНЯЯ ТОЧНОСТЬ'}" Foreground="{DynamicResource MutedTextBrush}" FontSize="10" />
                                         <TextBlock x:Name="ProgressAverageText" Text="—" FontSize="20" FontWeight="SemiBold" />
                                     </StackPanel>
                                 </Border>
                                 <Border Background="{DynamicResource CardAltBrush}" CornerRadius="10" Padding="14,10" Margin="0,0,10,0">
                                     <StackPanel>
-                                        <TextBlock Text="ЛУЧШАЯ" Foreground="{DynamicResource MutedTextBrush}" FontSize="10" />
+                                        <TextBlock Text="{loc:Loc 'ЛУЧШАЯ'}" Foreground="{DynamicResource MutedTextBrush}" FontSize="10" />
                                         <TextBlock x:Name="ProgressBestText" Text="—" FontSize="20" FontWeight="SemiBold" />
                                     </StackPanel>
                                 </Border>
                                 <Border Background="{DynamicResource CardAltBrush}" CornerRadius="10" Padding="14,10">
                                     <StackPanel>
-                                        <TextBlock Text="ПРИНЯТО СИМВОЛОВ" Foreground="{DynamicResource MutedTextBrush}" FontSize="10" />
+                                        <TextBlock Text="{loc:Loc 'ПРИНЯТО СИМВОЛОВ'}" Foreground="{DynamicResource MutedTextBrush}" FontSize="10" />
                                         <TextBlock x:Name="ProgressSymbolsText" Text="—" FontSize="20" FontWeight="SemiBold" />
                                     </StackPanel>
                                 </Border>
@@ -578,12 +585,12 @@
                                       Foreground="{DynamicResource TextBrush}">
                                 <ListView.View>
                                     <GridView>
-                                        <GridViewColumn Header="Когда" Width="130" DisplayMemberBinding="{Binding When}" />
-                                        <GridViewColumn Header="Профиль" Width="140" DisplayMemberBinding="{Binding Profile}" />
-                                        <GridViewColumn Header="Скорость" Width="100" DisplayMemberBinding="{Binding Speed}" />
-                                        <GridViewColumn Header="Групп" Width="60" DisplayMemberBinding="{Binding Groups}" />
-                                        <GridViewColumn Header="Точность" Width="80" DisplayMemberBinding="{Binding Accuracy}" />
-                                        <GridViewColumn Header="Ошибки" Width="180" DisplayMemberBinding="{Binding Errors}" />
+                                        <GridViewColumn Header="{loc:Loc 'Когда'}" Width="130" DisplayMemberBinding="{Binding When}" />
+                                        <GridViewColumn Header="{loc:Loc 'Профиль'}" Width="140" DisplayMemberBinding="{Binding Profile}" />
+                                        <GridViewColumn Header="{loc:Loc 'Скорость'}" Width="100" DisplayMemberBinding="{Binding Speed}" />
+                                        <GridViewColumn Header="{loc:Loc 'Групп'}" Width="60" DisplayMemberBinding="{Binding Groups}" />
+                                        <GridViewColumn Header="{loc:Loc 'Точность'}" Width="80" DisplayMemberBinding="{Binding Accuracy}" />
+                                        <GridViewColumn Header="{loc:Loc 'Ошибки'}" Width="180" DisplayMemberBinding="{Binding Errors}" />
                                     </GridView>
                                 </ListView.View>
                             </ListView>
@@ -592,13 +599,13 @@
                     <Border Grid.Column="2" Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource BorderBrush}"
                             BorderThickness="1" CornerRadius="16" Padding="22">
                         <StackPanel>
-                            <TextBlock Text="По дням" FontSize="18" FontWeight="SemiBold" />
+                            <TextBlock Text="{loc:Loc 'По дням'}" FontSize="18" FontWeight="SemiBold" />
                             <StackPanel x:Name="DailyBarsPanel" Margin="0,12,0,0" />
-                            <TextBlock Text="СЛОЖНЫЕ СИМВОЛЫ ЗА ВСЁ ВРЕМЯ" Foreground="{DynamicResource MutedTextBrush}" FontSize="10" Margin="0,18,0,4" />
+                            <TextBlock Text="{loc:Loc 'СЛОЖНЫЕ СИМВОЛЫ ЗА ВСЁ ВРЕМЯ'}" Foreground="{DynamicResource MutedTextBrush}" FontSize="10" Margin="0,18,0,4" />
                             <TextBlock x:Name="HistoryProblemSymbolsText" Text="—" FontSize="16" FontWeight="SemiBold" TextWrapping="Wrap" />
-                            <TextBlock Text="Результат записывается при первой проверке ответа по каждому заданию. История хранится только на этом компьютере."
+                            <TextBlock Text="{loc:Loc 'Результат записывается при первой проверке ответа по каждому заданию. История хранится только на этом компьютере.'}"
                                        Foreground="{DynamicResource MutedTextBrush}" FontSize="11" TextWrapping="Wrap" Margin="0,18,0,0" />
-                            <Button x:Name="ClearHistoryButton" Content="Очистить историю" Click="ClearHistoryButton_OnClick"
+                            <Button x:Name="ClearHistoryButton" Content="{loc:Loc 'Очистить историю'}" Click="ClearHistoryButton_OnClick"
                                     Margin="0,14,0,0" HorizontalAlignment="Left" />
                         </StackPanel>
                     </Border>
@@ -606,7 +613,7 @@
             </TabItem>
         </TabControl>
 
-        <TextBlock Grid.Row="3" Text="F5 — воспроизведение    Esc — остановка    Все данные хранятся только на этом компьютере"
+        <TextBlock Grid.Row="3" Text="{loc:Loc 'F5 — воспроизведение    Esc — остановка    Все данные хранятся только на этом компьютере'}"
                    Foreground="{DynamicResource MutedTextBrush}" FontSize="11" HorizontalAlignment="Center" Margin="0,14,0,0" />
     </Grid>
 </Window>

@@ -1,4 +1,5 @@
 using MorseTrainer.Mobile.Pages;
+using MorseTrainer.Localization;
 
 namespace MorseTrainer.Mobile;
 
@@ -8,11 +9,11 @@ public sealed class AppShell : Shell
     {
         FlyoutBehavior = FlyoutBehavior.Disabled;
         var tabs = new TabBar();
-        tabs.Items.Add(CreateTab("Тренировка", "training", trainingPage));
-        tabs.Items.Add(CreateTab("Обучение", "learning", learningPage));
-        tabs.Items.Add(CreateTab("Передача", "keyer", keyerPage));
-        tabs.Items.Add(CreateTab("Прогресс", "progress", progressPage));
-        tabs.Items.Add(CreateTab("Настройки", "settings", settingsPage));
+        tabs.Items.Add(CreateTab(Texts.T("Тренировка"), "training", trainingPage));
+        tabs.Items.Add(CreateTab(Texts.T("Обучение"), "learning", learningPage));
+        tabs.Items.Add(CreateTab(Texts.T("Передача"), "keyer", keyerPage));
+        tabs.Items.Add(CreateTab(Texts.T("Прогресс"), "progress", progressPage));
+        tabs.Items.Add(CreateTab(Texts.T("Настройки"), "settings", settingsPage));
         Items.Add(tabs);
     }
 

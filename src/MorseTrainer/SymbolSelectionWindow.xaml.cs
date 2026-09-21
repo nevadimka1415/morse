@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using MorseTrainer.Domain;
+using MorseTrainer.Localization;
 
 namespace MorseTrainer;
 
@@ -88,7 +89,7 @@ public partial class SymbolSelectionWindow : Window
             .ToArray();
         if (selected.Length == 0)
         {
-            MessageBox.Show("Выберите хотя бы один символ.", "Morse Trainer", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show(Texts.T("Выберите хотя бы один символ."), "Morse Trainer", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
 
@@ -105,7 +106,7 @@ public partial class SymbolSelectionWindow : Window
     {
         if (SelectionCountText is not null)
         {
-            SelectionCountText.Text = $"Выбрано: {_symbolButtons.Count(button => button.IsChecked == true)}";
+            SelectionCountText.Text = Texts.F("Выбрано: {0}", _symbolButtons.Count(button => button.IsChecked == true));
         }
     }
 }

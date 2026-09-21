@@ -1,30 +1,31 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:loc="clr-namespace:MorseTrainer.Mobile.Localization"
              xmlns:models="clr-namespace:MorseTrainer.Models;assembly=MorseTrainer.Core"
              x:Class="MorseTrainer.Mobile.Pages.ProgressPage"
-             Title="Прогресс">
+             Title="{loc:Loc 'Прогресс'}">
     <ScrollView>
         <VerticalStackLayout x:Name="RootLayout" Padding="16" Spacing="14">
-            <Label Text="Прогресс" FontSize="26" FontAttributes="Bold" />
+            <Label Text="{loc:Loc 'Прогресс'}" FontSize="26" FontAttributes="Bold" />
 
             <Border BackgroundColor="{AppThemeBinding Light=#ECFDF5, Dark=#102F29}">
                 <VerticalStackLayout Spacing="6">
-                    <Label x:Name="SummaryLabel" Text="Тренировок пока нет" FontSize="18" FontAttributes="Bold" />
-                    <Label x:Name="DetailsLabel" Text="Проверьте ответ в тренировке, и результат появится здесь." LineBreakMode="WordWrap" />
+                    <Label x:Name="SummaryLabel" Text="{loc:Loc 'Тренировок пока нет'}" FontSize="18" FontAttributes="Bold" />
+                    <Label x:Name="DetailsLabel" Text="{loc:Loc 'Проверьте ответ в тренировке, и результат появится здесь.'}" LineBreakMode="WordWrap" />
                     <Label x:Name="ProblemSymbolsLabel" Text="" LineBreakMode="WordWrap" />
                 </VerticalStackLayout>
             </Border>
 
             <Border>
                 <VerticalStackLayout x:Name="DailyLayout" Spacing="6">
-                    <Label Text="По дням" FontAttributes="Bold" />
+                    <Label Text="{loc:Loc 'По дням'}" FontAttributes="Bold" />
                 </VerticalStackLayout>
             </Border>
 
             <Border>
                 <VerticalStackLayout Spacing="6">
-                    <Label Text="Последние тренировки" FontAttributes="Bold" />
+                    <Label Text="{loc:Loc 'Последние тренировки'}" FontAttributes="Bold" />
                     <CollectionView x:Name="HistoryView" SelectionMode="None" HeightRequest="360">
                         <CollectionView.ItemTemplate>
                             <DataTemplate x:DataType="models:TrainingRecord">
@@ -42,8 +43,8 @@
                 </VerticalStackLayout>
             </Border>
 
-            <Button Text="Очистить историю" Clicked="ClearButton_OnClicked" />
-            <Label Text="История хранится только на этом устройстве." HorizontalTextAlignment="Center" Opacity="0.65" />
+            <Button Text="{loc:Loc 'Очистить историю'}" Clicked="ClearButton_OnClicked" />
+            <Label Text="{loc:Loc 'История хранится только на этом устройстве.'}" HorizontalTextAlignment="Center" Opacity="0.65" />
         </VerticalStackLayout>
     </ScrollView>
 </ContentPage>

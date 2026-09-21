@@ -16,6 +16,7 @@ public sealed class AppSettings
     public int KochLevel { get; set; } = 2;
     public bool EmphasizeProblemSymbols { get; set; } = true;
     public int ThemeIndex { get; set; } = 0;
+    public int LanguageIndex { get; set; } = 0;
     public int LearningAlphabetIndex { get; set; } = 0;
     public int LearningAudioModeIndex { get; set; } = 1;
     public int QuizCorrect { get; set; }

@@ -1,7 +1,10 @@
+using System.Globalization;
 using System.IO;
 using System.Text;
 using System.Windows;
 using System.Windows.Threading;
+using MorseTrainer.Localization;
+using MorseTrainer.Services;
 
 namespace MorseTrainer;
 
@@ -14,6 +17,9 @@ public partial class App : Application
 
     protected override void OnStartup(StartupEventArgs e)
     {
+        // Язык нужно выбрать до разбора XAML главного окна
+        var settings = new SettingsService().Load();
+        Texts.Apply((AppLanguage)Math.Clamp(settings.LanguageIndex, 0, 2), CultureInfo.CurrentUICulture.TwoLetterISOLanguageName);
         DispatcherUnhandledException += App_OnDispatcherUnhandledException;
         AppDomain.CurrentDomain.UnhandledException += CurrentDomain_OnUnhandledException;
         TaskScheduler.UnobservedTaskException += TaskScheduler_OnUnobservedTaskException;

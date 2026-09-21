@@ -12,6 +12,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using Microsoft.Win32;
 using MorseTrainer.Domain;
+using MorseTrainer.Localization;
 using MorseTrainer.Models;
 using MorseTrainer.Services;
 
@@ -68,7 +69,7 @@ public partial class MainWindow : Window
 
     private async void Window_OnLoaded(object sender, RoutedEventArgs e)
     {
-        SubtitleText.Text = $"Тренировка и изучение азбуки Морзе · версия {CurrentVersion}";
+        SubtitleText.Text = Texts.F("Тренировка и изучение азбуки Морзе · версия {0}", CurrentVersion);
         var settings = _settingsService.Load();
         ApplySettings(settings);
         LoadProfiles(settings);
@@ -143,7 +144,7 @@ public partial class MainWindow : Window
     private async void CheckUpdatesButton_OnClick(object sender, RoutedEventArgs e)
     {
         CheckUpdatesButton.IsEnabled = false;
-        CheckUpdatesButton.Content = "Проверяю…";
+        CheckUpdatesButton.Content = Texts.T("Проверяю…");
         try
         {
             var info = await UpdateService.FetchLatestAsync(UpdateClient, CancellationToken.None);
@@ -151,8 +152,8 @@ public partial class MainWindow : Window
             {
                 var notes = string.IsNullOrWhiteSpace(info.Notes) ? string.Empty : "\n\n" + Truncate(info.Notes, 600);
                 var answer = MessageBox.Show(this,
-                    $"Доступна версия {info.LatestVersion}, у вас {CurrentVersion}.{notes}\n\nОткрыть страницу загрузки?",
-                    "Обновление Morse Trainer", MessageBoxButton.YesNo, MessageBoxImage.Information);
+                    Texts.F("Доступна версия {0}, у вас {1}.{2}\n\nОткрыть страницу загрузки?", info.LatestVersion, CurrentVersion, notes),
+                    Texts.T("Обновление Morse Trainer"), MessageBoxButton.YesNo, MessageBoxImage.Information);
                 if (answer == MessageBoxResult.Yes)
                 {
                     OpenInBrowser(info.WindowsInstallerUrl ?? info.ReleasePageUrl);
@@ -160,19 +161,19 @@ public partial class MainWindow : Window
             }
             else
             {
-                MessageBox.Show(this, $"У вас последняя версия {CurrentVersion}.", "Обновление Morse Trainer",
+                MessageBox.Show(this, Texts.F("У вас последняя версия {0}.", CurrentVersion), Texts.T("Обновление Morse Trainer"),
                     MessageBoxButton.OK, MessageBoxImage.Information);
             }
         }
         catch (Exception exception)
         {
             MessageBox.Show(this,
-                $"Не удалось проверить обновления. Проверьте подключение к интернету.\n\n{exception.Message}",
-                "Обновление Morse Trainer", MessageBoxButton.OK, MessageBoxImage.Warning);
+                Texts.F("Не удалось проверить обновления. Проверьте подключение к интернету.\n\n{0}", exception.Message),
+                Texts.T("Обновление Morse Trainer"), MessageBoxButton.OK, MessageBoxImage.Warning);
         }
         finally
         {
-            CheckUpdatesButton.Content = "Обновления";
+            CheckUpdatesButton.Content = Texts.T("Обновления");
             CheckUpdatesButton.IsEnabled = true;
         }
     }
@@ -199,7 +200,7 @@ public partial class MainWindow : Window
             .Select(item => new HistoryRow(
                 item.CompletedAt.ToString("dd.MM.yyyy HH:mm", CultureInfo.CurrentCulture),
                 item.ProfileName,
-                $"{item.CharactersPerMinute} зн/мин",
+                Texts.F("{0} зн/мин", item.CharactersPerMinute),
                 item.GroupCount.ToString(CultureInfo.InvariantCulture),
                 $"{item.AccuracyPercent:0.#}%",
                 item.ProblemSymbols.Length == 0 ? "—" : string.Join(" ", item.ProblemSymbols.Distinct())))
@@ -209,7 +210,7 @@ public partial class MainWindow : Window
         var days = TrainingStatistics.ByDay(_history);
         if (days.Count == 0)
         {
-            DailyBarsPanel.Children.Add(new TextBlock { Text = "Пока пусто", Foreground = (Brush)FindResource("MutedTextBrush") });
+            DailyBarsPanel.Children.Add(new TextBlock { Text = Texts.T("Пока пусто"), Foreground = (Brush)FindResource("MutedTextBrush") });
             return;
         }
 
@@ -254,7 +255,7 @@ public partial class MainWindow : Window
 
     private void ClearHistoryButton_OnClick(object sender, RoutedEventArgs e)
     {
-        var answer = MessageBox.Show(this, "Удалить все записи о тренировках на этом компьютере?", "Очистить историю",
+        var answer = MessageBox.Show(this, Texts.T("Удалить все записи о тренировках на этом компьютере?"), Texts.T("Очистить историю"),
             MessageBoxButton.YesNo, MessageBoxImage.Question);
         if (answer != MessageBoxResult.Yes)
         {
@@ -317,7 +318,7 @@ public partial class MainWindow : Window
             _keyer = new KeyerDecoder((AlphabetMode)alphabet, speed);
             _keyerSpeed = speed;
             _keyerAlphabet = alphabet;
-            KeyerTimingText.Text = $"Точка: {_keyer.UnitMilliseconds:0} мс · тире от {_keyer.UnitMilliseconds * KeyerDecoder.DashThresholdUnits:0} мс";
+            KeyerTimingText.Text = Texts.F("Точка: {0:0} мс · тире от {1:0} мс", _keyer.UnitMilliseconds, _keyer.UnitMilliseconds * KeyerDecoder.DashThresholdUnits);
             if (text.Length > 0)
             {
                 KeyerOutputText.Text = text;
@@ -475,13 +476,13 @@ public partial class MainWindow : Window
         var pool = MorseAlphabet.BuildPool(alphabet, content, _selectedSymbols, settings.KochLevel);
         if (pool.Count == 0)
         {
-            KeyerResultText.Text = "В выбранном наборе нет символов: измените состав задания на вкладке «Тренировка».";
+            KeyerResultText.Text = Texts.T("В выбранном наборе нет символов: измените состав задания на вкладке «Тренировка».");
             return;
         }
 
         _keyerTarget = TrainingGenerator.Generate(pool, Math.Clamp(Math.Min(settings.GroupCount, 4), 1, 4));
         KeyerTargetText.Text = _keyerTarget;
-        KeyerResultText.Text = "Передайте текст выше, затем нажмите «Проверить передачу».";
+        KeyerResultText.Text = Texts.T("Передайте текст выше, затем нажмите «Проверить передачу».");
         KeyerResultText.Foreground = (Brush)FindResource("MutedTextBrush");
         KeyerClearButton_OnClick(sender, e);
     }
@@ -498,13 +499,13 @@ public partial class MainWindow : Window
         var result = TrainingEvaluator.Evaluate(_keyerTarget, _keyer.Text);
         if (result.IsPerfect)
         {
-            KeyerResultText.Text = "Отлично: передано без ошибок.";
+            KeyerResultText.Text = Texts.T("Отлично: передано без ошибок.");
             KeyerResultText.Foreground = (Brush)FindResource("PrimaryBrush");
         }
         else
         {
             var details = result.Mistakes.Take(8).Select(mistake => $"{mistake.Position}: {mistake.Expected}→{mistake.Actual?.ToString() ?? "∅"}");
-            KeyerResultText.Text = $"Точность {result.AccuracyPercent:0.#}%. Ошибки: {string.Join(", ", details)}{(result.Mistakes.Count > 8 ? " …" : string.Empty)}";
+            KeyerResultText.Text = Texts.F("Точность {0:0.#}%. Ошибки: {1}{2}", result.AccuracyPercent, string.Join(", ", details), result.Mistakes.Count > 8 ? " …" : string.Empty);
             KeyerResultText.Foreground = (Brush)FindResource("DangerBrush");
         }
     }
@@ -524,6 +525,18 @@ public partial class MainWindow : Window
         {
             KeyerCodeText.Text = " ";
         }
+    }
+
+    private void LanguageCombo_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (!_windowLoaded || LanguageCombo is null)
+        {
+            return;
+        }
+
+        _settingsService.Save(ReadSettings());
+        MessageBox.Show(this, Texts.T("Язык интерфейса изменится после перезапуска приложения."), "Morse Trainer",
+            MessageBoxButton.OK, MessageBoxImage.Information);
     }
 
     private void ThemeCombo_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -560,8 +573,8 @@ public partial class MainWindow : Window
         if (pool.Count == 0)
         {
             MessageBox.Show(
-                "В выбранном наборе нет символов. Откройте выбор и отметьте хотя бы одну букву или цифру.",
-                "Не удалось создать задание",
+                Texts.T("В выбранном наборе нет символов. Откройте выбор и отметьте хотя бы одну букву или цифру."),
+                Texts.T("Не удалось создать задание"),
                 MessageBoxButton.OK,
                 MessageBoxImage.Information);
             return;
@@ -607,15 +620,15 @@ public partial class MainWindow : Window
             _currentSettings = settings;
             _answerVisible = false;
             UserAnswerText.Clear();
-            ResultDetailsText.Text = "Пробелы между группами при проверке не учитываются";
+            ResultDetailsText.Text = Texts.T("Пробелы между группами при проверке не учитываются");
             ResultDetailsText.Foreground = (Brush)FindResource("MutedTextBrush");
             AccuracyText.Text = "—";
             PlaybackProgress.Value = 0;
-            PlaybackStatusText.Text = $"Готово к воспроизведению · {FormatDuration(audio.Duration)}";
-            var startSignal = settings.PlayStartSignal ? " · старт Ж Ж Ж" : string.Empty;
-            TaskMetaText.Text = $"{settings.GroupCount} групп × 5 · {settings.CharactersPerMinute} знаков/мин · паузы {settings.CharacterGapUnits}/{settings.GroupGapUnits}{startSignal}";
+            PlaybackStatusText.Text = Texts.F("Готово к воспроизведению · {0}", FormatDuration(audio.Duration));
+            var startSignal = settings.PlayStartSignal ? Texts.T(" · старт Ж Ж Ж") : string.Empty;
+            TaskMetaText.Text = Texts.F("{0} групп × 5 · {1} знаков/мин · паузы {2}/{3}{4}", settings.GroupCount, settings.CharactersPerMinute, settings.CharacterGapUnits, settings.GroupGapUnits, startSignal);
             UpdateAnswerDisplay();
-            SetStatus("ГОТОВО", isActive: true);
+            SetStatus(Texts.T("ГОТОВО"), isActive: true);
             SetTaskControlsEnabled(true);
             _settingsService.Save(settings);
         }
@@ -625,9 +638,9 @@ public partial class MainWindow : Window
             _currentClip = null;
             _currentSettings = null;
             SetTaskControlsEnabled(false);
-            SetStatus("ОШИБКА", isActive: false);
-            PlaybackStatusText.Text = "Не удалось подготовить звук";
-            MessageBox.Show($"Не удалось создать задание.\n\n{exception.Message}", "Morse Trainer", MessageBoxButton.OK, MessageBoxImage.Error);
+            SetStatus(Texts.T("ОШИБКА"), isActive: false);
+            PlaybackStatusText.Text = Texts.T("Не удалось подготовить звук");
+            MessageBox.Show(Texts.F("Не удалось создать задание.\n\n{0}", exception.Message), "Morse Trainer", MessageBoxButton.OK, MessageBoxImage.Error);
         }
         finally
         {
@@ -662,8 +675,8 @@ public partial class MainWindow : Window
             RepeatButton.IsEnabled = false;
             StopButton.IsEnabled = true;
             PlaybackProgress.Value = 0;
-            PlaybackStatusText.Text = "Идёт воспроизведение…";
-            SetStatus("СЛУШАЕМ", isActive: true);
+            PlaybackStatusText.Text = Texts.T("Идёт воспроизведение…");
+            SetStatus(Texts.T("СЛУШАЕМ"), isActive: true);
 
             var startedAt = DateTime.UtcNow;
             while (DateTime.UtcNow - startedAt < _currentClip.Duration)
@@ -676,8 +689,8 @@ public partial class MainWindow : Window
             if (!cancellation.IsCancellationRequested)
             {
                 PlaybackProgress.Value = 100;
-                PlaybackStatusText.Text = "Прослушивание завершено — введите ответ";
-                SetStatus("ВАШ ОТВЕТ", isActive: true);
+                PlaybackStatusText.Text = Texts.T("Прослушивание завершено — введите ответ");
+                SetStatus(Texts.T("ВАШ ОТВЕТ"), isActive: true);
                 UserAnswerText.Focus();
             }
         }
@@ -686,7 +699,7 @@ public partial class MainWindow : Window
         }
         catch (Exception exception)
         {
-            MessageBox.Show($"Не удалось воспроизвести звук.\n\n{exception.Message}", "Morse Trainer", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(Texts.F("Не удалось воспроизвести звук.\n\n{0}", exception.Message), "Morse Trainer", MessageBoxButton.OK, MessageBoxImage.Error);
         }
         finally
         {
@@ -717,8 +730,8 @@ public partial class MainWindow : Window
             PlaybackProgress.Value = 0;
             if (_currentClip is not null)
             {
-                PlaybackStatusText.Text = $"Готово к воспроизведению · {FormatDuration(_currentClip.Duration)}";
-                SetStatus("ГОТОВО", isActive: true);
+                PlaybackStatusText.Text = Texts.F("Готово к воспроизведению · {0}", FormatDuration(_currentClip.Duration));
+                SetStatus(Texts.T("ГОТОВО"), isActive: true);
             }
         }
 
@@ -746,14 +759,14 @@ public partial class MainWindow : Window
         if (string.IsNullOrEmpty(_currentTask))
         {
             AnswerDisplayText.Text = "••••• ••••• •••••";
-            ToggleAnswerButton.Content = "Показать";
+            ToggleAnswerButton.Content = Texts.T("Показать");
             return;
         }
 
         AnswerDisplayText.Text = _answerVisible
             ? _currentTask
             : new string(_currentTask.Select(symbol => char.IsWhiteSpace(symbol) ? ' ' : '\u2022').ToArray());
-        ToggleAnswerButton.Content = _answerVisible ? "Скрыть" : "Показать";
+        ToggleAnswerButton.Content = _answerVisible ? Texts.T("Скрыть") : Texts.T("Показать");
     }
 
     private void CheckAnswerButton_OnClick(object sender, RoutedEventArgs e)
@@ -790,18 +803,18 @@ public partial class MainWindow : Window
 
         if (result.IsPerfect)
         {
-            ResultDetailsText.Text = "Отлично: все символы распознаны правильно";
+            ResultDetailsText.Text = Texts.T("Отлично: все символы распознаны правильно");
             ResultDetailsText.Foreground = (Brush)FindResource("PrimaryBrush");
-            SetStatus("БЕЗ ОШИБОК", isActive: true);
+            SetStatus(Texts.T("БЕЗ ОШИБОК"), isActive: true);
         }
         else
         {
             var details = result.Mistakes.Take(8)
                 .Select(mistake => $"{mistake.Position}: {mistake.Expected}→{mistake.Actual?.ToString() ?? "∅"}");
             var suffix = result.Mistakes.Count > 8 ? " …" : string.Empty;
-            ResultDetailsText.Text = $"Ошибки: {string.Join(", ", details)}{suffix}";
+            ResultDetailsText.Text = Texts.F("Ошибки: {0}{1}", string.Join(", ", details), suffix);
             ResultDetailsText.Foreground = (Brush)FindResource("DangerBrush");
-            SetStatus("ЕСТЬ ОШИБКИ", isActive: false);
+            SetStatus(Texts.T("ЕСТЬ ОШИБКИ"), isActive: false);
         }
 
         if (_currentSettings?.ContentModeIndex == (int)ContentMode.Koch)
@@ -828,8 +841,8 @@ public partial class MainWindow : Window
     private void UpdateSelectedSymbolsSummary()
     {
         SelectedSymbolsSummaryText.Text = string.IsNullOrEmpty(_selectedSymbols)
-            ? "Ничего не выбрано"
-            : $"{_selectedSymbols.Length} символов: {Truncate(_selectedSymbols, 45)}";
+            ? Texts.T("Ничего не выбрано")
+            : Texts.F("{0} символов: {1}", _selectedSymbols.Length, Truncate(_selectedSymbols, 45));
     }
 
     private void SaveTaskButton_OnClick(object sender, RoutedEventArgs e)
@@ -841,8 +854,8 @@ public partial class MainWindow : Window
 
         var dialog = new SaveFileDialog
         {
-            Title = "Сохранить задание",
-            Filter = "Текстовый файл (*.txt)|*.txt",
+            Title = Texts.T("Сохранить задание"),
+            Filter = Texts.T("Текстовый файл (*.txt)|*.txt"),
             FileName = $"morse-task-{DateTime.Now:yyyy-MM-dd-HHmm}.txt",
             AddExtension = true
         };
@@ -854,15 +867,15 @@ public partial class MainWindow : Window
         var settings = _currentSettings ?? ReadSettings();
         var content = new StringBuilder()
             .AppendLine("Morse Trainer")
-            .AppendLine($"Создано: {DateTime.Now:dd.MM.yyyy HH:mm}")
-            .AppendLine($"Групп: {settings.GroupCount} × 5")
-            .AppendLine($"Скорость: {settings.CharactersPerMinute} знаков/мин")
-            .AppendLine($"Тональность: {settings.FrequencyHz} Гц")
-            .AppendLine($"Паузы: символы {settings.CharacterGapUnits}, группы {settings.GroupGapUnits}")
+            .AppendLine(Texts.F("Создано: {0:dd.MM.yyyy HH:mm}", DateTime.Now))
+            .AppendLine(Texts.F("Групп: {0} × 5", settings.GroupCount))
+            .AppendLine(Texts.F("Скорость: {0} знаков/мин", settings.CharactersPerMinute))
+            .AppendLine(Texts.F("Тональность: {0} Гц", settings.FrequencyHz))
+            .AppendLine(Texts.F("Паузы: символы {0}, группы {1}", settings.CharacterGapUnits, settings.GroupGapUnits))
             .AppendLine(settings.PlayStartSignal
-                ? $"Старт: Ж Ж Ж, затем пауза {settings.StartPauseUnits} точек"
-                : "Стартовый сигнал: выключен")
-            .AppendLine().AppendLine("Задание:").AppendLine(_currentTask).ToString();
+                ? Texts.F("Старт: Ж Ж Ж, затем пауза {0} точек", settings.StartPauseUnits)
+                : Texts.T("Стартовый сигнал: выключен"))
+            .AppendLine().AppendLine(Texts.T("Задание:")).AppendLine(_currentTask).ToString();
         File.WriteAllText(dialog.FileName, content, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true));
     }
 
@@ -875,8 +888,8 @@ public partial class MainWindow : Window
 
         var dialog = new SaveFileDialog
         {
-            Title = "Экспортировать звук",
-            Filter = "Звуковой файл WAV (*.wav)|*.wav",
+            Title = Texts.T("Экспортировать звук"),
+            Filter = Texts.T("Звуковой файл WAV (*.wav)|*.wav"),
             FileName = $"morse-task-{DateTime.Now:yyyy-MM-dd-HHmm}.wav",
             AddExtension = true
         };
@@ -941,11 +954,11 @@ public partial class MainWindow : Window
         {
             if (LearningAudioModeCombo.SelectedIndex == 1)
             {
-                LearningPlaybackStatusText.Text = "Произносим напев…";
+                LearningPlaybackStatusText.Text = Texts.T("Произносим напев…");
                 _learningAudioStream = VoicePackService.Open(item.Symbol);
                 if (_learningAudioStream is null)
                 {
-                    LearningPlaybackStatusText.Text = "Офлайн-напев недоступен — воспроизводим сигнал";
+                    LearningPlaybackStatusText.Text = Texts.T("Офлайн-напев недоступен — воспроизводим сигнал");
                 }
                 else
                 {
@@ -975,7 +988,7 @@ public partial class MainWindow : Window
             _learningPlayer = new SoundPlayer(_learningAudioStream);
             _learningPlayer.Load();
             _learningPlayer.Play();
-            LearningPlaybackStatusText.Text = "Слушаем ритм символа…";
+            LearningPlaybackStatusText.Text = Texts.T("Слушаем ритм символа…");
 
             var dotMilliseconds = 6_000d / learningSpeed;
             for (var index = 0; index < item.Code.Length; index++)
@@ -991,7 +1004,7 @@ public partial class MainWindow : Window
 
             await Task.Delay(TimeSpan.FromMilliseconds(dotMilliseconds * 2), cancellation.Token);
             ShowHighlightedChant(item.Chant, -1);
-            LearningPlaybackStatusText.Text = "Готово — можно прослушать ещё раз";
+            LearningPlaybackStatusText.Text = Texts.T("Готово — можно прослушать ещё раз");
         }
         catch (OperationCanceledException)
         {
@@ -1029,7 +1042,7 @@ public partial class MainWindow : Window
         var pool = GetQuizPool();
         if (pool.Count < 4)
         {
-            QuizResultText.Text = "Для проверки нужно не менее четырёх символов.";
+            QuizResultText.Text = Texts.T("Для проверки нужно не менее четырёх символов.");
             return;
         }
 
@@ -1056,9 +1069,9 @@ public partial class MainWindow : Window
         }
 
         QuizResultText.Text = " ";
-        QuizPromptText.Text = "Слушайте…";
+        QuizPromptText.Text = Texts.T("Слушайте…");
         await PlayQuizSignalAsync(_quizTarget);
-        QuizPromptText.Text = "Какой символ прозвучал?";
+        QuizPromptText.Text = Texts.T("Какой символ прозвучал?");
         foreach (var button in QuizAnswersPanel.Children.OfType<Button>())
         {
             button.IsEnabled = true;
@@ -1117,12 +1130,12 @@ public partial class MainWindow : Window
         if (isCorrect)
         {
             _quizCorrect++;
-            QuizResultText.Text = $"Верно: {_quizTarget.Symbol} — {_quizTarget.Chant}";
+            QuizResultText.Text = Texts.F("Верно: {0} — {1}", _quizTarget.Symbol, _quizTarget.Chant);
             QuizResultText.Foreground = (Brush)FindResource("PrimaryBrush");
         }
         else
         {
-            QuizResultText.Text = $"Правильный ответ: {_quizTarget.Symbol} — {_quizTarget.Chant}";
+            QuizResultText.Text = Texts.F("Правильный ответ: {0} — {1}", _quizTarget.Symbol, _quizTarget.Chant);
             QuizResultText.Foreground = (Brush)FindResource("DangerBrush");
         }
 
@@ -1201,19 +1214,19 @@ public partial class MainWindow : Window
             return;
         }
 
-        SpeedValueText.Text = $"{(int)SpeedSlider.Value} знаков/мин";
-        FrequencyValueText.Text = $"{(int)FrequencySlider.Value} Гц";
+        SpeedValueText.Text = Texts.F("{0} знаков/мин", (int)SpeedSlider.Value);
+        FrequencyValueText.Text = Texts.F("{0} Гц", (int)FrequencySlider.Value);
         VolumeValueText.Text = $"{(int)VolumeSlider.Value}%";
-        CharacterGapValueText.Text = $"{(int)CharacterGapSlider.Value} точек";
-        GroupGapValueText.Text = $"{(int)GroupGapSlider.Value} точек";
-        StartPauseValueText.Text = $"{(int)StartPauseSlider.Value} точек";
+        CharacterGapValueText.Text = Texts.F("{0} точек", (int)CharacterGapSlider.Value);
+        GroupGapValueText.Text = Texts.F("{0} точек", (int)GroupGapSlider.Value);
+        StartPauseValueText.Text = Texts.F("{0} точек", (int)StartPauseSlider.Value);
     }
 
     private bool TryReadGroupCount(out int groupCount)
     {
         if (!int.TryParse(GroupCountText.Text, out groupCount) || groupCount is < 1 or > 100)
         {
-            MessageBox.Show("Количество групп должно быть целым числом от 1 до 100.", "Проверьте параметры",
+            MessageBox.Show(Texts.T("Количество групп должно быть целым числом от 1 до 100."), Texts.T("Проверьте параметры"),
                 MessageBoxButton.OK, MessageBoxImage.Information);
             GroupCountText.Focus();
             GroupCountText.SelectAll();
@@ -1242,6 +1255,7 @@ public partial class MainWindow : Window
             PlayStartSignal = PlayStartSignalCheckBox.IsChecked == true,
             CustomSymbols = _selectedSymbols,
             ThemeIndex = Math.Clamp(ThemeCombo.SelectedIndex, 0, 2),
+            LanguageIndex = Math.Clamp(LanguageCombo.SelectedIndex, 0, 2),
             LearningAlphabetIndex = Math.Clamp(LearningAlphabetCombo.SelectedIndex, 0, 3),
             LearningAudioModeIndex = Math.Clamp(LearningAudioModeCombo.SelectedIndex, 0, 1),
             QuizCorrect = _quizCorrect,
@@ -1266,6 +1280,7 @@ public partial class MainWindow : Window
         PlayStartSignalCheckBox.IsChecked = settings.PlayStartSignal;
         _selectedSymbols = string.IsNullOrWhiteSpace(settings.CustomSymbols) ? "АГЖД" : settings.CustomSymbols;
         ThemeCombo.SelectedIndex = Math.Clamp(settings.ThemeIndex, 0, 2);
+        LanguageCombo.SelectedIndex = Math.Clamp(settings.LanguageIndex, 0, 2);
         LearningAlphabetCombo.SelectedIndex = Math.Clamp(settings.LearningAlphabetIndex, 0, 3);
         LearningAudioModeCombo.SelectedIndex = Math.Clamp(settings.LearningAudioModeIndex, 0, 1);
         UpdateKochSummary();
@@ -1315,11 +1330,11 @@ public partial class MainWindow : Window
             _profiles = _profileService.Save(TrainingProfile.FromSettings(name, settings));
             LoadProfiles(settings);
             _settingsService.Save(settings);
-            SetStatus("ПРОФИЛЬ СОХРАНЁН", isActive: true);
+            SetStatus(Texts.T("ПРОФИЛЬ СОХРАНЁН"), isActive: true);
         }
         catch (ArgumentException)
         {
-            MessageBox.Show("Введите название профиля.", "Профили", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show(Texts.T("Введите название профиля."), Texts.T("Профили"), MessageBoxButton.OK, MessageBoxImage.Information);
         }
     }
 
@@ -1327,8 +1342,8 @@ public partial class MainWindow : Window
     {
         var dialog = new SaveFileDialog
         {
-            Title = "Экспорт профилей",
-            Filter = "Профили Morse Trainer (*.json)|*.json",
+            Title = Texts.T("Экспорт профилей"),
+            Filter = Texts.T("Профили Morse Trainer (*.json)|*.json"),
             FileName = $"morse-profiles-{DateTime.Now:yyyy-MM-dd}.json",
             AddExtension = true
         };
@@ -1340,11 +1355,11 @@ public partial class MainWindow : Window
         try
         {
             File.WriteAllText(dialog.FileName, ProfileTransfer.Export(_profiles), new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
-            SetStatus("ПРОФИЛИ ЭКСПОРТИРОВАНЫ", isActive: true);
+            SetStatus(Texts.T("ПРОФИЛИ ЭКСПОРТИРОВАНЫ"), isActive: true);
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
-            MessageBox.Show(this, exception.Message, "Экспорт профилей", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(this, exception.Message, Texts.T("Экспорт профилей"), MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 
@@ -1352,8 +1367,8 @@ public partial class MainWindow : Window
     {
         var dialog = new OpenFileDialog
         {
-            Title = "Импорт профилей",
-            Filter = "Профили Morse Trainer (*.json)|*.json|Все файлы (*.*)|*.*"
+            Title = Texts.T("Импорт профилей"),
+            Filter = Texts.T("Профили Morse Trainer (*.json)|*.json|Все файлы (*.*)|*.*")
         };
         if (dialog.ShowDialog(this) != true)
         {
@@ -1365,11 +1380,11 @@ public partial class MainWindow : Window
             var imported = ProfileTransfer.Import(File.ReadAllText(dialog.FileName));
             _profiles = _profileService.Import(imported);
             LoadProfiles(ReadSettings());
-            MessageBox.Show(this, $"Импортировано профилей: {imported.Count}.", "Профили", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show(this, Texts.F("Импортировано профилей: {0}.", imported.Count), Texts.T("Профили"), MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (Exception exception) when (exception is FormatException or IOException or UnauthorizedAccessException)
         {
-            MessageBox.Show(this, exception.Message, "Импорт профилей", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(this, exception.Message, Texts.T("Импорт профилей"), MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 
@@ -1413,12 +1428,12 @@ public partial class MainWindow : Window
     private void SetGenerationState(bool isGenerating)
     {
         GenerateButton.IsEnabled = !isGenerating;
-        GenerateButton.Content = isGenerating ? "Подготовка звука…" : "Сгенерировать задание";
+        GenerateButton.Content = isGenerating ? Texts.T("Подготовка звука…") : Texts.T("Сгенерировать задание");
         if (isGenerating)
         {
             SetTaskControlsEnabled(false);
-            SetStatus("ГЕНЕРАЦИЯ", isActive: true);
-            PlaybackStatusText.Text = "Формируем случайные группы и звук…";
+            SetStatus(Texts.T("ГЕНЕРАЦИЯ"), isActive: true);
+            PlaybackStatusText.Text = Texts.T("Формируем случайные группы и звук…");
         }
     }
 
@@ -1431,7 +1446,7 @@ public partial class MainWindow : Window
 
     private static string FormatDuration(TimeSpan duration) => duration.TotalMinutes >= 1
         ? $"{(int)duration.TotalMinutes}:{duration.Seconds:00}"
-        : $"{Math.Max(1, (int)Math.Ceiling(duration.TotalSeconds))} сек";
+        : Texts.F("{0} сек", Math.Max(1, (int)Math.Ceiling(duration.TotalSeconds)));
 
     private static string Truncate(string value, int maxLength) => value.Length <= maxLength
         ? value

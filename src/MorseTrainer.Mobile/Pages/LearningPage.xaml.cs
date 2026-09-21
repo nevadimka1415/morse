@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using MorseTrainer.Domain;
+using MorseTrainer.Localization;
 using MorseTrainer.Mobile.Services;
 using MorseTrainer.Services;
 
@@ -25,6 +26,8 @@ public partial class LearningPage : ContentPage
         _audioPlayback = audioPlayback;
         _settingsService = settingsService;
         _voicePack = voicePack;
+        AlphabetPicker.ItemsSource = new[] { Texts.T("Русские"), Texts.T("Латинские"), Texts.T("Русские и латинские"), Texts.T("Цифры") };
+        AlphabetPicker.SelectedIndex = 0;
         _pageReady = true;
         RefreshItems();
         var settings = _settingsService.LoadSettings();
@@ -68,7 +71,7 @@ public partial class LearningPage : ContentPage
         var path = await _voicePack.GetVoiceFileAsync(symbol);
         if (path is null)
         {
-            await DisplayAlertAsync("Голос недоступен", "Для этого символа не найден встроенный напев.", "Закрыть");
+            await DisplayAlertAsync(Texts.T("Голос недоступен"), Texts.T("Для этого символа не найден встроенный напев."), Texts.T("Закрыть"));
             return;
         }
 
@@ -105,7 +108,7 @@ public partial class LearningPage : ContentPage
         }
         catch (Exception exception)
         {
-            await DisplayAlertAsync("Не удалось воспроизвести", exception.Message, "Закрыть");
+            await DisplayAlertAsync(Texts.T("Не удалось воспроизвести"), exception.Message, Texts.T("Закрыть"));
         }
     }
 
@@ -132,9 +135,9 @@ public partial class LearningPage : ContentPage
             QuizAnswers.Children.Add(button);
         }
 
-        QuizStatusLabel.Text = "Слушайте…";
+        QuizStatusLabel.Text = Texts.T("Слушайте…");
         await PlayMorseAsync(_quizTarget.Symbol);
-        QuizStatusLabel.Text = "Какой символ прозвучал?";
+        QuizStatusLabel.Text = Texts.T("Какой символ прозвучал?");
     }
 
     private void QuizAnswer_OnClicked(object? sender, EventArgs e)
@@ -148,11 +151,11 @@ public partial class LearningPage : ContentPage
         if (answer == _quizTarget.Symbol)
         {
             _quizCorrect++;
-            QuizStatusLabel.Text = $"Верно: {_quizTarget.Symbol} — {_quizTarget.Chant}";
+            QuizStatusLabel.Text = Texts.F("Верно: {0} — {1}", _quizTarget.Symbol, _quizTarget.Chant);
         }
         else
         {
-            QuizStatusLabel.Text = $"Правильно: {_quizTarget.Symbol} — {_quizTarget.Chant}";
+            QuizStatusLabel.Text = Texts.F("Правильно: {0} — {1}", _quizTarget.Symbol, _quizTarget.Chant);
         }
 
         foreach (var button in QuizAnswers.Children.OfType<Button>())
@@ -169,7 +172,7 @@ public partial class LearningPage : ContentPage
 
     private void UpdateScore()
     {
-        QuizScoreLabel.Text = $"Результат: {_quizCorrect} / {_quizTotal}";
+        QuizScoreLabel.Text = Texts.F("Результат: {0} / {1}", _quizCorrect, _quizTotal);
     }
 
     // Планшет или альбомная ориентация: центрируем контент полосой до 720 px

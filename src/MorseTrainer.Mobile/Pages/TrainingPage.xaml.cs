@@ -2,6 +2,7 @@ using MorseTrainer.Domain;
 using MorseTrainer.Models;
 using MorseTrainer.Mobile.Services;
 using MorseTrainer.Services;
+using MorseTrainer.Localization;
 
 namespace MorseTrainer.Mobile.Pages;
 
@@ -40,15 +41,15 @@ public partial class TrainingPage : ContentPage
     private void RefreshSettingsSummary()
     {
         var settings = _settingsService.LoadSettings();
-        ProfileLabel.Text = $"Профиль: {settings.ActiveProfileName}";
-        var start = settings.PlayStartSignal ? $" · Ж Ж Ж + пауза {settings.StartPauseUnits}" : " · без сигнала старта";
+        ProfileLabel.Text = Texts.F("Профиль: {0}", settings.ActiveProfileName);
+        var start = settings.PlayStartSignal ? Texts.F(" · Ж Ж Ж + пауза {0}", settings.StartPauseUnits) : Texts.T(" · без сигнала старта");
         if (settings.ContentModeIndex == (int)ContentMode.Koch)
         {
-            start += $" · Кох: уровень {settings.KochLevel}";
+            start += Texts.F(" · Кох: уровень {0}", settings.KochLevel);
         }
 
-        SettingsSummaryLabel.Text = $"{settings.GroupCount} групп × 5 · {settings.CharactersPerMinute} знаков/мин · " +
-                                    $"{settings.FrequencyHz} Гц · паузы {settings.CharacterGapUnits}/{settings.GroupGapUnits}{start}";
+        SettingsSummaryLabel.Text = Texts.F("{0} групп × 5 · {1} знаков/мин · ", settings.GroupCount, settings.CharactersPerMinute) +
+                                    Texts.F("{0} Гц · паузы {1}/{2}{3}", settings.FrequencyHz, settings.CharacterGapUnits, settings.GroupGapUnits, start);
     }
 
     private async void SettingsButton_OnClicked(object sender, EventArgs e)
@@ -70,12 +71,12 @@ public partial class TrainingPage : ContentPage
         var pool = MorseAlphabet.BuildPool(alphabet, content, settings.CustomSymbols, settings.KochLevel);
         if (pool.Count == 0)
         {
-            await DisplayAlertAsync("Нет символов", "Откройте настройки и выберите хотя бы один символ.", "Понятно");
+            await DisplayAlertAsync(Texts.T("Нет символов"), Texts.T("Откройте настройки и выберите хотя бы один символ."), Texts.T("Понятно"));
             return;
         }
 
         GenerateButton.IsEnabled = false;
-        PlaybackStatusLabel.Text = "Создаём задание…";
+        PlaybackStatusLabel.Text = Texts.T("Создаём задание…");
         try
         {
             // Чаще звучат новый символ метода Коха и символы с ошибками из истории
@@ -110,17 +111,17 @@ public partial class TrainingPage : ContentPage
                 Math.Clamp(settings.StartPauseUnits, 7, 60)));
             _answerVisible = false;
             AnswerEditor.Text = string.Empty;
-            AccuracyLabel.Text = "Точность: —";
-            ResultLabel.Text = "Пробелы между группами не учитываются";
+            AccuracyLabel.Text = Texts.T("Точность: —");
+            ResultLabel.Text = Texts.T("Пробелы между группами не учитываются");
             UpdateTaskLabel();
             PlayButton.IsEnabled = true;
             RepeatButton.IsEnabled = true;
             CheckButton.IsEnabled = true;
-            PlaybackStatusLabel.Text = $"Готово · {_currentClip.Duration:mm\\:ss}";
+            PlaybackStatusLabel.Text = Texts.F("Готово · {0:mm\\:ss}", _currentClip.Duration);
         }
         catch (Exception exception)
         {
-            await DisplayAlertAsync("Ошибка", exception.Message, "Закрыть");
+            await DisplayAlertAsync(Texts.T("Ошибка"), exception.Message, Texts.T("Закрыть"));
         }
         finally
         {
@@ -140,17 +141,17 @@ public partial class TrainingPage : ContentPage
         PlayButton.IsEnabled = false;
         RepeatButton.IsEnabled = false;
         StopButton.IsEnabled = true;
-        PlaybackStatusLabel.Text = "Сначала Ж Ж Ж, затем начнётся задание…";
+        PlaybackStatusLabel.Text = Texts.T("Сначала Ж Ж Ж, затем начнётся задание…");
         try
         {
             var path = await AudioFileService.SaveClipAsync(_currentClip, "current-training.wav", _playbackCancellation.Token);
             await _audioPlayback.PlayAsync(path, _playbackCancellation.Token);
-            PlaybackStatusLabel.Text = "Готово — введите ответ";
+            PlaybackStatusLabel.Text = Texts.T("Готово — введите ответ");
             AnswerEditor.Focus();
         }
         catch (OperationCanceledException)
         {
-            PlaybackStatusLabel.Text = "Воспроизведение остановлено";
+            PlaybackStatusLabel.Text = Texts.T("Воспроизведение остановлено");
         }
         finally
         {
@@ -181,7 +182,7 @@ public partial class TrainingPage : ContentPage
         TaskLabel.Text = _answerVisible
             ? _currentTask
             : new string(_currentTask.Select(symbol => char.IsWhiteSpace(symbol) ? ' ' : '•').ToArray());
-        ToggleAnswerButton.Text = _answerVisible ? "Скрыть" : "Показать";
+        ToggleAnswerButton.Text = _answerVisible ? Texts.T("Скрыть") : Texts.T("Показать");
     }
 
     private void CheckButton_OnClicked(object sender, EventArgs e)
@@ -201,15 +202,15 @@ public partial class TrainingPage : ContentPage
                 settings.CharactersPerMinute, _currentGroupCount, result));
             UpdateHistoryLabel();
         }
-        AccuracyLabel.Text = $"Точность: {result.AccuracyPercent:0.#}%";
+        AccuracyLabel.Text = Texts.F("Точность: {0:0.#}%", result.AccuracyPercent);
         if (result.IsPerfect)
         {
-            ResultLabel.Text = "Отлично: все символы распознаны правильно";
+            ResultLabel.Text = Texts.T("Отлично: все символы распознаны правильно");
             ResultLabel.TextColor = (Color)Application.Current!.Resources["PrimaryDark"];
         }
         else
         {
-            ResultLabel.Text = "Ошибки: " + string.Join(", ", result.Mistakes.Take(8)
+            ResultLabel.Text = Texts.T("Ошибки: ") + string.Join(", ", result.Mistakes.Take(8)
                 .Select(FormatMistake));
             ResultLabel.TextColor = (Color)Application.Current!.Resources["Danger"];
         }
@@ -230,7 +231,7 @@ public partial class TrainingPage : ContentPage
         var summary = TrainingStatistics.Summarize(_historyStore.Load());
         HistoryLabel.Text = summary.Sessions == 0
             ? string.Empty
-            : $"За всё время: {summary.Sessions} · средняя точность {summary.AverageAccuracy:0.#}% · лучшая {summary.BestAccuracy:0.#}%";
+            : Texts.F("За всё время: {0} · средняя точность {1:0.#}% · лучшая {2:0.#}%", summary.Sessions, summary.AverageAccuracy, summary.BestAccuracy);
     }
 
     private static string FormatMistake(CharacterMistake mistake)

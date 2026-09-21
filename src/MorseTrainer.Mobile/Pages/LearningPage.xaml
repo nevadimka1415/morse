@@ -1,26 +1,19 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:loc="clr-namespace:MorseTrainer.Mobile.Localization"
              xmlns:domain="clr-namespace:MorseTrainer.Domain;assembly=MorseTrainer.Core"
              x:Class="MorseTrainer.Mobile.Pages.LearningPage"
-             Title="Обучение">
+             Title="{loc:Loc 'Обучение'}">
     <Grid x:Name="RootLayout" Padding="14" RowDefinitions="Auto,Auto,*,Auto" RowSpacing="10">
         <VerticalStackLayout>
-            <Label Text="Обучение" FontSize="26" FontAttributes="Bold" />
-            <Label Text="Напевы сохранены в приложении и работают без интернета" Opacity="0.65" />
+            <Label Text="{loc:Loc 'Обучение'}" FontSize="26" FontAttributes="Bold" />
+            <Label Text="{loc:Loc 'Напевы сохранены в приложении и работают без интернета'}" Opacity="0.65" />
         </VerticalStackLayout>
 
         <Grid Grid.Row="1" ColumnDefinitions="*,10,*">
-            <Picker x:Name="AlphabetPicker" Title="Алфавит" SelectedIndex="0"
-                    SelectedIndexChanged="Filter_OnChanged">
-                <Picker.Items>
-                    <x:String>Русские</x:String>
-                    <x:String>Латинские</x:String>
-                    <x:String>Русские и латинские</x:String>
-                    <x:String>Цифры</x:String>
-                </Picker.Items>
-            </Picker>
-            <SearchBar x:Name="SearchBox" Grid.Column="2" Placeholder="Найти"
+            <Picker x:Name="AlphabetPicker" Title="{loc:Loc 'Алфавит'}" SelectedIndexChanged="Filter_OnChanged" />
+            <SearchBar x:Name="SearchBox" Grid.Column="2" Placeholder="{loc:Loc 'Найти'}"
                        TextChanged="Filter_OnChanged" />
         </Grid>
 
@@ -38,9 +31,9 @@
                             </Grid>
                             <Label Text="{Binding Chant}" FontAttributes="Bold" LineBreakMode="WordWrap" />
                             <Grid ColumnDefinitions="*,6,*">
-                                <Button Text="Голос" Padding="8,7" CommandParameter="{Binding Symbol}"
+                                <Button Text="{loc:Loc 'Голос'}" Padding="8,7" CommandParameter="{Binding Symbol}"
                                         Clicked="VoiceButton_OnClicked" />
-                                <Button Grid.Column="2" Text="Сигнал" Padding="8,7" CommandParameter="{Binding Symbol}"
+                                <Button Grid.Column="2" Text="{loc:Loc 'Сигнал'}" Padding="8,7" CommandParameter="{Binding Symbol}"
                                         Clicked="SignalButton_OnClicked" />
                             </Grid>
                         </VerticalStackLayout>
@@ -53,13 +46,13 @@
             <VerticalStackLayout Spacing="8">
                 <Grid ColumnDefinitions="*,Auto">
                     <VerticalStackLayout>
-                        <Label Text="Проверка на слух" FontAttributes="Bold" FontSize="17" />
-                        <Label x:Name="QuizStatusLabel" Text="Прослушайте сигнал и выберите символ" Opacity="0.65" />
+                        <Label Text="{loc:Loc 'Проверка на слух'}" FontAttributes="Bold" FontSize="17" />
+                        <Label x:Name="QuizStatusLabel" Text="{loc:Loc 'Прослушайте сигнал и выберите символ'}" Opacity="0.65" />
                     </VerticalStackLayout>
-                    <Button Grid.Column="1" Text="Новое" Clicked="QuizButton_OnClicked" />
+                    <Button Grid.Column="1" Text="{loc:Loc 'Новое'}" Clicked="QuizButton_OnClicked" />
                 </Grid>
                 <FlexLayout x:Name="QuizAnswers" Direction="Row" Wrap="Wrap" JustifyContent="SpaceAround" />
-                <Label x:Name="QuizScoreLabel" Text="Результат: 0 / 0" HorizontalTextAlignment="Center" />
+                <Label x:Name="QuizScoreLabel" Text="{loc:Loc 'Результат: 0 / 0'}" HorizontalTextAlignment="Center" />
             </VerticalStackLayout>
         </Border>
     </Grid>

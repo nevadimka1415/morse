@@ -2,6 +2,7 @@ using System.Diagnostics;
 using MorseTrainer.Domain;
 using MorseTrainer.Mobile.Services;
 using MorseTrainer.Services;
+using MorseTrainer.Localization;
 
 namespace MorseTrainer.Mobile.Pages;
 
@@ -64,7 +65,7 @@ public partial class KeyerPage : ContentPage
             _keyer = new KeyerDecoder((AlphabetMode)alphabet, speed);
             _keyerSpeed = speed;
             _keyerAlphabet = alphabet;
-            TimingLabel.Text = $"Точка: {_keyer.UnitMilliseconds:0} мс · тире от {_keyer.UnitMilliseconds * KeyerDecoder.DashThresholdUnits:0} мс";
+            TimingLabel.Text = Texts.F("Точка: {0:0} мс · тире от {1:0} мс", _keyer.UnitMilliseconds, _keyer.UnitMilliseconds * KeyerDecoder.DashThresholdUnits);
         }
     }
 
@@ -179,7 +180,7 @@ public partial class KeyerPage : ContentPage
         var pool = MorseAlphabet.BuildPool(alphabet, content, settings.CustomSymbols, settings.KochLevel);
         if (pool.Count == 0)
         {
-            await DisplayAlertAsync("Нет символов", "Откройте настройки и выберите хотя бы один символ.", "Понятно");
+            await DisplayAlertAsync(Texts.T("Нет символов"), Texts.T("Откройте настройки и выберите хотя бы один символ."), Texts.T("Понятно"));
             return;
         }
 
@@ -202,13 +203,13 @@ public partial class KeyerPage : ContentPage
         var result = TrainingEvaluator.Evaluate(_target, _keyer.Text);
         if (result.IsPerfect)
         {
-            ResultLabel.Text = "Отлично: передано без ошибок.";
+            ResultLabel.Text = Texts.T("Отлично: передано без ошибок.");
             ResultLabel.TextColor = (Color)Application.Current!.Resources["PrimaryDark"];
         }
         else
         {
             var details = result.Mistakes.Take(8).Select(mistake => $"{mistake.Position}: {mistake.Expected}→{mistake.Actual?.ToString() ?? "∅"}");
-            ResultLabel.Text = $"Точность {result.AccuracyPercent:0.#}%. Ошибки: {string.Join(", ", details)}";
+            ResultLabel.Text = Texts.F("Точность {0:0.#}%. Ошибки: {1}", result.AccuracyPercent, string.Join(", ", details));
             ResultLabel.TextColor = (Color)Application.Current!.Resources["Danger"];
         }
     }

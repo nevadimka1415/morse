@@ -1,5 +1,7 @@
 using System.Text;
+using System.Text.RegularExpressions;
 using MorseTrainer.Domain;
+using MorseTrainer.Localization;
 using MorseTrainer.Models;
 using MorseTrainer.Services;
 
@@ -22,7 +24,9 @@ var tests = new (string Name, Action Run)[]
     ("Farnsworth preset", TestFarnsworthPreset),
     ("Profile transfer", TestProfileTransfer),
     ("Keyer decoder", TestKeyerDecoder),
-    ("Loop tone", TestLoopTone)
+    ("Loop tone", TestLoopTone),
+    ("Localization", TestLocalization),
+    ("Localization coverage", TestLocalizationCoverage)
 };
 
 var failures = new List<string>();
@@ -338,6 +342,49 @@ static void TestLoopTone()
     var first = BitConverter.ToInt16(tone.WavBytes, 44);
     var last = BitConverter.ToInt16(tone.WavBytes, tone.WavBytes.Length - 2);
     Assert(first == 0 && Math.Abs(last) < 2000, "Loop tone must start and end near zero crossing for a seamless loop.");
+}
+
+static void TestLocalization()
+{
+    Texts.Apply(AppLanguage.Russian);
+    Assert(Texts.T("Тренировка") == "Тренировка", "Russian mode must keep Russian text.");
+    Texts.Apply(AppLanguage.English);
+    Assert(Texts.IsEnglish && Texts.T("Тренировка") == "Training", "English mode must translate.");
+    Assert(Texts.T("нет такого ключа") == "нет такого ключа", "Missing translation must fall back to the key.");
+    Assert(Texts.F("{0} Гц", 700) == "700 Hz", "F must format the translated template.");
+    Texts.Apply(AppLanguage.System, "de");
+    Assert(Texts.IsEnglish, "System language other than Russian must select English.");
+    Texts.Apply(AppLanguage.System, "ru");
+    Assert(!Texts.IsEnglish, "Russian system language must select Russian.");
+    Texts.Apply(AppLanguage.Russian);
+}
+
+static void TestLocalizationCoverage()
+{
+    var root = FindRepositoryRoot();
+    var missing = new SortedSet<string>(StringComparer.Ordinal);
+    var used = 0;
+    foreach (var file in Directory.EnumerateFiles(Path.Combine(root, "src"), "*.xaml", SearchOption.AllDirectories))
+    {
+        foreach (Match match in Regex.Matches(File.ReadAllText(file), @"\{loc:Loc '([^']+)'\}"))
+        {
+            used++;
+            if (!Texts.Translations.ContainsKey(match.Groups[1].Value)) missing.Add(match.Groups[1].Value);
+        }
+    }
+
+    foreach (var file in Directory.EnumerateFiles(Path.Combine(root, "src"), "*.cs", SearchOption.AllDirectories))
+    {
+        foreach (Match match in Regex.Matches(File.ReadAllText(file), @"Texts\.[TF]\(""((?:[^""\\]|\\.)*)"""))
+        {
+            used++;
+            var key = Regex.Unescape(match.Groups[1].Value);
+            if (!Texts.Translations.ContainsKey(key)) missing.Add(key);
+        }
+    }
+
+    Assert(used > 300, $"Localization markers must be present in XAML and code, found {used}.");
+    Assert(missing.Count == 0, "Missing English translations: " + string.Join(" | ", missing.Take(15)));
 }
 
 static string FindRepositoryRoot()

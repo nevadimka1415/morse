@@ -1,5 +1,7 @@
 using MorseTrainer.Mobile.Pages;
 using MorseTrainer.Mobile.Services;
+using System.Globalization;
+using MorseTrainer.Localization;
 using MorseTrainer.Services;
 
 namespace MorseTrainer.Mobile;
@@ -8,6 +10,10 @@ public static class MauiProgram
 {
     public static MauiApp CreateMauiApp()
     {
+        // Язык выбирается до создания страниц: их XAML читает переводы при разборе
+        var startupSettings = new MobileSettingsService().LoadSettings();
+        Texts.Apply((AppLanguage)Math.Clamp(startupSettings.LanguageIndex, 0, 2), CultureInfo.CurrentUICulture.TwoLetterISOLanguageName);
+
         var builder = MauiApp.CreateBuilder();
         builder.UseMauiApp<App>();
 
