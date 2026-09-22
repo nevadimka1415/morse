@@ -433,6 +433,14 @@ public static class Texts
         ["Позиции ошибок: {0}"] = "Mistake positions: {0}",
         ["Ответ:"] = "Answer:",
         ["{0} · экзамен"] = "{0} · exam",
+        // ---- напоминание (телефон) ----
+        ["Напоминание"] = "Reminder",
+        ["Напоминать о тренировке"] = "Remind me to practice",
+        ["Время напоминания"] = "Reminder time",
+        ["Каждый день в {0}"] = "Every day at {0}",
+        ["Напоминание выключено"] = "Reminder is off",
+        ["Уведомления запрещены: разрешите их для Morse Trainer в настройках телефона."] = "Notifications are blocked: allow them for Morse Trainer in the phone settings.",
+        ["Пора потренироваться: пять минут азбуки Морзе."] = "Time to practice: five minutes of Morse code.",
         // ---- отчёт о сбое (телефон) ----
         ["Есть отчёт о сбое"] = "Crash report available",
         ["Отчёт о сбое от {0:dd.MM.yyyy HH:mm}"] = "Crash report from {0:dd.MM.yyyy HH:mm}",

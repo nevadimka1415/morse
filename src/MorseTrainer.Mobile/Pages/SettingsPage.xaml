@@ -152,6 +152,21 @@
 
             <Border>
                 <VerticalStackLayout Spacing="10">
+                    <Label Text="{loc:Loc 'Напоминание'}" FontSize="18" FontAttributes="Bold" />
+                    <Grid ColumnDefinitions="*,Auto">
+                        <Label Text="{loc:Loc 'Напоминать о тренировке'}" VerticalOptions="Center" />
+                        <Switch x:Name="ReminderSwitch" Grid.Column="1" Toggled="ReminderSwitch_OnToggled" />
+                    </Grid>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <Label Text="{loc:Loc 'Время напоминания'}" VerticalOptions="Center" />
+                        <TimePicker x:Name="ReminderTimePicker" Grid.Column="1" Time="19:00" PropertyChanged="ReminderTimePicker_OnPropertyChanged" />
+                    </Grid>
+                    <Label x:Name="ReminderStatusLabel" Text="{loc:Loc 'Напоминание выключено'}" Opacity="0.65" FontSize="13" LineBreakMode="WordWrap" />
+                </VerticalStackLayout>
+            </Border>
+
+            <Border>
+                <VerticalStackLayout Spacing="10">
                     <Label Text="{loc:Loc 'О программе'}" FontSize="18" FontAttributes="Bold" />
                     <Label x:Name="VersionLabel" Text="Morse Trainer" />
                     <Button Text="{loc:Loc 'Проверить обновления'}" Clicked="CheckUpdatesButton_OnClicked" />

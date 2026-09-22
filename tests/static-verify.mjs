@@ -22,6 +22,11 @@ const requiredFiles = [
   'src/MorseTrainer/Domain/ExamSession.cs',
   'src/MorseTrainer/Domain/SpeedLadder.cs',
   'src/MorseTrainer/Domain/KeyerAnalysis.cs',
+  'src/MorseTrainer/Domain/ReminderSchedule.cs',
+  'src/MorseTrainer.Mobile/Services/IReminderService.cs',
+  'src/MorseTrainer.Mobile/Services/ReminderTexts.cs',
+  'src/MorseTrainer.Mobile/Platforms/Android/ReminderService.cs',
+  'src/MorseTrainer.Mobile/Platforms/iOS/ReminderService.cs',
   'src/MorseTrainer.Mobile/Pages/KeyerPage.xaml',
   'src/MorseTrainer.Mobile/Pages/KeyerPage.xaml.cs',
   'src/MorseTrainer.Mobile/Services/TabletLayout.cs',
@@ -124,6 +129,9 @@ for (const relativePath of [
   'src/MorseTrainer/Domain/ExamSession.cs',
   'src/MorseTrainer/Domain/SpeedLadder.cs',
   'src/MorseTrainer/Domain/KeyerAnalysis.cs',
+  'src/MorseTrainer/Domain/ReminderSchedule.cs',
+  'src/MorseTrainer.Mobile/Platforms/Android/ReminderService.cs',
+  'src/MorseTrainer.Mobile/Platforms/iOS/ReminderService.cs',
   'src/MorseTrainer.Mobile/Pages/KeyerPage.xaml.cs',
   'src/MorseTrainer.Mobile/Services/TabletLayout.cs',
   'src/MorseTrainer/Localization/Texts.cs',
@@ -164,6 +172,11 @@ assert(read('src/MorseTrainer/MainWindow.xaml').includes('x:Name="ProgressProfil
   'Both apps must filter progress by profile.');
 assert(read('src/MorseTrainer/MainWindow.xaml').includes('x:Name="ExportCsvButton"') && read('src/MorseTrainer.Mobile/Pages/ProgressPage.xaml').includes('ShareCsvButton_OnClicked'),
   'Both apps must export the history as CSV.');
+const androidManifest = read('src/MorseTrainer.Mobile/Platforms/Android/AndroidManifest.xml');
+assert(androidManifest.includes('android.permission.POST_NOTIFICATIONS') && androidManifest.includes('android.permission.RECEIVE_BOOT_COMPLETED'),
+  'Android manifest must allow reminder notifications and rescheduling after reboot.');
+assert(read('src/MorseTrainer.Mobile/Pages/SettingsPage.xaml').includes('x:Name="ReminderSwitch"') && read('src/MorseTrainer.Mobile/MauiProgram.cs').includes('IReminderService'),
+  'Settings page must offer the practice reminder and MauiProgram must register the platform service.');
 
 for (const file of ['src/MorseTrainer/MainWindow.xaml', 'src/MorseTrainer/SymbolSelectionWindow.xaml', ...['TrainingPage', 'LearningPage', 'SettingsPage', 'ProgressPage', 'KeyerPage'].map((page) => `src/MorseTrainer.Mobile/Pages/${page}.xaml`)]) {
   const xaml = read(file);

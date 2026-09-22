@@ -14,15 +14,17 @@ public partial class SettingsPage : ContentPage
 {
     private static readonly HttpClient UpdateClient = new() { Timeout = TimeSpan.FromSeconds(15) };
     private readonly MobileSettingsService _settingsService;
+    private readonly IReminderService _reminders;
     private AppSettings _settings = new();
     private IReadOnlyList<TrainingProfile> _profiles = Array.Empty<TrainingProfile>();
     private readonly HashSet<char> _selectedSymbols = new();
     private bool _ready;
 
-    public SettingsPage(MobileSettingsService settingsService)
+    public SettingsPage(MobileSettingsService settingsService, IReminderService reminders)
     {
         InitializeComponent();
         _settingsService = settingsService;
+        _reminders = reminders;
         // Списки пикеров задаются кодом, чтобы переводиться вместе с интерфейсом
         ThemePicker.ItemsSource = new[] { Texts.T("Системная"), Texts.T("Тёмная"), Texts.T("Светлая") };
         LanguagePicker.ItemsSource = new[] { Texts.T("Системный"), Texts.T("Русский (Russian)"), Texts.T("English") };
@@ -48,6 +50,68 @@ public partial class SettingsPage : ContentPage
         }
 
         RefreshCrashReport();
+    }
+
+    // ---------- напоминание ----------
+
+    private void UpdateReminderStatus()
+    {
+        ReminderStatusLabel.Text = _settings.ReminderEnabled
+            ? Texts.F("Каждый день в {0}", ReminderSchedule.ToTime(_settings.ReminderMinutes).ToString(@"hh\:mm"))
+            : Texts.T("Напоминание выключено");
+    }
+
+    private async void ReminderSwitch_OnToggled(object sender, ToggledEventArgs e)
+    {
+        if (_ready)
+        {
+            await ApplyReminderAsync();
+        }
+    }
+
+    private async void ReminderTimePicker_OnPropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (_ready && e.PropertyName == TimePicker.TimeProperty.PropertyName)
+        {
+            await ApplyReminderAsync();
+        }
+    }
+
+    /// <summary>Сохраняет переключатель и время; при включении просит разрешение и ставит уведомление.</summary>
+    private async Task ApplyReminderAsync()
+    {
+        _settings.ReminderMinutes = ReminderSchedule.ToMinutes(ReminderTimePicker.Time ?? ReminderSchedule.ToTime(ReminderSchedule.DefaultMinutes));
+        _settings.ReminderEnabled = ReminderSwitch.IsToggled;
+        try
+        {
+            if (_settings.ReminderEnabled)
+            {
+                if (!await _reminders.RequestPermissionAsync())
+                {
+                    _settings.ReminderEnabled = false;
+                    _ready = false;
+                    ReminderSwitch.IsToggled = false;
+                    _ready = true;
+                    await DisplayAlertAsync(Texts.T("Напоминание"),
+                        Texts.T("Уведомления запрещены: разрешите их для Morse Trainer в настройках телефона."), Texts.T("Понятно"));
+                }
+                else
+                {
+                    await _reminders.ScheduleDailyAsync(ReminderSchedule.ToTime(_settings.ReminderMinutes), ReminderTexts.Title, ReminderTexts.Body(_settings));
+                }
+            }
+            else
+            {
+                _reminders.Cancel();
+            }
+        }
+        catch (Exception exception)
+        {
+            await DisplayAlertAsync(Texts.T("Напоминание"), exception.Message, Texts.T("Закрыть"));
+        }
+
+        _settingsService.SaveSettings(_settings);
+        UpdateReminderStatus();
     }
 
     // ---------- отчёт о сбое ----------
@@ -123,6 +187,9 @@ public partial class SettingsPage : ContentPage
         GroupGapSlider.Value = Math.Clamp(_settings.GroupGapUnits, 7, 30);
         StartSignalSwitch.IsToggled = _settings.PlayStartSignal;
         StartPauseSlider.Value = Math.Clamp(_settings.StartPauseUnits, 7, 60);
+        ReminderSwitch.IsToggled = _settings.ReminderEnabled;
+        ReminderTimePicker.Time = ReminderSchedule.ToTime(_settings.ReminderMinutes);
+        UpdateReminderStatus();
         NoiseSlider.Value = Math.Clamp(_settings.NoisePercent, 0, 100);
         QsbSlider.Value = Math.Clamp(_settings.QsbPercent, 0, 100);
         DriftSlider.Value = Math.Clamp(_settings.DriftHz, 0, NoiseProfile.MaxDriftHz);

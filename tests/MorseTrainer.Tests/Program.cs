@@ -35,7 +35,8 @@ var tests = new (string Name, Action Run)[]
     ("Noise, QSB and drift", TestNoise),
     ("Speed ladder", TestSpeedLadder),
     ("Keyer analysis", TestKeyerAnalysis),
-    ("Progress filter and CSV", TestProgressCsv)
+    ("Progress filter and CSV", TestProgressCsv),
+    ("Reminder schedule", TestReminderSchedule)
 };
 
 var failures = new List<string>();
@@ -652,6 +653,18 @@ static void TestProgressCsv()
     Texts.Apply(AppLanguage.English);
     Assert(TrainingStatistics.ToCsv(records).StartsWith("Date;Profile;Exam;Speed (cpm);Groups;Symbols;Correct;Accuracy (%);Mistakes"), "CSV header must be translated.");
     Texts.Apply(AppLanguage.Russian);
+}
+
+static void TestReminderSchedule()
+{
+    Assert(ReminderSchedule.DefaultMinutes == 19 * 60 && new AppSettings().ReminderMinutes == ReminderSchedule.DefaultMinutes && !new AppSettings().ReminderEnabled,
+        "Default reminder is 19:00 and off.");
+    Assert(ReminderSchedule.ToTime(19 * 60 + 30) == new TimeSpan(19, 30, 0) && ReminderSchedule.ToMinutes(new TimeSpan(7, 5, 0)) == 425, "Minutes and time must convert both ways.");
+    Assert(ReminderSchedule.ClampMinutes(-10) == 1430 && ReminderSchedule.ClampMinutes(1500) == 60, "Minutes must wrap around the day.");
+    var now = new DateTime(2026, 9, 22, 18, 0, 0);
+    Assert(ReminderSchedule.NextOccurrence(now, new TimeSpan(19, 0, 0)) == new DateTime(2026, 9, 22, 19, 0, 0), "Later today must fire today.");
+    Assert(ReminderSchedule.NextOccurrence(now, new TimeSpan(9, 0, 0)) == new DateTime(2026, 9, 23, 9, 0, 0), "Earlier time must fire tomorrow.");
+    Assert(ReminderSchedule.NextOccurrence(now, new TimeSpan(18, 0, 0)) == new DateTime(2026, 9, 23, 18, 0, 0), "Exactly now fires tomorrow.");
 }
 
 static string FindRepositoryRoot()
