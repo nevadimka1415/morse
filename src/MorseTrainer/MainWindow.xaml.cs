@@ -23,6 +23,8 @@ namespace MorseTrainer;
 public partial class MainWindow : Window
 {
     private static readonly HttpClient UpdateClient = new() { Timeout = TimeSpan.FromSeconds(15) };
+    // Установщик весит десятки мегабайт: отдельный клиент с длинным таймаутом
+    private static readonly HttpClient DownloadClient = new() { Timeout = TimeSpan.FromMinutes(10) };
     private readonly SettingsService _settingsService = new();
     private readonly TrainingHistoryStore _historyStore = new(AppPaths.HistoryFile);
     private IReadOnlyList<TrainingRecord> _history = Array.Empty<TrainingRecord>();
@@ -70,6 +72,24 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        ApplyWindowBounds(_settingsService.Load());
+    }
+
+    /// <summary>Размер окна и вкладка из прошлого запуска; применяется до показа, чтобы окно сразу встало по центру нужного размера.</summary>
+    private void ApplyWindowBounds(AppSettings settings)
+    {
+        if (settings.WindowWidth >= MinWidth && settings.WindowHeight >= MinHeight)
+        {
+            Width = settings.WindowWidth;
+            Height = settings.WindowHeight;
+        }
+
+        if (settings.WindowMaximized)
+        {
+            WindowState = WindowState.Maximized;
+        }
+
+        MainTabs.SelectedIndex = Math.Clamp(settings.MainTabIndex, 0, MainTabs.Items.Count - 1);
     }
 
     private async void Window_OnLoaded(object sender, RoutedEventArgs e)
@@ -157,12 +177,30 @@ public partial class MainWindow : Window
             if (UpdateService.IsNewer(CurrentVersion, info.LatestVersion))
             {
                 var notes = string.IsNullOrWhiteSpace(info.Notes) ? string.Empty : "\n\n" + Truncate(info.Notes, 600);
-                var answer = MessageBox.Show(this,
-                    Texts.F("Доступна версия {0}, у вас {1}.{2}\n\nОткрыть страницу загрузки?", info.LatestVersion, CurrentVersion, notes),
-                    Texts.T("Обновление Morse Trainer"), MessageBoxButton.YesNo, MessageBoxImage.Information);
-                if (answer == MessageBoxResult.Yes)
+                if (info.WindowsInstallerUrl is null)
                 {
-                    OpenInBrowser(info.WindowsInstallerUrl ?? info.ReleasePageUrl);
+                    var answer = MessageBox.Show(this,
+                        Texts.F("Доступна версия {0}, у вас {1}.{2}\n\nОткрыть страницу загрузки?", info.LatestVersion, CurrentVersion, notes),
+                        Texts.T("Обновление Morse Trainer"), MessageBoxButton.YesNo, MessageBoxImage.Information);
+                    if (answer == MessageBoxResult.Yes)
+                    {
+                        OpenInBrowser(info.ReleasePageUrl);
+                    }
+                }
+                else
+                {
+                    // Да — скачать установщик и запустить обновление, Нет — открыть страницу, Отмена — позже
+                    var answer = MessageBox.Show(this,
+                        Texts.F("Доступна версия {0}, у вас {1}.{2}\n\nДа — скачать установщик и обновиться сейчас, Нет — открыть страницу загрузки.", info.LatestVersion, CurrentVersion, notes),
+                        Texts.T("Обновление Morse Trainer"), MessageBoxButton.YesNoCancel, MessageBoxImage.Information);
+                    if (answer == MessageBoxResult.Yes)
+                    {
+                        await DownloadAndRunInstallerAsync(info.WindowsInstallerUrl);
+                    }
+                    else if (answer == MessageBoxResult.No)
+                    {
+                        OpenInBrowser(info.ReleasePageUrl);
+                    }
                 }
             }
             else
@@ -187,6 +225,34 @@ public partial class MainWindow : Window
     private static void OpenInBrowser(string url)
     {
         Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+    }
+
+    /// <summary>Скачивает установщик во временную папку с прогрессом на кнопке, запускает его и закрывает программу.</summary>
+    private async Task DownloadAndRunInstallerAsync(string url)
+    {
+        var path = Path.Combine(Path.GetTempPath(), "MorseTrainer-Setup-x64.exe");
+        using var response = await DownloadClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead);
+        response.EnsureSuccessStatusCode();
+        var total = response.Content.Headers.ContentLength;
+        await using (var source = await response.Content.ReadAsStreamAsync())
+        await using (var target = File.Create(path))
+        {
+            var buffer = new byte[81920];
+            long received = 0;
+            int read;
+            while ((read = await source.ReadAsync(buffer)) > 0)
+            {
+                await target.WriteAsync(buffer.AsMemory(0, read));
+                received += read;
+                CheckUpdatesButton.Content = total > 0
+                    ? Texts.F("Скачиваю… {0}%", received * 100 / total.Value)
+                    : Texts.F("Скачиваю… {0} МБ", received / (1024 * 1024));
+            }
+        }
+
+        CheckUpdatesButton.Content = Texts.T("Запускаю установщик…");
+        Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
+        Application.Current.Shutdown();
     }
 
     private bool _refreshingProfileFilter;
@@ -1481,7 +1547,11 @@ public partial class MainWindow : Window
             LearningAudioModeIndex = Math.Clamp(LearningAudioModeCombo.SelectedIndex, 0, 1),
             QuizCorrect = _quizCorrect,
             QuizTotal = _quizTotal,
-            ActiveProfileName = string.IsNullOrWhiteSpace(ProfileCombo.Text) ? "Основной" : ProfileCombo.Text.Trim()
+            ActiveProfileName = string.IsNullOrWhiteSpace(ProfileCombo.Text) ? "Основной" : ProfileCombo.Text.Trim(),
+            WindowWidth = WindowState == WindowState.Normal ? ActualWidth : RestoreBounds.Width,
+            WindowHeight = WindowState == WindowState.Normal ? ActualHeight : RestoreBounds.Height,
+            WindowMaximized = WindowState == WindowState.Maximized,
+            MainTabIndex = Math.Max(0, MainTabs.SelectedIndex)
         };
     }
 

@@ -2,6 +2,12 @@
   <img src="docs/logo.svg" width="96" alt="Morse Trainer logo">
   <h1>Morse Trainer</h1>
   <p>Автономный тренажёр азбуки Морзе для Windows, Android и iPhone</p>
+  <p>
+    <a href="https://github.com/nevadimka1415/morse/actions/workflows/build.yml"><img src="https://github.com/nevadimka1415/morse/actions/workflows/build.yml/badge.svg" alt="Windows build"></a>
+    <a href="https://github.com/nevadimka1415/morse/actions/workflows/mobile.yml"><img src="https://github.com/nevadimka1415/morse/actions/workflows/mobile.yml/badge.svg" alt="Mobile build"></a>
+    <a href="https://github.com/nevadimka1415/morse/releases/latest"><img src="https://img.shields.io/github/v/release/nevadimka1415/morse?label=release" alt="Latest release"></a>
+    <a href="LICENSE"><img src="https://img.shields.io/github/license/nevadimka1415/morse" alt="MIT"></a>
+  </p>
 </div>
 
 ## Возможности
@@ -41,7 +47,8 @@
 - проверочные задания на слух со счётом правильных ответов;
 - напоминание о тренировке на телефоне: переключатель и время в настройках, ежедневное локальное уведомление (Android — будильник, восстанавливается после перезагрузки; iPhone — календарное уведомление);
 - полностью автономная работа без регистрации и интернета;
-- кнопка «Обновления»: по нажатию проверяет новую версию на GitHub и открывает страницу загрузки (единственное действие, которому нужен интернет).
+- кнопка «Обновления»: по нажатию проверяет новую версию на GitHub; на Windows скачивает установщик и запускает обновление одной кнопкой, на телефоне открывает загрузку APK (единственное действие, которому нужен интернет);
+- Windows запоминает размер окна и открытую вкладку между запусками.
 
 Мобильная версия использует тот же алгоритм и офлайн-пакет напевов. Android устанавливается из APK, а iPhone-версия собирается из той же кодовой базы и требует подписи Apple. Подробности: [MOBILE.md](MOBILE.md).
 

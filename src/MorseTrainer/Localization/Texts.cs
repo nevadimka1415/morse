@@ -65,6 +65,10 @@ public static class Texts
         ["Тренировка и изучение азбуки Морзе · версия {0}"] = "Morse code training and learning · version {0}",
         ["Доступна версия {0}, у вас {1}.{2}\n\nОткрыть страницу загрузки?"] = "Version {0} is available, you have {1}.{2}\n\nOpen the download page?",
         ["У вас последняя версия {0}."] = "You have the latest version {0}.",
+        ["Доступна версия {0}, у вас {1}.{2}\n\nДа — скачать установщик и обновиться сейчас, Нет — открыть страницу загрузки."] = "Version {0} is available, you have {1}.{2}\n\nYes — download the installer and update now, No — open the download page.",
+        ["Скачиваю… {0}%"] = "Downloading… {0}%",
+        ["Скачиваю… {0} МБ"] = "Downloading… {0} MB",
+        ["Запускаю установщик…"] = "Starting the installer…",
         ["Не удалось проверить обновления. Проверьте подключение к интернету.\n\n{0}"] = "Could not check for updates. Check your internet connection.\n\n{0}",
         ["F5 — воспроизведение    Esc — остановка    Все данные хранятся только на этом компьютере"] = "F5 — play    Esc — stop    All data stays on this computer",
         // ---- тренировка (Windows) ----

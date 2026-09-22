@@ -177,6 +177,10 @@ assert(androidManifest.includes('android.permission.POST_NOTIFICATIONS') && andr
   'Android manifest must allow reminder notifications and rescheduling after reboot.');
 assert(read('src/MorseTrainer.Mobile/Pages/SettingsPage.xaml').includes('x:Name="ReminderSwitch"') && read('src/MorseTrainer.Mobile/MauiProgram.cs').includes('IReminderService'),
   'Settings page must offer the practice reminder and MauiProgram must register the platform service.');
+assert(read('src/MorseTrainer/App.xaml').includes('TargetType="GridViewColumnHeader"'), 'History table header must follow the theme.');
+assert(read('src/MorseTrainer/MainWindow.xaml.cs').includes('DownloadAndRunInstallerAsync'), 'Windows update must download and run the installer.');
+assert(read('src/MorseTrainer.Mobile/MorseTrainer.Mobile.csproj').includes('<AndroidLinkTool>r8</AndroidLinkTool>'), 'Android release build must use R8.');
+assert(read('README.md').includes('actions/workflows/build.yml/badge.svg'), 'README must show the build status badges.');
 
 for (const file of ['src/MorseTrainer/MainWindow.xaml', 'src/MorseTrainer/SymbolSelectionWindow.xaml', ...['TrainingPage', 'LearningPage', 'SettingsPage', 'ProgressPage', 'KeyerPage'].map((page) => `src/MorseTrainer.Mobile/Pages/${page}.xaml`)]) {
   const xaml = read(file);

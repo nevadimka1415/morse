@@ -31,4 +31,9 @@ public sealed class AppSettings
     public int QuizCorrect { get; set; }
     public int QuizTotal { get; set; }
     public string ActiveProfileName { get; set; } = "Основной";
+    // Windows: размер окна и открытая вкладка между запусками (0 — не сохранялось)
+    public double WindowWidth { get; set; }
+    public double WindowHeight { get; set; }
+    public bool WindowMaximized { get; set; }
+    public int MainTabIndex { get; set; }
 }
