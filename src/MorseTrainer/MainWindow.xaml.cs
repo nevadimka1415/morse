@@ -516,6 +516,22 @@ public partial class MainWindow : Window
             KeyerResultText.Text = Texts.F("Точность {0:0.#}%. Ошибки: {1}{2}", result.AccuracyPercent, string.Join(", ", details), result.Mistakes.Count > 8 ? " …" : string.Empty);
             KeyerResultText.Foreground = (Brush)FindResource("DangerBrush");
         }
+
+        ShowKeyerAnalysis();
+    }
+
+    private void KeyerAnalyzeButton_OnClick(object sender, RoutedEventArgs e) => ShowKeyerAnalysis();
+
+    private void ShowKeyerAnalysis()
+    {
+        if (_keyer is null || KeyerAnalysisText is null)
+        {
+            return;
+        }
+
+        var analysis = _keyer.Analyze();
+        KeyerAnalysisText.Text = analysis.Describe();
+        KeyerAnalysisText.Foreground = (Brush)FindResource(analysis.HasEnoughData ? "TextBrush" : "MutedTextBrush");
     }
 
     private void KeyerBackspaceButton_OnClick(object sender, RoutedEventArgs e)

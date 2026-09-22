@@ -20,10 +20,13 @@
                 <VerticalStackLayout Spacing="8">
                     <Label Text="{loc:Loc 'Принято'}" Opacity="0.65" />
                     <Label x:Name="OutputLabel" Text=" " FontSize="22" FontAttributes="Bold" FontFamily="monospace" LineBreakMode="WordWrap" />
-                    <Grid ColumnDefinitions="*,8,*">
+                    <Grid ColumnDefinitions="*,8,*,8,*">
                         <Button Text="{loc:Loc 'Стереть символ'}" Clicked="BackspaceButton_OnClicked" />
                         <Button Grid.Column="2" Text="{loc:Loc 'Очистить'}" Clicked="ClearButton_OnClicked" />
+                        <Button x:Name="AnalyzeButton" Grid.Column="4" Text="{loc:Loc 'Разбор'}" Clicked="AnalyzeButton_OnClicked" />
                     </Grid>
+                    <Label x:Name="AnalysisLabel" Text="{loc:Loc 'Передайте несколько символов и нажмите «Разбор»: отношение тире к точке (норма 3:1), разброс и паузы.'}"
+                           Opacity="0.65" FontSize="13" LineBreakMode="WordWrap" />
                 </VerticalStackLayout>
             </Border>
 

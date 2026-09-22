@@ -13,6 +13,14 @@ public sealed class KeyerDecoder
     private readonly AlphabetMode _alphabet;
     private readonly System.Text.StringBuilder _text = new();
 
+    // Длительности для разбора качества: нажатия и паузы по их роли
+    private readonly List<double> _dots = new();
+    private readonly List<double> _dashes = new();
+    private readonly List<double> _elementGaps = new();
+    private readonly List<double> _symbolGaps = new();
+    private readonly List<double> _groupGaps = new();
+    private double _pendingGap = -1;
+
     public KeyerDecoder(AlphabetMode alphabet, int charactersPerMinute)
     {
         _alphabet = alphabet;
@@ -32,7 +40,28 @@ public sealed class KeyerDecoder
     /// <summary>Нажатие ключа длительностью milliseconds.</summary>
     public void Press(double milliseconds)
     {
-        PendingCode += milliseconds < UnitMilliseconds * DashThresholdUnits ? '.' : '-';
+        // Пауза перед этим нажатием закрылась: относим её к паузам внутри символа, между символами или группами
+        if (_pendingGap >= 0)
+        {
+            if (_pendingGap >= UnitMilliseconds * GroupGapUnits)
+            {
+                _groupGaps.Add(_pendingGap);
+            }
+            else if (_pendingGap >= UnitMilliseconds * SymbolGapUnits)
+            {
+                _symbolGaps.Add(_pendingGap);
+            }
+            else
+            {
+                _elementGaps.Add(_pendingGap);
+            }
+
+            _pendingGap = -1;
+        }
+
+        var isDash = milliseconds >= UnitMilliseconds * DashThresholdUnits;
+        (isDash ? _dashes : _dots).Add(milliseconds);
+        PendingCode += isDash ? '-' : '.';
     }
 
     /// <summary>
@@ -41,6 +70,7 @@ public sealed class KeyerDecoder
     /// </summary>
     public void Idle(double millisecondsSinceRelease)
     {
+        _pendingGap = Math.Max(_pendingGap, millisecondsSinceRelease);
         if (millisecondsSinceRelease >= UnitMilliseconds * SymbolGapUnits)
         {
             CommitSymbol();
@@ -82,5 +112,14 @@ public sealed class KeyerDecoder
     {
         _text.Clear();
         PendingCode = string.Empty;
+        _dots.Clear();
+        _dashes.Clear();
+        _elementGaps.Clear();
+        _symbolGaps.Clear();
+        _groupGaps.Clear();
+        _pendingGap = -1;
     }
+
+    /// <summary>Разбор качества передачи по накопленным длительностям.</summary>
+    public KeyerAnalysis Analyze() => KeyerAnalysis.From(UnitMilliseconds, _dots, _dashes, _elementGaps, _symbolGaps, _groupGaps);
 }

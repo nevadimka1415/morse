@@ -161,6 +161,20 @@ public partial class KeyerPage : ContentPage
         OutputLabel.Text = _keyer.Text.Length == 0 ? " " : _keyer.Text;
     }
 
+    private void AnalyzeButton_OnClicked(object sender, EventArgs e) => ShowAnalysis();
+
+    private void ShowAnalysis()
+    {
+        if (_keyer is null)
+        {
+            return;
+        }
+
+        var analysis = _keyer.Analyze();
+        AnalysisLabel.Text = analysis.Describe();
+        AnalysisLabel.Opacity = analysis.HasEnoughData ? 1 : 0.65;
+    }
+
     private void BackspaceButton_OnClicked(object sender, EventArgs e)
     {
         _keyer?.Backspace();
@@ -215,6 +229,8 @@ public partial class KeyerPage : ContentPage
             ResultLabel.Text = Texts.F("Точность {0:0.#}%. Ошибки: {1}", result.AccuracyPercent, string.Join(", ", details));
             ResultLabel.TextColor = (Color)Application.Current!.Resources["Danger"];
         }
+
+        ShowAnalysis();
     }
 
     // Планшет или альбомная ориентация: центрируем контент полосой до 720 px

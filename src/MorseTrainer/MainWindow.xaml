@@ -529,6 +529,9 @@
                             <Button x:Name="KeyerCheckButton" Content="{loc:Loc 'Проверить передачу'}" Click="KeyerCheckButton_OnClick"
                                     Style="{StaticResource PrimaryButton}" Visibility="Collapsed" Margin="0,0,0,12" />
                             <TextBlock x:Name="KeyerResultText" Text="" TextWrapping="Wrap" />
+                            <TextBlock Text="{loc:Loc 'Разбор качества'}" Foreground="{DynamicResource MutedTextBrush}" Margin="0,16,0,4" />
+                            <TextBlock x:Name="KeyerAnalysisText" Text="{loc:Loc 'Передайте несколько символов и нажмите «Разбор»: отношение тире к точке (норма 3:1), разброс и паузы.'}"
+                                       Foreground="{DynamicResource MutedTextBrush}" TextWrapping="Wrap" FontSize="12" />
                         </StackPanel>
                     </Border>
                     <Border Grid.Column="2" Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource BorderBrush}"
@@ -558,6 +561,8 @@
                             <StackPanel Grid.Row="6" Orientation="Horizontal">
                                 <Button x:Name="KeyerBackspaceButton" Content="{loc:Loc 'Стереть символ'}" Click="KeyerBackspaceButton_OnClick" Padding="12,7" />
                                 <Button x:Name="KeyerClearButton" Content="{loc:Loc 'Очистить'}" Click="KeyerClearButton_OnClick" Padding="12,7" Margin="10,0,0,0" />
+                                <Button x:Name="KeyerAnalyzeButton" Content="{loc:Loc 'Разбор'}" Click="KeyerAnalyzeButton_OnClick" Padding="12,7" Margin="10,0,0,0"
+                                        ToolTip="{loc:Loc 'Отношение тире к точке (норма 3:1), разброс длительностей и паузы внутри символа, между символами и группами.'}" />
                             </StackPanel>
                         </Grid>
                     </Border>

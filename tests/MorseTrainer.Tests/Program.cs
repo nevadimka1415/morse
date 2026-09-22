@@ -33,7 +33,8 @@ var tests = new (string Name, Action Run)[]
     ("Same-code evaluation", TestSameCodeEvaluation),
     ("Exam session", TestExam),
     ("Noise, QSB and drift", TestNoise),
-    ("Speed ladder", TestSpeedLadder)
+    ("Speed ladder", TestSpeedLadder),
+    ("Keyer analysis", TestKeyerAnalysis)
 };
 
 var failures = new List<string>();
@@ -577,6 +578,51 @@ static void TestSpeedLadder()
     var restored = new AppSettings();
     TrainingProfile.FromSettings("Лестница", new AppSettings { AutoSpeed = true }).ApplyTo(restored);
     Assert(restored.AutoSpeed, "Profile must carry the auto speed switch.");
+}
+
+static void TestKeyerAnalysis()
+{
+    Texts.Apply(AppLanguage.Russian);
+    var keyer = new KeyerDecoder(AlphabetMode.Russian, 60);
+    Assert(!keyer.Analyze().HasEnoughData && keyer.Analyze().Hints[0].StartsWith("Мало данных"), "Empty decoder must report not enough data.");
+
+    // Идеальный ритм: А, С, М, пробел, Е — точки 100, тире 300, паузы 100/300/800
+    keyer.Press(100); keyer.Idle(100); keyer.Press(300);
+    keyer.Idle(50); keyer.Idle(300); keyer.Press(100); keyer.Idle(100); keyer.Press(100); keyer.Idle(100); keyer.Press(100);
+    keyer.Idle(300); keyer.Press(300); keyer.Idle(100); keyer.Press(300);
+    keyer.Idle(400); keyer.Idle(800); keyer.Press(100);
+    keyer.Idle(300);
+    Assert(keyer.Text == "АСМ Е", "Decoded text must not change: " + keyer.Text);
+    var ideal = keyer.Analyze();
+    Assert(ideal.DotCount == 5 && ideal.DashCount == 3, $"Ideal keying must count 5 dots and 3 dashes, got {ideal.DotCount}/{ideal.DashCount}.");
+    Assert(Math.Abs(ideal.DashDotRatio - 3) < 0.01 && ideal.DotSpreadPercent < 0.01, "Ideal ratio must be 3:1 with no spread.");
+    Assert(Math.Abs(ideal.AverageElementGapUnits - 1) < 0.01 && Math.Abs(ideal.AverageSymbolGapUnits - 3) < 0.01 && Math.Abs(ideal.AverageGroupGapUnits - 8) < 0.01,
+        $"Gaps must be classified by their role: {ideal.AverageElementGapUnits}/{ideal.AverageSymbolGapUnits}/{ideal.AverageGroupGapUnits}.");
+    Assert(ideal.HasEnoughData && ideal.Hints.Count == 1 && ideal.Hints[0].StartsWith("Ритм ровный"), "Ideal keying must get the steady-rhythm hint: " + string.Join(" | ", ideal.Hints));
+    Assert(ideal.Describe().Contains("3.0:1") || ideal.Describe().Contains("3,0:1"), "Describe must show the ratio: " + ideal.Describe());
+
+    // Плохой ритм: короткие тире, неровные точки, затянутые паузы внутри символа
+    var sloppy = new KeyerDecoder(AlphabetMode.Latin, 60);
+    sloppy.Press(100); sloppy.Idle(250); sloppy.Press(200);
+    sloppy.Idle(300); sloppy.Press(200); sloppy.Idle(250); sloppy.Press(200);
+    sloppy.Idle(300); sloppy.Press(200); sloppy.Idle(250); sloppy.Press(100);
+    sloppy.Idle(300); sloppy.Press(100); sloppy.Idle(250); sloppy.Press(200);
+    var bad = sloppy.Analyze();
+    Assert(bad.HasEnoughData && bad.DashDotRatio < 2.5, $"Short dashes must give a low ratio: {bad.DashDotRatio}.");
+    Assert(bad.Hints.Any(hint => hint.StartsWith("Тире коротковаты")) && bad.Hints.Any(hint => hint.StartsWith("Паузы внутри символа затянуты")),
+        "Sloppy keying must get dash and gap hints: " + string.Join(" | ", bad.Hints));
+
+    var uneven = new KeyerDecoder(AlphabetMode.Latin, 60);
+    foreach (var press in new[] { 60, 160, 60, 160, 300, 300 })
+    {
+        uneven.Press(press);
+        uneven.Idle(100);
+    }
+
+    Assert(uneven.Analyze().DotSpreadPercent > 30 && uneven.Analyze().Hints.Any(hint => hint.StartsWith("Точки неровные")), "Uneven dots must be reported.");
+
+    keyer.Clear();
+    Assert(keyer.Analyze().DotCount == 0 && !keyer.Analyze().HasEnoughData, "Clear must reset the statistics.");
 }
 
 static string FindRepositoryRoot()
