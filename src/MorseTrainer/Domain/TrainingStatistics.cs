@@ -24,12 +24,14 @@ public static class TrainingStatistics
         string profileName,
         int charactersPerMinute,
         int groupCount,
-        EvaluationResult result)
+        EvaluationResult result,
+        bool isExam = false)
     {
         ArgumentNullException.ThrowIfNull(result);
         return new TrainingRecord
         {
             CompletedAt = completedAt,
+            IsExam = isExam,
             ProfileName = string.IsNullOrWhiteSpace(profileName) ? "Основной" : profileName.Trim(),
             CharactersPerMinute = charactersPerMinute,
             GroupCount = groupCount,

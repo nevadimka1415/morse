@@ -206,6 +206,8 @@
                                         Click="GenerateButton_OnClick" Padding="16,13" />
                                 <TextBlock Text="{loc:Loc 'Ctrl+G — создать новое задание'}" Foreground="{DynamicResource MutedTextBrush}"
                                            FontSize="11" HorizontalAlignment="Center" Margin="0,8,0,0" />
+                                <Button x:Name="ExamButton" Content="{loc:Loc 'Экзамен'}" Click="ExamButton_OnClick" Padding="12,9" Margin="0,14,0,0"
+                                        ToolTip="{loc:Loc 'Экзамен: задание с текущими параметрами, одно прослушивание, ответ скрыт, идёт время. После проверки — протокол и запись в истории с пометкой.'}" />
                             </StackPanel>
                         </ScrollViewer>
                     </Border>

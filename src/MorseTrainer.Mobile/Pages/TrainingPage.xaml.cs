@@ -1,3 +1,4 @@
+using Microsoft.Maui.ApplicationModel.DataTransfer;
 using MorseTrainer.Domain;
 using MorseTrainer.Models;
 using MorseTrainer.Mobile.Services;
@@ -12,6 +13,9 @@ public partial class TrainingPage : ContentPage
     private readonly MobileSettingsService _settingsService;
     private readonly TrainingHistoryStore _historyStore;
     private bool _currentTaskRecorded;
+    private ExamSession? _exam;
+    private string? _examReport;
+    private bool _examTimerRunning;
     private int _currentGroupCount;
     private CancellationTokenSource? _playbackCancellation;
     private AudioClip? _currentClip;
@@ -68,6 +72,7 @@ public partial class TrainingPage : ContentPage
     private async Task GenerateTaskAsync()
     {
         StopPlayback();
+        EndExam();
         var settings = _settingsService.LoadSettings();
         var alphabet = (AlphabetMode)Math.Clamp(settings.AlphabetIndex, 0, 2);
         var content = ContentModes.Clamp(settings.ContentModeIndex);
@@ -134,11 +139,20 @@ public partial class TrainingPage : ContentPage
 
     private async void PlayButton_OnClicked(object sender, EventArgs e)
     {
-        if (_currentClip is null)
+        await PlayCurrentAsync();
+    }
+
+    private bool CanPlayNow => _currentClip is not null && (_exam is null || _exam.CanPlay);
+
+    private async Task PlayCurrentAsync()
+    {
+        if (_currentClip is null || (_exam is not null && !_exam.CanPlay))
         {
             return;
         }
 
+        // Экзамен: прослушивание одно
+        _exam?.RegisterPlayback();
         StopPlayback();
         _playbackCancellation = new CancellationTokenSource();
         PlayButton.IsEnabled = false;
@@ -160,8 +174,8 @@ public partial class TrainingPage : ContentPage
         {
             _playbackCancellation?.Dispose();
             _playbackCancellation = null;
-            PlayButton.IsEnabled = _currentClip is not null;
-            RepeatButton.IsEnabled = _currentClip is not null;
+            PlayButton.IsEnabled = CanPlayNow;
+            RepeatButton.IsEnabled = CanPlayNow;
             StopButton.IsEnabled = false;
         }
     }
@@ -196,13 +210,24 @@ public partial class TrainingPage : ContentPage
         }
 
         var result = TrainingEvaluator.Evaluate(_currentTask, AnswerEditor.Text ?? string.Empty);
+        // Экзамен завершается первой проверкой: время останавливается, протокол готов
+        ExamResult? examResult = null;
+        if (_exam is not null && !_exam.IsFinished)
+        {
+            examResult = _exam.Finish(AnswerEditor.Text ?? string.Empty, DateTime.Now);
+            _examReport = ExamReport.Format(examResult);
+            ExamLabel.Text = Texts.F("Экзамен завершён · {0}", ExamReport.FormatDuration(examResult.Duration));
+            ExamShareButton.IsVisible = true;
+            ToggleAnswerButton.IsEnabled = true;
+        }
+
         // В историю попадает только первая проверка каждого задания
         if (!_currentTaskRecorded)
         {
             _currentTaskRecorded = true;
             var settings = _settingsService.LoadSettings();
             _historyStore.Add(TrainingStatistics.CreateRecord(DateTime.Now, settings.ActiveProfileName,
-                settings.CharactersPerMinute, _currentGroupCount, result));
+                settings.CharactersPerMinute, _currentGroupCount, result, examResult is not null));
             UpdateHistoryLabel();
         }
         AccuracyLabel.Text = Texts.F("Точность: {0:0.#}%", result.AccuracyPercent);
@@ -219,7 +244,11 @@ public partial class TrainingPage : ContentPage
         }
 
         var checkedSettings = _settingsService.LoadSettings();
-        if (checkedSettings.ContentModeIndex == (int)ContentMode.Koch)
+        if (examResult is not null)
+        {
+            ResultLabel.Text = ExamReport.Summary(examResult);
+        }
+        else if (checkedSettings.ContentModeIndex == (int)ContentMode.Koch)
         {
             var kochAlphabet = (AlphabetMode)Math.Clamp(checkedSettings.AlphabetIndex, 0, 2);
             ResultLabel.Text += "\n" + KochMethod.Advice(kochAlphabet, checkedSettings.KochLevel, result.AccuracyPercent);
@@ -227,6 +256,80 @@ public partial class TrainingPage : ContentPage
 
         _answerVisible = true;
         UpdateTaskLabel();
+    }
+
+    // ---------- Экзамен ----------
+
+    private async void ExamButton_OnClicked(object sender, EventArgs e)
+    {
+        await GenerateTaskAsync();
+        if (string.IsNullOrEmpty(_currentTask) || _currentClip is null)
+        {
+            return;
+        }
+
+        var settings = _settingsService.LoadSettings();
+        _exam = new ExamSession(_currentTask, Math.Clamp(settings.CharactersPerMinute, 20, 300), _currentGroupCount, settings.ActiveProfileName, DateTime.Now);
+        _examReport = null;
+        // Ответ скрыт до проверки, повтор запрещён: прослушивание одно
+        _answerVisible = false;
+        UpdateTaskLabel();
+        ToggleAnswerButton.IsEnabled = false;
+        RepeatButton.IsEnabled = false;
+        ExamShareButton.IsVisible = false;
+        ExamLabel.IsVisible = true;
+        UpdateExamLabel();
+        if (!_examTimerRunning)
+        {
+            _examTimerRunning = true;
+            Dispatcher.StartTimer(TimeSpan.FromSeconds(1), () =>
+            {
+                UpdateExamLabel();
+                _examTimerRunning = _exam is not null && !_exam.IsFinished;
+                return _examTimerRunning;
+            });
+        }
+
+        await PlayCurrentAsync();
+    }
+
+    private void UpdateExamLabel()
+    {
+        if (_exam is null || _exam.IsFinished)
+        {
+            return;
+        }
+
+        ExamLabel.Text = Texts.F("Экзамен · одно прослушивание · {0}", ExamReport.FormatDuration(_exam.Elapsed(DateTime.Now)));
+    }
+
+    /// <summary>Новое задание отменяет экзамен.</summary>
+    private void EndExam()
+    {
+        _exam = null;
+        _examReport = null;
+        ExamLabel.IsVisible = false;
+        ExamShareButton.IsVisible = false;
+        ToggleAnswerButton.IsEnabled = true;
+    }
+
+    private async void ExamShareButton_OnClicked(object sender, EventArgs e)
+    {
+        if (string.IsNullOrEmpty(_examReport))
+        {
+            return;
+        }
+
+        try
+        {
+            await Clipboard.Default.SetTextAsync(_examReport);
+            await Share.Default.RequestAsync(new ShareTextRequest { Title = Texts.T("Протокол экзамена Morse Trainer"), Text = _examReport });
+            PlaybackStatusLabel.Text = Texts.T("Протокол скопирован в буфер и отправлен");
+        }
+        catch (Exception exception)
+        {
+            await DisplayAlertAsync(Texts.T("Не удалось поделиться"), exception.Message, Texts.T("Закрыть"));
+        }
     }
 
     private void UpdateHistoryLabel()

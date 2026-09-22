@@ -22,9 +22,14 @@
                 </VerticalStackLayout>
             </Border>
 
-            <Button x:Name="GenerateButton" Text="{loc:Loc 'Сгенерировать новое задание'}"
-                    BackgroundColor="{StaticResource Primary}" TextColor="#06231C"
-                    Clicked="GenerateButton_OnClicked" />
+            <Grid ColumnDefinitions="*,10,Auto">
+                <Button x:Name="GenerateButton" Text="{loc:Loc 'Сгенерировать новое задание'}"
+                        BackgroundColor="{StaticResource Primary}" TextColor="#06231C"
+                        Clicked="GenerateButton_OnClicked" />
+                <Button x:Name="ExamButton" Grid.Column="2" Text="{loc:Loc 'Экзамен'}" Clicked="ExamButton_OnClicked" />
+            </Grid>
+            <Label x:Name="ExamLabel" Text="" IsVisible="False" FontAttributes="Bold" HorizontalTextAlignment="Center"
+                   TextColor="{StaticResource PrimaryDark}" />
 
             <Border>
                 <VerticalStackLayout Spacing="12">
@@ -58,6 +63,7 @@
                     <Label x:Name="AccuracyLabel" Text="{loc:Loc 'Точность: —'}" FontSize="20" FontAttributes="Bold" />
                     <Label x:Name="ResultLabel" Text="{loc:Loc 'Пробелы между группами не учитываются'}" LineBreakMode="WordWrap" />
                     <Label x:Name="HistoryLabel" Text="" Opacity="0.65" LineBreakMode="WordWrap" />
+                    <Button x:Name="ExamShareButton" Text="{loc:Loc 'Поделиться протоколом'}" IsVisible="False" Clicked="ExamShareButton_OnClicked" />
                 </VerticalStackLayout>
             </Border>
         </VerticalStackLayout>

@@ -30,7 +30,8 @@ var tests = new (string Name, Action Run)[]
     ("Crash report", TestCrashReport),
     ("Word lists", TestWordLists),
     ("Word tasks", TestWordTasks),
-    ("Same-code evaluation", TestSameCodeEvaluation)
+    ("Same-code evaluation", TestSameCodeEvaluation),
+    ("Exam session", TestExam)
 };
 
 var failures = new List<string>();
@@ -465,6 +466,42 @@ static void TestSameCodeEvaluation()
     Assert(TrainingEvaluator.Evaluate("ЁЛКА", "ЕЛКА").IsPerfect, "Е typed for Ё must be accepted.");
     Assert(TrainingEvaluator.Evaluate("R3ABC UA9XYZ", "r3abc ua9xyz").IsPerfect, "Callsigns must be compared case-insensitively.");
     Assert(!TrainingEvaluator.Matches('А', 'Б') && TrainingEvaluator.Matches('Р', 'R'), "Matches must compare Morse codes.");
+}
+
+static void TestExam()
+{
+    var started = new DateTime(2026, 9, 22, 12, 0, 0);
+    var exam = new ExamSession("АБВГД ЕЖЗИК", 60, 2, "Основной", started);
+    Assert(exam.CanPlay && exam.PlaybacksUsed == 0, "A new exam allows one playback.");
+    exam.RegisterPlayback();
+    Assert(!exam.CanPlay, "The second playback must be blocked.");
+    var blocked = false;
+    try { exam.RegisterPlayback(); } catch (InvalidOperationException) { blocked = true; }
+    Assert(blocked, "RegisterPlayback must throw after the single playback.");
+    Assert(exam.Elapsed(started.AddSeconds(75)) == TimeSpan.FromSeconds(75), "Elapsed must count from the start.");
+
+    var result = exam.Finish("абвгд ежзиЛ", started.AddSeconds(95));
+    Assert(exam.IsFinished && result.Duration == TimeSpan.FromSeconds(95) && result.Evaluation.CorrectCount == 9, "Finish must evaluate the answer and keep the duration.");
+    Assert(ExamReport.FormatDuration(result.Duration) == "1:35", "Duration must be formatted as m:ss.");
+    var bySymbol = ExamReport.MistakesBySymbol(result.Evaluation);
+    Assert(bySymbol.Count == 1 && bySymbol[0].Symbol == 'К' && bySymbol[0].Count == 1, "Mistakes must be grouped by the expected symbol.");
+    Texts.Apply(AppLanguage.Russian);
+    var report = ExamReport.Format(result);
+    Assert(report.Contains("Протокол экзамена") && report.Contains("90%") && report.Contains("1:35") && report.Contains("К ×1") && report.Contains("10: К→Л"),
+        "Report must contain accuracy, time and mistakes: " + report);
+    Assert(ExamReport.Summary(result).StartsWith("Экзамен: точность 90%"), "Summary must start with the accuracy.");
+    var finishedTwice = false;
+    try { exam.Finish("x", started); } catch (InvalidOperationException) { finishedTwice = true; }
+    Assert(finishedTwice, "Finishing twice must throw.");
+
+    var record = TrainingStatistics.CreateRecord(started, "Основной", 60, 2, result.Evaluation, isExam: true);
+    Assert(record.IsExam && record.Kind == "Экзамен", "Exam record must be marked.");
+    var plain = TrainingStatistics.CreateRecord(started, "Основной", 60, 2, result.Evaluation);
+    Assert(!plain.IsExam && plain.Kind.Length == 0, "Ordinary record must not be marked.");
+    var json = System.Text.Json.JsonSerializer.Serialize(new[] { record });
+    Assert(json.Contains("\"IsExam\":true") && !json.Contains("Kind"), "IsExam is stored, Kind is not.");
+    var legacy = System.Text.Json.JsonSerializer.Deserialize<List<TrainingRecord>>("[{\"CompletedAt\":\"2026-09-22T12:00:00\",\"ProfileName\":\"Основной\"}]")!;
+    Assert(!legacy[0].IsExam, "Old history without IsExam must load as ordinary records.");
 }
 
 static string FindRepositoryRoot()

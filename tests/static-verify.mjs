@@ -19,6 +19,7 @@ const requiredFiles = [
   'src/MorseTrainer/Domain/ProfileTransfer.cs',
   'src/MorseTrainer/Domain/KeyerDecoder.cs',
   'src/MorseTrainer/Domain/WordLists.cs',
+  'src/MorseTrainer/Domain/ExamSession.cs',
   'src/MorseTrainer.Mobile/Pages/KeyerPage.xaml',
   'src/MorseTrainer.Mobile/Pages/KeyerPage.xaml.cs',
   'src/MorseTrainer.Mobile/Services/TabletLayout.cs',
@@ -118,6 +119,7 @@ for (const relativePath of [
   'src/MorseTrainer/Domain/ProfileTransfer.cs',
   'src/MorseTrainer/Domain/KeyerDecoder.cs',
   'src/MorseTrainer/Domain/WordLists.cs',
+  'src/MorseTrainer/Domain/ExamSession.cs',
   'src/MorseTrainer.Mobile/Pages/KeyerPage.xaml.cs',
   'src/MorseTrainer.Mobile/Services/TabletLayout.cs',
   'src/MorseTrainer/Localization/Texts.cs',
@@ -146,6 +148,8 @@ assert(read('src/MorseTrainer/MainWindow.xaml').includes('Метод Коха: �
   'Both apps must offer the Koch content mode.');
 assert(read('src/MorseTrainer/MainWindow.xaml').includes("{loc:Loc 'Позывные'}") && read('src/MorseTrainer.Mobile/Pages/SettingsPage.xaml.cs').includes('Texts.T("Позывные")'),
   'Both apps must offer the words, callsigns and Q-code content modes.');
+assert(read('src/MorseTrainer/MainWindow.xaml').includes('x:Name="ExamButton"') && read('src/MorseTrainer.Mobile/Pages/TrainingPage.xaml').includes('x:Name="ExamButton"'),
+  'Both apps must offer the exam mode.');
 
 for (const file of ['src/MorseTrainer/MainWindow.xaml', 'src/MorseTrainer/SymbolSelectionWindow.xaml', ...['TrainingPage', 'LearningPage', 'SettingsPage', 'ProgressPage', 'KeyerPage'].map((page) => `src/MorseTrainer.Mobile/Pages/${page}.xaml`)]) {
   const xaml = read(file);

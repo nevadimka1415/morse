@@ -27,6 +27,9 @@ public partial class MainWindow : Window
     private readonly TrainingHistoryStore _historyStore = new(AppPaths.HistoryFile);
     private IReadOnlyList<TrainingRecord> _history = Array.Empty<TrainingRecord>();
     private bool _currentTaskRecorded;
+    private ExamSession? _exam;
+    private DispatcherTimer? _examTimer;
+    private string? _examReport;
     private const int KeyerTabIndex = 2;
     private readonly Stopwatch _keyerClock = Stopwatch.StartNew();
     private KeyerDecoder? _keyer;
@@ -90,6 +93,7 @@ public partial class MainWindow : Window
 
     private void Window_OnClosing(object? sender, CancelEventArgs e)
     {
+        _examTimer?.Stop();
         StopPlayback(resetProgress: false);
         StopLearningPlayback();
         StopKeyerTone();
@@ -200,7 +204,7 @@ public partial class MainWindow : Window
             .Take(50)
             .Select(item => new HistoryRow(
                 item.CompletedAt.ToString("dd.MM.yyyy HH:mm", CultureInfo.CurrentCulture),
-                item.ProfileName,
+                item.IsExam ? Texts.F("{0} · экзамен", item.ProfileName) : item.ProfileName,
                 Texts.F("{0} зн/мин", item.CharactersPerMinute),
                 item.GroupCount.ToString(CultureInfo.InvariantCulture),
                 $"{item.AccuracyPercent:0.#}%",
@@ -584,6 +588,7 @@ public partial class MainWindow : Window
         }
 
         StopPlayback();
+        EndExam();
         SetGenerationState(isGenerating: true);
 
         try
@@ -659,13 +664,16 @@ public partial class MainWindow : Window
         await PlayCurrentAsync();
     }
 
+    private bool CanPlayNow => _currentClip is not null && (_exam is null || _exam.CanPlay);
+
     private async Task PlayCurrentAsync()
     {
-        if (_currentClip is null)
+        if (_currentClip is null || (_exam is not null && !_exam.CanPlay))
         {
             return;
         }
 
+        _exam?.RegisterPlayback();
         StopLearningPlayback();
         StopPlayback();
         var cancellation = new CancellationTokenSource();
@@ -711,8 +719,8 @@ public partial class MainWindow : Window
         {
             if (ReferenceEquals(_playbackCancellation, cancellation))
             {
-                PlayButton.IsEnabled = _currentClip is not null;
-                RepeatButton.IsEnabled = _currentClip is not null;
+                PlayButton.IsEnabled = CanPlayNow;
+                RepeatButton.IsEnabled = CanPlayNow;
                 StopButton.IsEnabled = false;
                 _playbackCancellation = null;
             }
@@ -743,8 +751,8 @@ public partial class MainWindow : Window
 
         if (PlayButton is not null)
         {
-            PlayButton.IsEnabled = _currentClip is not null;
-            RepeatButton.IsEnabled = _currentClip is not null;
+            PlayButton.IsEnabled = CanPlayNow;
+            RepeatButton.IsEnabled = CanPlayNow;
             StopButton.IsEnabled = false;
         }
     }
@@ -785,13 +793,25 @@ public partial class MainWindow : Window
         var result = TrainingEvaluator.Evaluate(_currentTask, UserAnswerText.Text);
         _attempts++;
         AttemptsText.Text = _attempts.ToString(CultureInfo.InvariantCulture);
+        // Экзамен завершается первой проверкой: время останавливается, протокол готов
+        ExamResult? examResult = null;
+        if (_exam is not null && !_exam.IsFinished)
+        {
+            examResult = _exam.Finish(UserAnswerText.Text, DateTime.Now);
+            _examTimer?.Stop();
+            _examReport = ExamReport.Format(examResult);
+            SaveTaskButton.Content = Texts.T("Сохранить протокол");
+            TaskMetaText.Text = Texts.F("Экзамен завершён · {0}", ExamReport.FormatDuration(examResult.Duration));
+            ToggleAnswerButton.IsEnabled = true;
+        }
+
         // В историю попадает только первая проверка каждого задания
         if (!_currentTaskRecorded)
         {
             _currentTaskRecorded = true;
             var taskSettings = _currentSettings ?? ReadSettings();
             var record = TrainingStatistics.CreateRecord(DateTime.Now, taskSettings.ActiveProfileName,
-                taskSettings.CharactersPerMinute, _currentTask.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length, result);
+                taskSettings.CharactersPerMinute, _currentTask.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length, result, examResult is not null);
             _history = _historyStore.Add(record);
             RefreshProgress();
         }
@@ -823,7 +843,12 @@ public partial class MainWindow : Window
             SetStatus(Texts.T("ЕСТЬ ОШИБКИ"), isActive: false);
         }
 
-        if (_currentSettings?.ContentModeIndex == (int)ContentMode.Koch)
+        if (examResult is not null)
+        {
+            ResultDetailsText.Text = ExamReport.Summary(examResult);
+            SetStatus(result.IsPerfect ? Texts.T("ЭКЗАМЕН СДАН") : Texts.T("ЕСТЬ ОШИБКИ"), result.IsPerfect);
+        }
+        else if (_currentSettings?.ContentModeIndex == (int)ContentMode.Koch)
         {
             var kochAlphabet = (AlphabetMode)Math.Clamp(_currentSettings.AlphabetIndex, 0, 2);
             ResultDetailsText.Text += "\n" + KochMethod.Advice(kochAlphabet, _currentSettings.KochLevel, result.AccuracyPercent);
@@ -831,6 +856,61 @@ public partial class MainWindow : Window
 
         _answerVisible = true;
         UpdateAnswerDisplay();
+    }
+
+    // ---------- Экзамен ----------
+
+    private async void ExamButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        MainTabs.SelectedIndex = 0;
+        await GenerateTaskAsync();
+        if (string.IsNullOrEmpty(_currentTask) || _currentSettings is null || _currentClip is null)
+        {
+            return;
+        }
+
+        var groupCount = _currentTask.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length;
+        _exam = new ExamSession(_currentTask, _currentSettings.CharactersPerMinute, groupCount, _currentSettings.ActiveProfileName, DateTime.Now);
+        _examReport = null;
+        _answerVisible = false;
+        UpdateAnswerDisplay();
+        // Ответ скрыт до проверки, повтор запрещён: прослушивание одно
+        ToggleAnswerButton.IsEnabled = false;
+        RepeatButton.IsEnabled = false;
+        if (_examTimer is null)
+        {
+            _examTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+            _examTimer.Tick += ExamTimer_OnTick;
+        }
+
+        _examTimer.Start();
+        UpdateExamStatus();
+        SetStatus(Texts.T("ЭКЗАМЕН"), isActive: true);
+        await PlayCurrentAsync();
+    }
+
+    private void ExamTimer_OnTick(object? sender, EventArgs e) => UpdateExamStatus();
+
+    private void UpdateExamStatus()
+    {
+        if (_exam is null || _exam.IsFinished)
+        {
+            return;
+        }
+
+        TaskMetaText.Text = Texts.F("Экзамен · одно прослушивание · {0}", ExamReport.FormatDuration(_exam.Elapsed(DateTime.Now)));
+    }
+
+    /// <summary>Новое задание отменяет экзамен: таймер останавливается, кнопки возвращаются в обычный режим.</summary>
+    private void EndExam()
+    {
+        _examTimer?.Stop();
+        _exam = null;
+        _examReport = null;
+        if (SaveTaskButton is not null)
+        {
+            SaveTaskButton.Content = Texts.T("Сохранить TXT");
+        }
     }
 
     private void SelectSymbolsButton_OnClick(object sender, RoutedEventArgs e)
@@ -855,6 +935,23 @@ public partial class MainWindow : Window
     {
         if (string.IsNullOrEmpty(_currentTask))
         {
+            return;
+        }
+
+        if (_examReport is not null)
+        {
+            var reportDialog = new SaveFileDialog
+            {
+                Title = Texts.T("Сохранить протокол"),
+                Filter = Texts.T("Протокол экзамена (*.txt)|*.txt"),
+                FileName = $"morse-exam-{DateTime.Now:yyyy-MM-dd-HHmm}.txt",
+                AddExtension = true
+            };
+            if (reportDialog.ShowDialog(this) == true)
+            {
+                File.WriteAllText(reportDialog.FileName, _examReport, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true));
+            }
+
             return;
         }
 
