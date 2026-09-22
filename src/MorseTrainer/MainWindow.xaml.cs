@@ -620,7 +620,8 @@ public partial class MainWindow : Window
                 settings.CharacterGapUnits,
                 settings.GroupGapUnits,
                 settings.PlayStartSignal,
-                settings.StartPauseUnits));
+                settings.StartPauseUnits,
+                new NoiseProfile(settings.NoisePercent, settings.QsbPercent, settings.DriftHz)));
 
             _currentTask = generatedTask;
             _currentTaskRecorded = false;
@@ -634,6 +635,11 @@ public partial class MainWindow : Window
             PlaybackProgress.Value = 0;
             PlaybackStatusText.Text = Texts.F("Готово к воспроизведению · {0}", FormatDuration(audio.Duration));
             var startSignal = settings.PlayStartSignal ? Texts.T(" · старт Ж Ж Ж") : string.Empty;
+            if (!new NoiseProfile(settings.NoisePercent, settings.QsbPercent, settings.DriftHz).IsClean)
+            {
+                startSignal += Texts.T(" · помехи");
+            }
+
             var metaTemplate = ContentModes.IsWordMode(content)
                 ? Texts.T("{0} слов · {1} знаков/мин · паузы {2}/{3}{4}")
                 : Texts.T("{0} групп × 5 · {1} знаков/мин · паузы {2}/{3}{4}");
@@ -1321,11 +1327,20 @@ public partial class MainWindow : Window
             || VolumeSlider is null
             || CharacterGapSlider is null
             || GroupGapSlider is null
-            || StartPauseSlider is null)
+            || StartPauseSlider is null
+            || NoiseSlider is null
+            || QsbSlider is null
+            || DriftSlider is null
+            || NoiseValueText is null
+            || QsbValueText is null
+            || DriftValueText is null)
         {
             return;
         }
 
+        NoiseValueText.Text = $"{(int)NoiseSlider.Value}%";
+        QsbValueText.Text = $"{(int)QsbSlider.Value}%";
+        DriftValueText.Text = Texts.F("±{0} Гц", (int)DriftSlider.Value);
         SpeedValueText.Text = Texts.F("{0} знаков/мин", (int)SpeedSlider.Value);
         FrequencyValueText.Text = Texts.F("{0} Гц", (int)FrequencySlider.Value);
         VolumeValueText.Text = $"{(int)VolumeSlider.Value}%";
@@ -1365,6 +1380,9 @@ public partial class MainWindow : Window
             GroupGapUnits = (int)GroupGapSlider.Value,
             StartPauseUnits = (int)StartPauseSlider.Value,
             PlayStartSignal = PlayStartSignalCheckBox.IsChecked == true,
+            NoisePercent = (int)NoiseSlider.Value,
+            QsbPercent = (int)QsbSlider.Value,
+            DriftHz = (int)DriftSlider.Value,
             CustomSymbols = _selectedSymbols,
             ThemeIndex = Math.Clamp(ThemeCombo.SelectedIndex, 0, 2),
             LanguageIndex = Math.Clamp(LanguageCombo.SelectedIndex, 0, 2),
@@ -1390,6 +1408,9 @@ public partial class MainWindow : Window
         GroupGapSlider.Value = Math.Clamp(settings.GroupGapUnits, 7, 30);
         StartPauseSlider.Value = Math.Clamp(settings.StartPauseUnits, 7, 60);
         PlayStartSignalCheckBox.IsChecked = settings.PlayStartSignal;
+        NoiseSlider.Value = Math.Clamp(settings.NoisePercent, 0, 100);
+        QsbSlider.Value = Math.Clamp(settings.QsbPercent, 0, 100);
+        DriftSlider.Value = Math.Clamp(settings.DriftHz, 0, NoiseProfile.MaxDriftHz);
         _selectedSymbols = string.IsNullOrWhiteSpace(settings.CustomSymbols) ? "АГЖД" : settings.CustomSymbols;
         ThemeCombo.SelectedIndex = Math.Clamp(settings.ThemeIndex, 0, 2);
         LanguageCombo.SelectedIndex = Math.Clamp(settings.LanguageIndex, 0, 2);

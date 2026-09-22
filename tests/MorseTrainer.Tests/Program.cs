@@ -31,7 +31,8 @@ var tests = new (string Name, Action Run)[]
     ("Word lists", TestWordLists),
     ("Word tasks", TestWordTasks),
     ("Same-code evaluation", TestSameCodeEvaluation),
-    ("Exam session", TestExam)
+    ("Exam session", TestExam),
+    ("Noise, QSB and drift", TestNoise)
 };
 
 var failures = new List<string>();
@@ -502,6 +503,55 @@ static void TestExam()
     Assert(json.Contains("\"IsExam\":true") && !json.Contains("Kind"), "IsExam is stored, Kind is not.");
     var legacy = System.Text.Json.JsonSerializer.Deserialize<List<TrainingRecord>>("[{\"CompletedAt\":\"2026-09-22T12:00:00\",\"ProfileName\":\"Основной\"}]")!;
     Assert(!legacy[0].IsExam, "Old history without IsExam must load as ordinary records.");
+}
+
+static void TestNoise()
+{
+    var clean = MorseAudioService.Render("ААААА", 60, 700, 70, 3, 7);
+    var noisy = MorseAudioService.Render("ААААА", 60, 700, 70, 3, 7, noise: new NoiseProfile(60, 0, 0));
+    Assert(noisy.WavBytes.Length == clean.WavBytes.Length, "Noise must not change the clip length.");
+    Assert(TailRms(clean) < 1 && TailRms(noisy) > 200, $"Noise must fill the silent tail: clean {TailRms(clean):0}, noisy {TailRms(noisy):0}.");
+
+    var longClean = MorseAudioService.Render("ААААА ААААА", 60, 700, 70, 3, 7);
+    var faded = MorseAudioService.Render("ААААА ААААА", 60, 700, 70, 3, 7, noise: new NoiseProfile(0, 100, 0));
+    Assert(faded.WavBytes.Length == longClean.WavBytes.Length && SumAbs(faded) < SumAbs(longClean) * 0.8,
+        $"QSB must lower the average level: {SumAbs(faded):0} vs {SumAbs(longClean):0}.");
+
+    var drifted = MorseAudioService.Render("ААААА", 60, 700, 70, 3, 7, noise: new NoiseProfile(0, 0, 50));
+    Assert(drifted.WavBytes.Length == clean.WavBytes.Length && SumAbs(drifted) > SumAbs(clean) * 0.9, "Drift must keep the length and the level.");
+    Assert(new NoiseProfile(500, -5, 99).Clamp() == new NoiseProfile(100, 0, 50), "Clamp must bound the noise profile.");
+    Assert(NoiseProfile.None.IsClean && !new NoiseProfile(1, 0, 0).IsClean, "IsClean must detect a clean profile.");
+
+    var settings = new AppSettings { NoisePercent = 30, QsbPercent = 40, DriftHz = 10 };
+    var restored = new AppSettings();
+    TrainingProfile.FromSettings("Шумный", settings).ApplyTo(restored);
+    Assert(restored.NoisePercent == 30 && restored.QsbPercent == 40 && restored.DriftHz == 10, "Profile must carry the noise settings.");
+    var imported = ProfileTransfer.Import("[{\"Name\":\"X\",\"NoisePercent\":999,\"QsbPercent\":-3,\"DriftHz\":80}]");
+    Assert(imported[0].NoisePercent == 100 && imported[0].QsbPercent == 0 && imported[0].DriftHz == 50, "Import must clamp the noise settings.");
+}
+
+static double TailRms(AudioClip clip)
+{
+    const int samples = 2000;
+    double sum = 0;
+    for (var index = 0; index < samples; index++)
+    {
+        double value = BitConverter.ToInt16(clip.WavBytes, clip.WavBytes.Length - 2 * (index + 1));
+        sum += value * value;
+    }
+
+    return Math.Sqrt(sum / samples);
+}
+
+static double SumAbs(AudioClip clip)
+{
+    double sum = 0;
+    for (var offset = 44; offset + 1 < clip.WavBytes.Length; offset += 2)
+    {
+        sum += Math.Abs((double)BitConverter.ToInt16(clip.WavBytes, offset));
+    }
+
+    return sum;
 }
 
 static string FindRepositoryRoot()

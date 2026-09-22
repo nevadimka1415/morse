@@ -12,6 +12,10 @@ public sealed class AppSettings
     public int GroupGapUnits { get; set; } = 7;
     public int StartPauseUnits { get; set; } = 21;
     public bool PlayStartSignal { get; set; } = true;
+    // Помехи эфира: шум, замирания, дрейф тона (0 — чистый сигнал)
+    public int NoisePercent { get; set; }
+    public int QsbPercent { get; set; }
+    public int DriftHz { get; set; }
     public string CustomSymbols { get; set; } = "АБВГДЕЖЗИКЛМНОПРСТУ";
     public int KochLevel { get; set; } = 2;
     public bool EmphasizeProblemSymbols { get; set; } = true;

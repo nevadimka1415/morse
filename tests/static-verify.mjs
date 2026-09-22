@@ -150,6 +150,8 @@ assert(read('src/MorseTrainer/MainWindow.xaml').includes("{loc:Loc 'Позывн
   'Both apps must offer the words, callsigns and Q-code content modes.');
 assert(read('src/MorseTrainer/MainWindow.xaml').includes('x:Name="ExamButton"') && read('src/MorseTrainer.Mobile/Pages/TrainingPage.xaml').includes('x:Name="ExamButton"'),
   'Both apps must offer the exam mode.');
+assert(read('src/MorseTrainer/MainWindow.xaml').includes('x:Name="NoiseSlider"') && read('src/MorseTrainer.Mobile/Pages/SettingsPage.xaml').includes('x:Name="NoiseSlider"'),
+  'Both apps must offer the interference sliders (noise, QSB, drift).');
 
 for (const file of ['src/MorseTrainer/MainWindow.xaml', 'src/MorseTrainer/SymbolSelectionWindow.xaml', ...['TrainingPage', 'LearningPage', 'SettingsPage', 'ProgressPage', 'KeyerPage'].map((page) => `src/MorseTrainer.Mobile/Pages/${page}.xaml`)]) {
   const xaml = read(file);

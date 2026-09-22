@@ -52,6 +52,11 @@ public partial class TrainingPage : ContentPage
             start += Texts.F(" · Кох: уровень {0}", settings.KochLevel);
         }
 
+        if (!new NoiseProfile(settings.NoisePercent, settings.QsbPercent, settings.DriftHz).IsClean)
+        {
+            start += Texts.T(" · помехи");
+        }
+
         var groups = ContentModes.IsWordMode(ContentModes.Clamp(settings.ContentModeIndex))
             ? Texts.F("{0} слов · {1} знаков/мин · ", settings.GroupCount, settings.CharactersPerMinute)
             : Texts.F("{0} групп × 5 · {1} знаков/мин · ", settings.GroupCount, settings.CharactersPerMinute);
@@ -116,7 +121,8 @@ public partial class TrainingPage : ContentPage
                 Math.Clamp(settings.CharacterGapUnits, 3, 20),
                 Math.Clamp(settings.GroupGapUnits, 7, 30),
                 settings.PlayStartSignal,
-                Math.Clamp(settings.StartPauseUnits, 7, 60)));
+                Math.Clamp(settings.StartPauseUnits, 7, 60),
+                new NoiseProfile(settings.NoisePercent, settings.QsbPercent, settings.DriftHz)));
             _answerVisible = false;
             AnswerEditor.Text = string.Empty;
             AccuracyLabel.Text = Texts.T("Точность: —");

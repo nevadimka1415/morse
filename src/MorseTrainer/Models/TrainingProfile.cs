@@ -13,6 +13,9 @@ public sealed class TrainingProfile
     public int GroupGapUnits { get; set; } = 7;
     public int StartPauseUnits { get; set; } = 21;
     public bool PlayStartSignal { get; set; } = true;
+    public int NoisePercent { get; set; }
+    public int QsbPercent { get; set; }
+    public int DriftHz { get; set; }
     public string CustomSymbols { get; set; } = "АБВГДЕЖЗИКЛМНОПРСТУ";
     public int KochLevel { get; set; } = 2;
     public bool EmphasizeProblemSymbols { get; set; } = true;
@@ -33,6 +36,9 @@ public sealed class TrainingProfile
             GroupGapUnits = settings.GroupGapUnits,
             StartPauseUnits = settings.StartPauseUnits,
             PlayStartSignal = settings.PlayStartSignal,
+            NoisePercent = settings.NoisePercent,
+            QsbPercent = settings.QsbPercent,
+            DriftHz = settings.DriftHz,
             CustomSymbols = settings.CustomSymbols,
             KochLevel = settings.KochLevel,
             EmphasizeProblemSymbols = settings.EmphasizeProblemSymbols
@@ -52,6 +58,9 @@ public sealed class TrainingProfile
         settings.GroupGapUnits = GroupGapUnits;
         settings.StartPauseUnits = StartPauseUnits;
         settings.PlayStartSignal = PlayStartSignal;
+        settings.NoisePercent = NoisePercent;
+        settings.QsbPercent = QsbPercent;
+        settings.DriftHz = DriftHz;
         settings.CustomSymbols = CustomSymbols;
         settings.KochLevel = KochLevel;
         settings.EmphasizeProblemSymbols = EmphasizeProblemSymbols;

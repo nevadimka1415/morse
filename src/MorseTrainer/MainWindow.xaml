@@ -189,6 +189,25 @@
                                 <Button x:Name="FarnsworthButton" Content="{loc:Loc 'Пресет Фарнсворта'}" Click="FarnsworthButton_OnClick"
                                         Padding="10,6" HorizontalAlignment="Left" Margin="0,0,0,14"
                                         ToolTip="{loc:Loc 'Символы не медленнее 90 знаков/мин, паузы 9 точек между символами и 21 между группами: ухо запоминает ритм знака, а не считает точки.'}" />
+                                <Grid Margin="0,0,0,5">
+                                    <TextBlock Text="{loc:Loc 'Помехи (шум)'}" Foreground="{DynamicResource MutedTextBrush}"
+                                               ToolTip="{loc:Loc 'Белый шум приёмника, медленные замирания и уход частоты, как в эфире. 0 — чистый сигнал.'}" />
+                                    <TextBlock x:Name="NoiseValueText" Text="0%" HorizontalAlignment="Right" />
+                                </Grid>
+                                <Slider x:Name="NoiseSlider" Minimum="0" Maximum="100" Value="0" TickFrequency="5"
+                                        IsSnapToTickEnabled="True" ValueChanged="SettingSlider_OnValueChanged" Margin="0,0,0,17" />
+                                <Grid Margin="0,0,0,5">
+                                    <TextBlock Text="{loc:Loc 'Замирания (QSB)'}" Foreground="{DynamicResource MutedTextBrush}" />
+                                    <TextBlock x:Name="QsbValueText" Text="0%" HorizontalAlignment="Right" />
+                                </Grid>
+                                <Slider x:Name="QsbSlider" Minimum="0" Maximum="100" Value="0" TickFrequency="5"
+                                        IsSnapToTickEnabled="True" ValueChanged="SettingSlider_OnValueChanged" Margin="0,0,0,17" />
+                                <Grid Margin="0,0,0,5">
+                                    <TextBlock Text="{loc:Loc 'Дрейф тона'}" Foreground="{DynamicResource MutedTextBrush}" />
+                                    <TextBlock x:Name="DriftValueText" Text="{loc:Loc '±0 Гц'}" HorizontalAlignment="Right" />
+                                </Grid>
+                                <Slider x:Name="DriftSlider" Minimum="0" Maximum="50" Value="0" TickFrequency="5"
+                                        IsSnapToTickEnabled="True" ValueChanged="SettingSlider_OnValueChanged" Margin="0,0,0,17" />
                                 <CheckBox x:Name="EmphasizeProblemsCheckBox" Content="{loc:Loc 'Чаще повторять символы с ошибками'}"
                                           IsChecked="True" Margin="0,0,0,12"
                                           ToolTip="{loc:Loc 'Символы, в которых вы ошибались (по истории тренировок), попадают в задание втрое чаще.'}" />

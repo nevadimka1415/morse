@@ -103,6 +103,9 @@ public static class ProfileTransfer
         profile.CharacterGapUnits = Math.Clamp(profile.CharacterGapUnits, 3, 20);
         profile.GroupGapUnits = Math.Clamp(profile.GroupGapUnits, 7, 30);
         profile.StartPauseUnits = Math.Clamp(profile.StartPauseUnits, 7, 60);
+        profile.NoisePercent = Math.Clamp(profile.NoisePercent, 0, 100);
+        profile.QsbPercent = Math.Clamp(profile.QsbPercent, 0, 100);
+        profile.DriftHz = Math.Clamp(profile.DriftHz, 0, MorseTrainer.Services.NoiseProfile.MaxDriftHz);
         profile.KochLevel = Math.Clamp(profile.KochLevel, KochMethod.MinLevel, KochMethod.MaxLevel(AlphabetMode.RussianAndLatin));
         profile.CustomSymbols = new string(MorseAlphabet.FilterSupportedSymbols(profile.CustomSymbols ?? string.Empty).ToArray());
     }

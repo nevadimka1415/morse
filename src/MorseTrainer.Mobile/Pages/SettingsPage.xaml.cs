@@ -122,6 +122,9 @@ public partial class SettingsPage : ContentPage
         GroupGapSlider.Value = Math.Clamp(_settings.GroupGapUnits, 7, 30);
         StartSignalSwitch.IsToggled = _settings.PlayStartSignal;
         StartPauseSlider.Value = Math.Clamp(_settings.StartPauseUnits, 7, 60);
+        NoiseSlider.Value = Math.Clamp(_settings.NoisePercent, 0, 100);
+        QsbSlider.Value = Math.Clamp(_settings.QsbPercent, 0, 100);
+        DriftSlider.Value = Math.Clamp(_settings.DriftHz, 0, NoiseProfile.MaxDriftHz);
         _selectedSymbols.Clear();
         foreach (var symbol in MorseAlphabet.FilterSupportedSymbols(_settings.CustomSymbols))
         {
@@ -228,6 +231,9 @@ public partial class SettingsPage : ContentPage
         _settings.GroupGapUnits = (int)Math.Round(GroupGapSlider.Value);
         _settings.PlayStartSignal = StartSignalSwitch.IsToggled;
         _settings.StartPauseUnits = (int)Math.Round(StartPauseSlider.Value);
+        _settings.NoisePercent = Snap(NoiseSlider.Value, 5, 0, 100);
+        _settings.QsbPercent = Snap(QsbSlider.Value, 5, 0, 100);
+        _settings.DriftHz = Snap(DriftSlider.Value, 5, 0, NoiseProfile.MaxDriftHz);
         _settings.CustomSymbols = new string(_selectedSymbols.ToArray());
         ApplyTheme(_settings.ThemeIndex);
         UpdateLabelsAndSymbols();
@@ -244,6 +250,9 @@ public partial class SettingsPage : ContentPage
         CharacterGapValue.Text = Texts.F("{0} точек", (int)Math.Round(CharacterGapSlider.Value));
         GroupGapValue.Text = Texts.F("{0} точек", (int)Math.Round(GroupGapSlider.Value));
         StartPauseValue.Text = Texts.F("{0} точек", (int)Math.Round(StartPauseSlider.Value));
+        NoiseValue.Text = $"{Snap(NoiseSlider.Value, 5, 0, 100)}%";
+        QsbValue.Text = $"{Snap(QsbSlider.Value, 5, 0, 100)}%";
+        DriftValue.Text = Texts.F("±{0} Гц", Snap(DriftSlider.Value, 5, 0, NoiseProfile.MaxDriftHz));
         SelectedSymbolsLabel.Text = Texts.F("Выбрано: {0}", _selectedSymbols.Count);
         var kochAlphabet = (AlphabetMode)Math.Clamp(AlphabetPicker.SelectedIndex, 0, 2);
         KochLayout.IsVisible = ContentPicker.SelectedIndex == (int)ContentMode.Koch;
