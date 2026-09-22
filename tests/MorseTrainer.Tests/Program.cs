@@ -26,7 +26,8 @@ var tests = new (string Name, Action Run)[]
     ("Keyer decoder", TestKeyerDecoder),
     ("Loop tone", TestLoopTone),
     ("Localization", TestLocalization),
-    ("Localization coverage", TestLocalizationCoverage)
+    ("Localization coverage", TestLocalizationCoverage),
+    ("Crash report", TestCrashReport)
 };
 
 var failures = new List<string>();
@@ -385,6 +386,30 @@ static void TestLocalizationCoverage()
 
     Assert(used > 300, $"Localization markers must be present in XAML and code, found {used}.");
     Assert(missing.Count == 0, "Missing English translations: " + string.Join(" | ", missing.Take(15)));
+}
+
+static void TestCrashReport()
+{
+    var text = CrashReport.Format("Unit test", new InvalidOperationException("boom"), "2.4.0", "Test OS");
+    Assert(text.Contains("Source: Unit test") && text.Contains("Version: 2.4.0") && text.Contains("Platform: Test OS"), "Report header is incomplete.");
+    Assert(text.Contains("InvalidOperationException") && text.Contains("boom"), "Report must include the exception.");
+    Assert(CrashReport.Format("x", null, "1", "p").Contains("Unknown exception"), "Missing exception must be reported as unknown.");
+
+    var directory = Path.Combine(Path.GetTempPath(), "morse-crash-" + Guid.NewGuid().ToString("N"));
+    var path = Path.Combine(directory, CrashReport.FileName);
+    try
+    {
+        Assert(!CrashReport.Exists(path) && CrashReport.LastCrashAt(path) is null, "No report must exist before writing.");
+        Assert(CrashReport.Write(path, "Test", new Exception("first"), "2.4.0", "Test OS"), "Write must create the directory and the file.");
+        Assert(CrashReport.Exists(path) && CrashReport.LastCrashAt(path) is not null, "Report must exist after writing.");
+        Assert(CrashReport.Read(path)!.Contains("first"), "Read must return the report text.");
+        CrashReport.Delete(path);
+        Assert(!CrashReport.Exists(path) && CrashReport.Read(path) is null, "Delete must remove the report.");
+    }
+    finally
+    {
+        try { Directory.Delete(directory, recursive: true); } catch { }
+    }
 }
 
 static string FindRepositoryRoot()

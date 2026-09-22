@@ -128,6 +128,15 @@
                     <Button Text="{loc:Loc 'Проверить обновления'}" Clicked="CheckUpdatesButton_OnClicked" />
                     <Label Text="{loc:Loc 'Интернет нужен только для этой проверки, всё остальное работает без сети.'}"
                            Opacity="0.65" FontSize="13" />
+                    <VerticalStackLayout x:Name="CrashReportLayout" Spacing="8" IsVisible="False">
+                        <Label x:Name="CrashReportLabel" Text="{loc:Loc 'Есть отчёт о сбое'}" FontAttributes="Bold" TextColor="{StaticResource Danger}" />
+                        <Label Text="{loc:Loc 'Приложение закрывалось само. Отправьте отчёт разработчику (например, себе в мессенджер и дальше на GitHub), затем удалите его.'}"
+                               Opacity="0.65" FontSize="13" LineBreakMode="WordWrap" />
+                        <Grid ColumnDefinitions="*,8,*">
+                            <Button Text="{loc:Loc 'Отправить отчёт'}" Clicked="ShareCrashReportButton_OnClicked" />
+                            <Button Grid.Column="2" Text="{loc:Loc 'Удалить отчёт'}" Clicked="DeleteCrashReportButton_OnClicked" />
+                        </Grid>
+                    </VerticalStackLayout>
                 </VerticalStackLayout>
             </Border>
 

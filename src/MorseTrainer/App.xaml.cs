@@ -1,6 +1,4 @@
 using System.Globalization;
-using System.IO;
-using System.Text;
 using System.Windows;
 using System.Windows.Threading;
 using MorseTrainer.Localization;
@@ -46,27 +44,9 @@ public partial class App : Application
         e.SetObserved();
     }
 
+    // Формат отчёта общий с телефоном (CrashReport в Core); ошибка записи не должна вызвать новый сбой
     private static void WriteCrashLog(string source, Exception? exception)
     {
-        try
-        {
-            Directory.CreateDirectory(Path.GetDirectoryName(CrashLogPath)!);
-            var report = new StringBuilder()
-                .AppendLine("Morse Trainer crash report")
-                .AppendLine($"Time: {DateTime.Now:O}")
-                .AppendLine($"Source: {source}")
-                .AppendLine($"Version: {typeof(App).Assembly.GetName().Version}")
-                .AppendLine($"OS: {Environment.OSVersion}")
-                .AppendLine($".NET: {Environment.Version}")
-                .AppendLine()
-                .AppendLine(exception?.ToString() ?? "Unknown exception")
-                .ToString();
-            File.WriteAllText(CrashLogPath, report, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true));
-            Console.Error.WriteLine(report);
-        }
-        catch
-        {
-            // Error reporting must never trigger another application crash.
-        }
+        CrashReport.Write(CrashLogPath, source, exception, typeof(App).Assembly.GetName().Version?.ToString() ?? "?", Environment.OSVersion.ToString());
     }
 }

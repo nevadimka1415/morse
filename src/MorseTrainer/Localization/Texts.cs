@@ -363,6 +363,14 @@ public static class Texts
         ["Проверьте подключение к интернету.\n\n{0}"] = "Check your internet connection.\n\n{0}",
         ["Ошибки: "] = "Mistakes: ",
         ["Профили Morse Trainer"] = "Morse Trainer profiles",
+        // ---- отчёт о сбое (телефон) ----
+        ["Есть отчёт о сбое"] = "Crash report available",
+        ["Отчёт о сбое от {0:dd.MM.yyyy HH:mm}"] = "Crash report from {0:dd.MM.yyyy HH:mm}",
+        ["Приложение закрывалось само. Отправьте отчёт разработчику (например, себе в мессенджер и дальше на GitHub), затем удалите его."] = "The app closed by itself. Send the report to the developer (for example, to yourself in a messenger and then to GitHub), then delete it.",
+        ["Отправить отчёт"] = "Send report",
+        ["Удалить отчёт"] = "Delete report",
+        ["Отчёт о сбое Morse Trainer"] = "Morse Trainer crash report",
+        ["Отчёт о сбое удалён"] = "Crash report deleted",
         // заглушки карточки обучения до выбора символа: одинаковы на обоих языках
         ["А"] = "А",
         ["ай-даа"] = "ай-даа",

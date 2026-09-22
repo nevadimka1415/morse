@@ -34,6 +34,8 @@ const requiredFiles = [
   'src/MorseTrainer/Services/ProfileService.cs',
   'src/MorseTrainer/Services/UpdateService.cs',
   'src/MorseTrainer/Services/AppPaths.cs',
+  'src/MorseTrainer/Services/CrashReport.cs',
+  'src/MorseTrainer.Mobile/Services/MobilePaths.cs',
   'src/MorseTrainer/Models/TrainingProfile.cs',
   'tests/MorseTrainer.UiSmoke/MorseTrainer.UiSmoke.csproj',
   'tests/MorseTrainer.UiSmoke/Program.cs',
@@ -168,10 +170,14 @@ assert(!buildWorkflow.includes('8.0.x'), 'Build workflow must use .NET SDK 10.')
 assert(existsSync(resolve(root, 'global.json')), 'global.json must pin the .NET SDK major version.');
 
 const coreProject = read('src/MorseTrainer.Core/MorseTrainer.Core.csproj');
-for (const file of ['UpdateService.cs', 'TrainingHistoryStore.cs', 'TrainingRecord.cs']) {
+for (const file of ['UpdateService.cs', 'TrainingHistoryStore.cs', 'TrainingRecord.cs', 'CrashReport.cs']) {
   assert(coreProject.includes(file), `Core project must compile ${file}.`);
 }
 assert(read('src/MorseTrainer.Mobile/Platforms/Android/AndroidManifest.xml').includes('android.permission.INTERNET'), 'Android manifest must allow the update check to reach GitHub.');
+const mauiProgram = read('src/MorseTrainer.Mobile/MauiProgram.cs');
+assert(mauiProgram.includes('UnhandledException') && mauiProgram.includes('UnobservedTaskException') && mauiProgram.includes('CrashReport.Write'),
+  'MauiProgram must write crash.log from unhandled exceptions.');
+assert(read('src/MorseTrainer.Mobile/Pages/SettingsPage.xaml').includes('CrashReportLayout'), 'Settings page must offer the crash report actions.');
 
 const mobileProject = read('src/MorseTrainer.Mobile/MorseTrainer.Mobile.csproj');
 assert(mobileProject.includes('<TargetFrameworks>net10.0-android;net10.0-ios</TargetFrameworks>'),

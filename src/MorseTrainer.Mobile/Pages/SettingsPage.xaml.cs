@@ -45,6 +45,50 @@ public partial class SettingsPage : ContentPage
         {
             LoadAll();
         }
+
+        RefreshCrashReport();
+    }
+
+    // ---------- отчёт о сбое ----------
+
+    private void RefreshCrashReport()
+    {
+        var lastCrash = CrashReport.LastCrashAt(MobilePaths.CrashLogFile);
+        CrashReportLayout.IsVisible = lastCrash is not null;
+        if (lastCrash is not null)
+        {
+            CrashReportLabel.Text = Texts.F("Отчёт о сбое от {0:dd.MM.yyyy HH:mm}", lastCrash.Value);
+        }
+    }
+
+    private async void ShareCrashReportButton_OnClicked(object sender, EventArgs e)
+    {
+        var path = MobilePaths.CrashLogFile;
+        if (!CrashReport.Exists(path))
+        {
+            RefreshCrashReport();
+            return;
+        }
+
+        try
+        {
+            await Share.Default.RequestAsync(new ShareFileRequest
+            {
+                Title = Texts.T("Отчёт о сбое Morse Trainer"),
+                File = new ShareFile(path)
+            });
+        }
+        catch (Exception exception)
+        {
+            await DisplayAlertAsync(Texts.T("Не удалось поделиться"), exception.Message, Texts.T("Закрыть"));
+        }
+    }
+
+    private void DeleteCrashReportButton_OnClicked(object sender, EventArgs e)
+    {
+        CrashReport.Delete(MobilePaths.CrashLogFile);
+        RefreshCrashReport();
+        SaveStatusLabel.Text = Texts.T("Отчёт о сбое удалён");
     }
 
     private void LoadAll()

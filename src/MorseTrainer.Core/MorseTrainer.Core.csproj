@@ -12,6 +12,7 @@
     <Compile Include="../MorseTrainer/Models/TrainingRecord.cs" Link="Models/TrainingRecord.cs" />
     <Compile Include="../MorseTrainer/Services/MorseAudioService.cs" Link="Services/MorseAudioService.cs" />
     <Compile Include="../MorseTrainer/Services/UpdateService.cs" Link="Services/UpdateService.cs" />
+    <Compile Include="../MorseTrainer/Services/CrashReport.cs" Link="Services/CrashReport.cs" />
     <Compile Include="../MorseTrainer/Services/TrainingHistoryStore.cs" Link="Services/TrainingHistoryStore.cs" />
     <Compile Include="../MorseTrainer/Localization/Texts.cs" Link="Localization/Texts.cs" />
   </ItemGroup>
