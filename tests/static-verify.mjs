@@ -33,7 +33,10 @@ const requiredFiles = [
   'src/MorseTrainer/Services/VoicePackService.cs',
   'src/MorseTrainer/Services/ProfileService.cs',
   'src/MorseTrainer/Services/UpdateService.cs',
+  'src/MorseTrainer/Services/AppPaths.cs',
   'src/MorseTrainer/Models/TrainingProfile.cs',
+  'tests/MorseTrainer.UiSmoke/MorseTrainer.UiSmoke.csproj',
+  'tests/MorseTrainer.UiSmoke/Program.cs',
   'src/MorseTrainer/App.xaml.cs',
   'src/MorseTrainer/Assets/MorseTrainer.ico',
   'installer/MorseTrainer.iss',
@@ -125,6 +128,7 @@ for (const relativePath of [
   'src/MorseTrainer/Services/UpdateService.cs',
   'src/MorseTrainer/MainWindow.xaml.cs',
   'tests/MorseTrainer.Tests/Program.cs',
+  'tests/MorseTrainer.UiSmoke/Program.cs',
   'src/MorseTrainer.Mobile/MauiProgram.cs',
   'src/MorseTrainer.Mobile/Pages/TrainingPage.xaml.cs',
   'src/MorseTrainer.Mobile/Pages/LearningPage.xaml.cs',
@@ -149,6 +153,10 @@ assert(buildWorkflow.includes('scripts\\build.ps1'), 'Build workflow does not ca
 const buildScript = read('scripts/build.ps1');
 assert((buildScript.match(/Assert-LastExitCode/g) || []).length >= 4, 'build.ps1 must fail fast after dotnet run, dotnet publish and ISCC.');
 assert(buildScript.includes('MorseTrainer.exe'), 'build.ps1 must verify that publish produced MorseTrainer.exe.');
+assert(buildScript.includes('MorseTrainer.UiSmoke'), 'build.ps1 must run the WPF UI smoke test before publish.');
+assert(read('src/MorseTrainer/MorseTrainer.csproj').includes('InternalsVisibleTo Include="MorseTrainer.UiSmoke"'), 'WPF project must expose internals to the UI smoke test.');
+assert(read('tests/MorseTrainer.UiSmoke/MorseTrainer.UiSmoke.csproj').includes('net10.0-windows'), 'UI smoke project must target net10.0-windows.');
+assert(buildWorkflow.includes('MorseTrainer-Screenshots'), 'Build workflow must upload the UI smoke screenshots.');
 assert(buildWorkflow.includes('MorseTrainer-Setup-x64.exe'), 'Build workflow does not publish the installer.');
 
 assert(read('src/MorseTrainer/MorseTrainer.csproj').includes('<TargetFramework>net10.0-windows</TargetFramework>'), 'Windows project must target net10.0-windows.');

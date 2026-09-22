@@ -15,8 +15,7 @@ public sealed class SettingsService
 
     public SettingsService()
     {
-        var appData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-        _settingsPath = Path.Combine(appData, "MorseTrainer", "settings.json");
+        _settingsPath = AppPaths.SettingsFile;
     }
 
     public AppSettings Load()

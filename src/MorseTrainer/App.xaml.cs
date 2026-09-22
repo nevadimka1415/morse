@@ -10,10 +10,7 @@ namespace MorseTrainer;
 
 public partial class App : Application
 {
-    private static readonly string CrashLogPath = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "MorseTrainer",
-        "crash.log");
+    private static readonly string CrashLogPath = AppPaths.CrashLogFile;
 
     protected override void OnStartup(StartupEventArgs e)
     {

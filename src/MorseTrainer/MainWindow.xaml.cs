@@ -24,8 +24,7 @@ public partial class MainWindow : Window
 {
     private static readonly HttpClient UpdateClient = new() { Timeout = TimeSpan.FromSeconds(15) };
     private readonly SettingsService _settingsService = new();
-    private readonly TrainingHistoryStore _historyStore = new(Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "MorseTrainer", "history.json"));
+    private readonly TrainingHistoryStore _historyStore = new(AppPaths.HistoryFile);
     private IReadOnlyList<TrainingRecord> _history = Array.Empty<TrainingRecord>();
     private bool _currentTaskRecorded;
     private const int KeyerTabIndex = 2;

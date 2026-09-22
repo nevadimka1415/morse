@@ -12,8 +12,7 @@ public sealed class ProfileService
 
     public ProfileService()
     {
-        var appData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-        _profilesPath = Path.Combine(appData, "MorseTrainer", "profiles.json");
+        _profilesPath = AppPaths.ProfilesFile;
     }
 
     public IReadOnlyList<TrainingProfile> Load()

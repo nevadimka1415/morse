@@ -1,12 +1,14 @@
 param(
     [string]$Version = "2.3.0",
-    [switch]$SkipInstaller
+    [switch]$SkipInstaller,
+    [switch]$SkipUiSmoke
 )
 
 $ErrorActionPreference = "Stop"
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
 $project = Join-Path $repoRoot "src\MorseTrainer\MorseTrainer.csproj"
 $tests = Join-Path $repoRoot "tests\MorseTrainer.Tests\MorseTrainer.Tests.csproj"
+$uiSmoke = Join-Path $repoRoot "tests\MorseTrainer.UiSmoke\MorseTrainer.UiSmoke.csproj"
 $dist = Join-Path $repoRoot "dist"
 $portable = Join-Path $dist "portable"
 
@@ -26,6 +28,13 @@ function Assert-LastExitCode([string]$step) {
 Write-Host "Running tests..."
 dotnet run --project $tests --configuration Release
 Assert-LastExitCode "Tests"
+
+if (-not $SkipUiSmoke) {
+    # Настоящее WPF-окно: вкладки, генерация, кнопки, переводы и привязки. Скриншоты попадают в dist\screenshots
+    Write-Host "Running WPF UI smoke test..."
+    dotnet run --project $uiSmoke --configuration Release -- (Join-Path $dist "screenshots")
+    Assert-LastExitCode "UI smoke test"
+}
 
 Write-Host "Publishing self-contained Windows application..."
 dotnet publish $project `

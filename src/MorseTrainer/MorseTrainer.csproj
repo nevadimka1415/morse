@@ -17,4 +17,8 @@
   <ItemGroup>
     <EmbeddedResource Include="Assets\Voice\*.wav" />
   </ItemGroup>
+  <ItemGroup>
+    <!-- Дымовой UI-тест обращается к элементам окна по x:Name (в WPF они internal) -->
+    <InternalsVisibleTo Include="MorseTrainer.UiSmoke" />
+  </ItemGroup>
 </Project>
