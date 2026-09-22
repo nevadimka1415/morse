@@ -312,7 +312,9 @@ public partial class MainWindow : Window
     private void EnsureKeyer()
     {
         var speed = (int)SpeedSlider.Value;
-        var alphabet = Math.Clamp(AlphabetCombo.SelectedIndex, 0, 2);
+        // Позывные и Q-код всегда декодируются латиницей
+        var alphabet = (int)ContentModes.DecodingAlphabet(
+            ContentModes.Clamp(ContentModeCombo.SelectedIndex), (AlphabetMode)Math.Clamp(AlphabetCombo.SelectedIndex, 0, 2));
         if (_keyer is null || _keyerSpeed != speed || _keyerAlphabet != alphabet)
         {
             var text = _keyer?.Text ?? string.Empty;
@@ -473,7 +475,7 @@ public partial class MainWindow : Window
     {
         var settings = ReadSettings();
         var alphabet = (AlphabetMode)Math.Clamp(settings.AlphabetIndex, 0, 2);
-        var content = (ContentMode)Math.Clamp(settings.ContentModeIndex, 0, 5);
+        var content = ContentModes.Clamp(settings.ContentModeIndex);
         var pool = MorseAlphabet.BuildPool(alphabet, content, _selectedSymbols, settings.KochLevel);
         if (pool.Count == 0)
         {
@@ -481,7 +483,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        _keyerTarget = TrainingGenerator.Generate(pool, Math.Clamp(Math.Min(settings.GroupCount, 4), 1, 4));
+        _keyerTarget = TrainingGenerator.GenerateTask(content, alphabet, pool, Math.Clamp(Math.Min(settings.GroupCount, 4), 1, 4));
         KeyerTargetText.Text = _keyerTarget;
         KeyerResultText.Text = Texts.T("Передайте текст выше, затем нажмите «Проверить передачу».");
         KeyerResultText.Foreground = (Brush)FindResource("MutedTextBrush");
@@ -569,7 +571,7 @@ public partial class MainWindow : Window
         var settings = ReadSettings();
         settings.GroupCount = groupCount;
         var alphabet = (AlphabetMode)Math.Clamp(AlphabetCombo.SelectedIndex, 0, 2);
-        var content = (ContentMode)Math.Clamp(ContentModeCombo.SelectedIndex, 0, 5);
+        var content = ContentModes.Clamp(ContentModeCombo.SelectedIndex);
         var pool = MorseAlphabet.BuildPool(alphabet, content, _selectedSymbols, settings.KochLevel);
         if (pool.Count == 0)
         {
@@ -604,7 +606,7 @@ public partial class MainWindow : Window
                 }
             }
 
-            var generatedTask = TrainingGenerator.Generate(pool, settings.GroupCount, emphasized);
+            var generatedTask = TrainingGenerator.GenerateTask(content, alphabet, pool, settings.GroupCount, emphasized);
             var audio = await Task.Run(() => MorseAudioService.Render(
                 generatedTask,
                 settings.CharactersPerMinute,
@@ -627,7 +629,10 @@ public partial class MainWindow : Window
             PlaybackProgress.Value = 0;
             PlaybackStatusText.Text = Texts.F("Готово к воспроизведению · {0}", FormatDuration(audio.Duration));
             var startSignal = settings.PlayStartSignal ? Texts.T(" · старт Ж Ж Ж") : string.Empty;
-            TaskMetaText.Text = Texts.F("{0} групп × 5 · {1} знаков/мин · паузы {2}/{3}{4}", settings.GroupCount, settings.CharactersPerMinute, settings.CharacterGapUnits, settings.GroupGapUnits, startSignal);
+            var metaTemplate = ContentModes.IsWordMode(content)
+                ? Texts.T("{0} слов · {1} знаков/мин · паузы {2}/{3}{4}")
+                : Texts.T("{0} групп × 5 · {1} знаков/мин · паузы {2}/{3}{4}");
+            TaskMetaText.Text = string.Format(CultureInfo.CurrentCulture, metaTemplate, settings.GroupCount, settings.CharactersPerMinute, settings.CharacterGapUnits, settings.GroupGapUnits, startSignal);
             UpdateAnswerDisplay();
             SetStatus(Texts.T("ГОТОВО"), isActive: true);
             SetTaskControlsEnabled(true);
@@ -869,7 +874,9 @@ public partial class MainWindow : Window
         var content = new StringBuilder()
             .AppendLine("Morse Trainer")
             .AppendLine(Texts.F("Создано: {0:dd.MM.yyyy HH:mm}", DateTime.Now))
-            .AppendLine(Texts.F("Групп: {0} × 5", settings.GroupCount))
+            .AppendLine(ContentModes.IsWordMode(ContentModes.Clamp(settings.ContentModeIndex))
+                ? Texts.F("Слов: {0}", settings.GroupCount)
+                : Texts.F("Групп: {0} × 5", settings.GroupCount))
             .AppendLine(Texts.F("Скорость: {0} знаков/мин", settings.CharactersPerMinute))
             .AppendLine(Texts.F("Тональность: {0} Гц", settings.FrequencyHz))
             .AppendLine(Texts.F("Паузы: символы {0}, группы {1}", settings.CharacterGapUnits, settings.GroupGapUnits))
@@ -1187,6 +1194,13 @@ public partial class MainWindow : Window
                 ? Visibility.Visible
                 : Visibility.Collapsed;
         }
+
+        if (GroupHintText is not null && ContentModeCombo is not null)
+        {
+            GroupHintText.Text = ContentModes.IsWordMode(ContentModes.Clamp(ContentModeCombo.SelectedIndex))
+                ? Texts.T("Каждая группа — одно слово, позывной или код")
+                : Texts.T("В каждой группе 5 символов");
+        }
     }
 
     private void SettingSlider_OnValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
@@ -1243,7 +1257,7 @@ public partial class MainWindow : Window
         return new AppSettings
         {
             AlphabetIndex = Math.Clamp(AlphabetCombo.SelectedIndex, 0, 2),
-            ContentModeIndex = Math.Clamp(ContentModeCombo.SelectedIndex, 0, 5),
+            ContentModeIndex = (int)ContentModes.Clamp(ContentModeCombo.SelectedIndex),
             KochLevel = (int)KochLevelSlider.Value,
             EmphasizeProblemSymbols = EmphasizeProblemsCheckBox.IsChecked == true,
             GroupCount = groupCount,
@@ -1268,7 +1282,7 @@ public partial class MainWindow : Window
     private void ApplySettings(AppSettings settings)
     {
         AlphabetCombo.SelectedIndex = Math.Clamp(settings.AlphabetIndex, 0, 2);
-        ContentModeCombo.SelectedIndex = Math.Clamp(settings.ContentModeIndex, 0, 5);
+        ContentModeCombo.SelectedIndex = (int)ContentModes.Clamp(settings.ContentModeIndex);
         KochLevelSlider.Value = KochMethod.ClampLevel((AlphabetMode)Math.Clamp(settings.AlphabetIndex, 0, 2), settings.KochLevel);
         EmphasizeProblemsCheckBox.IsChecked = settings.EmphasizeProblemSymbols;
         GroupCountText.Text = Math.Clamp(settings.GroupCount, 1, 100).ToString(CultureInfo.InvariantCulture);

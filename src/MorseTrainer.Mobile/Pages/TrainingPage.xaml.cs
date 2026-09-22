@@ -48,7 +48,10 @@ public partial class TrainingPage : ContentPage
             start += Texts.F(" · Кох: уровень {0}", settings.KochLevel);
         }
 
-        SettingsSummaryLabel.Text = Texts.F("{0} групп × 5 · {1} знаков/мин · ", settings.GroupCount, settings.CharactersPerMinute) +
+        var groups = ContentModes.IsWordMode(ContentModes.Clamp(settings.ContentModeIndex))
+            ? Texts.F("{0} слов · {1} знаков/мин · ", settings.GroupCount, settings.CharactersPerMinute)
+            : Texts.F("{0} групп × 5 · {1} знаков/мин · ", settings.GroupCount, settings.CharactersPerMinute);
+        SettingsSummaryLabel.Text = groups +
                                     Texts.F("{0} Гц · паузы {1}/{2}{3}", settings.FrequencyHz, settings.CharacterGapUnits, settings.GroupGapUnits, start);
     }
 
@@ -67,7 +70,7 @@ public partial class TrainingPage : ContentPage
         StopPlayback();
         var settings = _settingsService.LoadSettings();
         var alphabet = (AlphabetMode)Math.Clamp(settings.AlphabetIndex, 0, 2);
-        var content = (ContentMode)Math.Clamp(settings.ContentModeIndex, 0, 5);
+        var content = ContentModes.Clamp(settings.ContentModeIndex);
         var pool = MorseAlphabet.BuildPool(alphabet, content, settings.CustomSymbols, settings.KochLevel);
         if (pool.Count == 0)
         {
@@ -97,7 +100,7 @@ public partial class TrainingPage : ContentPage
                 }
             }
 
-            _currentTask = TrainingGenerator.Generate(pool, Math.Clamp(settings.GroupCount, 1, 100), emphasized);
+            _currentTask = TrainingGenerator.GenerateTask(content, alphabet, pool, Math.Clamp(settings.GroupCount, 1, 100), emphasized);
             _currentTaskRecorded = false;
             _currentGroupCount = Math.Clamp(settings.GroupCount, 1, 100);
             _currentClip = await Task.Run(() => MorseAudioService.Render(

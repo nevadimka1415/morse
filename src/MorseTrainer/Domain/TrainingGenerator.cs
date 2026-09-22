@@ -43,6 +43,76 @@ public static class TrainingGenerator
         return string.Join(' ', groups);
     }
 
+    /// <summary>
+    /// Задание по режиму: слова, позывные и Q-код берутся из словарей (groupCount — число слов),
+    /// остальные режимы — случайные группы по пять символов из pool.
+    /// </summary>
+    public static string GenerateTask(
+        ContentMode content,
+        AlphabetMode alphabet,
+        IReadOnlyList<char> pool,
+        int groupCount,
+        IReadOnlyCollection<char>? emphasized = null)
+    {
+        return content switch
+        {
+            ContentMode.Words => GenerateWords(WordLists.Words(alphabet), groupCount, emphasized),
+            ContentMode.QCodes => GenerateWords(WordLists.QCodes, groupCount, emphasized),
+            ContentMode.Callsigns => GenerateCallsigns(groupCount),
+            _ => Generate(pool, groupCount, emphasized)
+        };
+    }
+
+    /// <summary>Случайные слова из словаря; слова с символами из emphasized встречаются чаще.</summary>
+    public static string GenerateWords(
+        IReadOnlyList<string> words,
+        int count,
+        IReadOnlyCollection<char>? emphasized = null,
+        int emphasisWeight = 3)
+    {
+        ArgumentNullException.ThrowIfNull(words);
+        if (words.Count == 0)
+        {
+            throw new ArgumentException("The word list must not be empty.", nameof(words));
+        }
+
+        if (count is < 1 or > 100)
+        {
+            throw new ArgumentOutOfRangeException(nameof(count), "Word count must be between 1 and 100.");
+        }
+
+        var emphasizedSet = new HashSet<char>((emphasized ?? Array.Empty<char>()).Select(char.ToUpperInvariant));
+        var weighted = new List<string>(words.Count * 2);
+        foreach (var word in words)
+        {
+            var copies = emphasizedSet.Count > 0 && word.Any(symbol => emphasizedSet.Contains(char.ToUpperInvariant(symbol)))
+                ? Math.Max(1, emphasisWeight)
+                : 1;
+            for (var index = 0; index < copies; index++)
+            {
+                weighted.Add(word);
+            }
+        }
+
+        var picks = new string[count];
+        for (var index = 0; index < count; index++)
+        {
+            picks[index] = weighted[RandomNumberGenerator.GetInt32(weighted.Count)];
+        }
+
+        return string.Join(' ', picks);
+    }
+
+    public static string GenerateCallsigns(int count)
+    {
+        if (count is < 1 or > 100)
+        {
+            throw new ArgumentOutOfRangeException(nameof(count), "Callsign count must be between 1 and 100.");
+        }
+
+        return string.Join(' ', Enumerable.Range(0, count).Select(_ => WordLists.RandomCallsign()));
+    }
+
     private static IReadOnlyList<char> BuildWeightedPool(IReadOnlyList<char> pool, IReadOnlyCollection<char>? emphasized, int weight)
     {
         if (emphasized is null || emphasized.Count == 0 || weight == 1)

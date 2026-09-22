@@ -59,7 +59,9 @@ public partial class KeyerPage : ContentPage
     {
         var settings = _settingsService.LoadSettings();
         var speed = Math.Clamp(settings.CharactersPerMinute, 20, 300);
-        var alphabet = Math.Clamp(settings.AlphabetIndex, 0, 2);
+        // Позывные и Q-код всегда декодируются латиницей
+        var alphabet = (int)ContentModes.DecodingAlphabet(
+            ContentModes.Clamp(settings.ContentModeIndex), (AlphabetMode)Math.Clamp(settings.AlphabetIndex, 0, 2));
         if (_keyer is null || _keyerSpeed != speed || _keyerAlphabet != alphabet)
         {
             _keyer = new KeyerDecoder((AlphabetMode)alphabet, speed);
@@ -176,7 +178,7 @@ public partial class KeyerPage : ContentPage
     {
         var settings = _settingsService.LoadSettings();
         var alphabet = (AlphabetMode)Math.Clamp(settings.AlphabetIndex, 0, 2);
-        var content = (ContentMode)Math.Clamp(settings.ContentModeIndex, 0, 5);
+        var content = ContentModes.Clamp(settings.ContentModeIndex);
         var pool = MorseAlphabet.BuildPool(alphabet, content, settings.CustomSymbols, settings.KochLevel);
         if (pool.Count == 0)
         {
@@ -184,7 +186,8 @@ public partial class KeyerPage : ContentPage
             return;
         }
 
-        _target = TrainingGenerator.Generate(pool, Math.Clamp(Math.Min(settings.GroupCount, 3), 1, 3));
+        _target = TrainingGenerator.GenerateTask(content, alphabet, pool, Math.Clamp(Math.Min(settings.GroupCount, 3), 1, 3));
+        EnsureKeyer();
         TargetLabel.Text = _target;
         ResultLabel.Text = string.Empty;
         CheckButton.IsEnabled = true;

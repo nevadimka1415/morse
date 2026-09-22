@@ -16,7 +16,25 @@ public enum ContentMode
     LettersAndDigits,
     AllSymbols,
     Custom,
-    Koch
+    Koch,
+    Words,
+    Callsigns,
+    QCodes
+}
+
+/// <summary>Границы и свойства режимов состава задания: одно место для обоих приложений.</summary>
+public static class ContentModes
+{
+    public const int MaxIndex = (int)ContentMode.QCodes;
+
+    public static ContentMode Clamp(int index) => (ContentMode)Math.Clamp(index, 0, MaxIndex);
+
+    /// <summary>Режимы, где группа — это слово, позывной или код, а не пять случайных символов.</summary>
+    public static bool IsWordMode(ContentMode content) => content is ContentMode.Words or ContentMode.Callsigns or ContentMode.QCodes;
+
+    /// <summary>Алфавит для декодера ключа: позывные и Q-код всегда латиница.</summary>
+    public static AlphabetMode DecodingAlphabet(ContentMode content, AlphabetMode alphabet) =>
+        content is ContentMode.Callsigns or ContentMode.QCodes ? AlphabetMode.Latin : alphabet;
 }
 
 public static class MorseAlphabet
@@ -114,6 +132,11 @@ public static class MorseAlphabet
         if (content == ContentMode.Koch)
         {
             return KochMethod.Pool(alphabet, kochLevel);
+        }
+
+        if (ContentModes.IsWordMode(content))
+        {
+            return WordLists.Symbols(content, alphabet);
         }
 
         if (content == ContentMode.Custom)

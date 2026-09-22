@@ -113,6 +113,9 @@
                                     <ComboBoxItem Content="{loc:Loc 'Буквы, цифры и знаки'}" />
                                     <ComboBoxItem Content="{loc:Loc 'Выбранные символы'}" />
                                     <ComboBoxItem Content="{loc:Loc 'Метод Коха: по уровням'}" />
+                                    <ComboBoxItem Content="{loc:Loc 'Слова'}" />
+                                    <ComboBoxItem Content="{loc:Loc 'Позывные'}" />
+                                    <ComboBoxItem Content="{loc:Loc 'Q-код и сокращения'}" />
                                 </ComboBox>
 
                                 <Border x:Name="CustomSymbolsPanel" Visibility="Collapsed" Background="{DynamicResource CardAltBrush}"
@@ -146,7 +149,7 @@
                                     <Label Content="{loc:Loc 'Количество групп'}" VerticalAlignment="Center" Padding="0" />
                                     <TextBox x:Name="GroupCountText" Grid.Column="1" Text="10" HorizontalContentAlignment="Center" />
                                 </Grid>
-                                <TextBlock Text="{loc:Loc 'В каждой группе 5 символов'}" Foreground="{DynamicResource MutedTextBrush}"
+                                <TextBlock x:Name="GroupHintText" Text="{loc:Loc 'В каждой группе 5 символов'}" Foreground="{DynamicResource MutedTextBrush}"
                                            FontSize="11" Margin="0,-9,0,15" />
 
                                 <Grid Margin="0,0,0,5">

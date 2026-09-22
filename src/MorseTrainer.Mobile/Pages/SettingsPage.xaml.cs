@@ -30,7 +30,8 @@ public partial class SettingsPage : ContentPage
         ContentPicker.ItemsSource = new[]
         {
             Texts.T("Только буквы"), Texts.T("Только цифры"), Texts.T("Буквы и цифры"),
-            Texts.T("Все символы"), Texts.T("Выбранные символы"), Texts.T("Метод Коха")
+            Texts.T("Все символы"), Texts.T("Выбранные символы"), Texts.T("Метод Коха"),
+            Texts.T("Слова"), Texts.T("Позывные"), Texts.T("Q-код и сокращения")
         };
         VersionLabel.Text = $"Morse Trainer {CurrentVersion}";
         BuildSymbolButtons();
@@ -110,7 +111,7 @@ public partial class SettingsPage : ContentPage
         ThemePicker.SelectedIndex = Math.Clamp(_settings.ThemeIndex, 0, 2);
         LanguagePicker.SelectedIndex = Math.Clamp(_settings.LanguageIndex, 0, 2);
         AlphabetPicker.SelectedIndex = Math.Clamp(_settings.AlphabetIndex, 0, 2);
-        ContentPicker.SelectedIndex = Math.Clamp(_settings.ContentModeIndex, 0, 5);
+        ContentPicker.SelectedIndex = (int)ContentModes.Clamp(_settings.ContentModeIndex);
         KochStepper.Value = KochMethod.ClampLevel((AlphabetMode)Math.Clamp(_settings.AlphabetIndex, 0, 2), _settings.KochLevel);
         EmphasizeSwitch.IsToggled = _settings.EmphasizeProblemSymbols;
         GroupCountStepper.Value = Math.Clamp(_settings.GroupCount, 1, 100);
@@ -216,7 +217,7 @@ public partial class SettingsPage : ContentPage
         _settings.ThemeIndex = Math.Clamp(ThemePicker.SelectedIndex, 0, 2);
         _settings.LanguageIndex = Math.Clamp(LanguagePicker.SelectedIndex, 0, 2);
         _settings.AlphabetIndex = Math.Clamp(AlphabetPicker.SelectedIndex, 0, 2);
-        _settings.ContentModeIndex = Math.Clamp(ContentPicker.SelectedIndex, 0, 5);
+        _settings.ContentModeIndex = (int)ContentModes.Clamp(ContentPicker.SelectedIndex);
         _settings.KochLevel = (int)KochStepper.Value;
         _settings.EmphasizeProblemSymbols = EmphasizeSwitch.IsToggled;
         _settings.GroupCount = (int)Math.Round(GroupCountStepper.Value);

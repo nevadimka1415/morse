@@ -27,7 +27,10 @@ var tests = new (string Name, Action Run)[]
     ("Loop tone", TestLoopTone),
     ("Localization", TestLocalization),
     ("Localization coverage", TestLocalizationCoverage),
-    ("Crash report", TestCrashReport)
+    ("Crash report", TestCrashReport),
+    ("Word lists", TestWordLists),
+    ("Word tasks", TestWordTasks),
+    ("Same-code evaluation", TestSameCodeEvaluation)
 };
 
 var failures = new List<string>();
@@ -410,6 +413,58 @@ static void TestCrashReport()
     {
         try { Directory.Delete(directory, recursive: true); } catch { }
     }
+}
+
+static void TestWordLists()
+{
+    Assert(WordLists.RussianWords.Count >= 150 && WordLists.EnglishWords.Count >= 150 && WordLists.QCodes.Count >= 80,
+        $"Word lists are too short: {WordLists.RussianWords.Count}/{WordLists.EnglishWords.Count}/{WordLists.QCodes.Count}.");
+    Assert(WordLists.RussianWords.All(word => word.All(symbol => MorseAlphabet.Russian.ContainsKey(symbol) && symbol != 'Ё')),
+        "Russian words must use only Russian letters without Ё.");
+    Assert(WordLists.EnglishWords.All(word => word.All(symbol => MorseAlphabet.Latin.ContainsKey(symbol))), "English words must use only Latin letters.");
+    Assert(WordLists.QCodes.All(word => word.All(symbol => MorseAlphabet.TryGetCode(symbol, out _))), "Every Q-code symbol must have a Morse code.");
+    Assert(WordLists.RussianWords.Distinct().Count() == WordLists.RussianWords.Count, "Russian words must be unique.");
+    Assert(WordLists.Words(AlphabetMode.RussianAndLatin).Count == WordLists.RussianWords.Count + WordLists.EnglishWords.Count, "Mixed alphabet must combine both lists.");
+    Assert(WordLists.Symbols(ContentMode.Words, AlphabetMode.Russian).Contains('Ъ') && WordLists.Symbols(ContentMode.Callsigns, AlphabetMode.Russian).SequenceEqual("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"),
+        "Symbols must list the characters used by the mode.");
+
+    var callsignPattern = new Regex("^[A-Z0-9]{1,3}[0-9][A-Z]{1,3}$");
+    for (var index = 0; index < 200; index++)
+    {
+        var callsign = WordLists.RandomCallsign();
+        Assert(callsignPattern.IsMatch(callsign), $"Callsign has an unexpected shape: {callsign}");
+    }
+}
+
+static void TestWordTasks()
+{
+    var words = TrainingGenerator.GenerateTask(ContentMode.Words, AlphabetMode.Russian, Array.Empty<char>(), 7).Split(' ');
+    Assert(words.Length == 7 && words.All(WordLists.RussianWords.Contains), "Words task must contain the requested number of Russian words.");
+    var english = TrainingGenerator.GenerateTask(ContentMode.Words, AlphabetMode.Latin, Array.Empty<char>(), 5).Split(' ');
+    Assert(english.All(WordLists.EnglishWords.Contains), "Latin alphabet must produce English words.");
+    var codes = TrainingGenerator.GenerateTask(ContentMode.QCodes, AlphabetMode.Russian, Array.Empty<char>(), 6).Split(' ');
+    Assert(codes.Length == 6 && codes.All(WordLists.QCodes.Contains), "Q-code task must use the Q-code list.");
+    var callsigns = TrainingGenerator.GenerateTask(ContentMode.Callsigns, AlphabetMode.Russian, Array.Empty<char>(), 4).Split(' ');
+    Assert(callsigns.Length == 4 && callsigns.All(item => item.Any(char.IsDigit)), "Callsign task must contain callsigns with a digit.");
+    var groups = TrainingGenerator.GenerateTask(ContentMode.Letters, AlphabetMode.Russian, new[] { 'А', 'Б' }, 3).Split(' ');
+    Assert(groups.Length == 3 && groups.All(group => group.Length == 5), "Other modes must keep groups of five.");
+
+    var emphasized = TrainingGenerator.GenerateWords(new[] { "AAA", "BBB" }, 100, new[] { 'A' }, emphasisWeight: 5).Split(' ');
+    Assert(emphasized.Count(word => word == "AAA") > 60, "Words with emphasized symbols must appear more often.");
+    Assert(MorseAlphabet.BuildPool(AlphabetMode.Latin, ContentMode.Words, "").Count > 20, "BuildPool for word modes must list the used letters.");
+    Assert(ContentModes.Clamp(99) == ContentMode.QCodes && ContentModes.Clamp(-1) == ContentMode.Letters, "ContentModes.Clamp must bound the index.");
+    Assert(ContentModes.DecodingAlphabet(ContentMode.Callsigns, AlphabetMode.Russian) == AlphabetMode.Latin
+           && ContentModes.DecodingAlphabet(ContentMode.Words, AlphabetMode.Russian) == AlphabetMode.Russian, "Callsigns must decode in Latin.");
+}
+
+static void TestSameCodeEvaluation()
+{
+    var mixed = TrainingEvaluator.Evaluate("ABC", "АБС");
+    Assert(mixed.CorrectCount == 2 && mixed.Mistakes.Count == 1 && mixed.Mistakes[0].Position == 3,
+        "A/А and B/Б share a code and must match; C/С do not.");
+    Assert(TrainingEvaluator.Evaluate("ЁЛКА", "ЕЛКА").IsPerfect, "Е typed for Ё must be accepted.");
+    Assert(TrainingEvaluator.Evaluate("R3ABC UA9XYZ", "r3abc ua9xyz").IsPerfect, "Callsigns must be compared case-insensitively.");
+    Assert(!TrainingEvaluator.Matches('А', 'Б') && TrainingEvaluator.Matches('Р', 'R'), "Matches must compare Morse codes.");
 }
 
 static string FindRepositoryRoot()

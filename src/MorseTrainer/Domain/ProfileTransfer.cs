@@ -95,7 +95,7 @@ public static class ProfileTransfer
     private static void Clamp(TrainingProfile profile)
     {
         profile.AlphabetIndex = Math.Clamp(profile.AlphabetIndex, 0, 2);
-        profile.ContentModeIndex = Math.Clamp(profile.ContentModeIndex, 0, (int)ContentMode.Koch);
+        profile.ContentModeIndex = Math.Clamp(profile.ContentModeIndex, 0, ContentModes.MaxIndex);
         profile.GroupCount = Math.Clamp(profile.GroupCount, 1, 100);
         profile.CharactersPerMinute = Math.Clamp(profile.CharactersPerMinute, 20, 300);
         profile.FrequencyHz = Math.Clamp(profile.FrequencyHz, 300, 1200);

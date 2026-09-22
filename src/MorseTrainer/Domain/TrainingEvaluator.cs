@@ -23,7 +23,7 @@ public static class TrainingEvaluator
         for (var index = 0; index < normalizedExpected.Length; index++)
         {
             var actualSymbol = index < normalizedActual.Length ? normalizedActual[index] : (char?)null;
-            if (actualSymbol == normalizedExpected[index])
+            if (actualSymbol is not null && Matches(normalizedExpected[index], actualSymbol.Value))
             {
                 correct++;
             }
@@ -46,6 +46,22 @@ public static class TrainingEvaluator
             : correct * 100d / normalizedExpected.Length;
 
         return new EvaluationResult(correct, normalizedExpected.Length, accuracy, mistakes);
+    }
+
+    /// <summary>
+    /// Символы с одинаковым кодом Морзе (А/A, Р/R, Е/Ё) на слух неразличимы,
+    /// поэтому ответ другим алфавитом засчитывается как верный.
+    /// </summary>
+    public static bool Matches(char expected, char actual)
+    {
+        if (expected == actual)
+        {
+            return true;
+        }
+
+        return MorseAlphabet.TryGetCode(expected, out var expectedCode)
+               && MorseAlphabet.TryGetCode(actual, out var actualCode)
+               && expectedCode == actualCode;
     }
 
     public static string Normalize(string value)
