@@ -10,6 +10,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using MorseTrainer.Localization;
+using MorseTrainer.Models;
 using MorseTrainer.Services;
 
 namespace MorseTrainer.UiSmoke;
@@ -51,22 +52,31 @@ public static class Program
             // Продолжения await после наших кликов должны возвращаться на поток окна, а не в пул потоков
             SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext(Dispatcher.CurrentDispatcher));
 
+            // Конструктор Application сам ставит в очередь OnStartup и StartupUri: первое окно создаёт настоящий
+            // путь запуска приложения. Язык первого окна задаём заранее через settings.json во временной папке.
+            ResetData(deleteDirectory: false);
+            new SettingsService().Save(new AppSettings { LanguageIndex = (int)AppLanguage.Russian });
+            App.HeadlessMode = true;
             var app = new App();
             app.InitializeComponent();
-            // Конструктор Application сам ставит в очередь OnStartup: без StartupUri он не откроет второе окно,
-            // в HeadlessMode не покажет окно ошибки. Прокручиваем старт до выбора языка теста.
-            app.StartupUri = null;
             app.ShutdownMode = ShutdownMode.OnExplicitShutdown;
-            App.HeadlessMode = true;
-            DoEvents();
             Dispatcher.CurrentDispatcher.UnhandledException += (_, e) =>
             {
                 _dispatcherException ??= e.Exception;
                 e.Handled = true;
             };
+            DoEvents();
+            var startupWindow = app.Windows.OfType<MainWindow>().FirstOrDefault()
+                                ?? throw new InvalidOperationException("StartupUri did not open MainWindow.");
+            Check(Texts.Language == AppLanguage.Russian, "OnStartup applied the language from settings.json");
 
-            Run("Main window (Russian)", () => ExerciseMainWindow(AppLanguage.Russian, screenshots, "ru"));
-            Run("Main window (English)", () => ExerciseMainWindow(AppLanguage.English, screenshots, "en"));
+            Run("Main window (Russian, StartupUri)", () => ExerciseMainWindow(startupWindow, screenshots, "ru"));
+            Run("Main window (English)", () =>
+            {
+                ResetData(deleteDirectory: false);
+                Texts.Apply(AppLanguage.English);
+                ExerciseMainWindow(new MainWindow(), screenshots, "en");
+            });
             Run("Symbol selection window", ExerciseSymbolSelection);
         }
         catch (Exception exception)
@@ -89,14 +99,15 @@ public static class Program
         return 0;
     }
 
-    private static void ExerciseMainWindow(AppLanguage language, string? screenshots, string suffix)
+    private static void ExerciseMainWindow(MainWindow window, string? screenshots, string suffix)
     {
-        ResetData(deleteDirectory: false);
-        Texts.Apply(language);
-        var window = new MainWindow();
         try
         {
-            window.Show();
+            if (!window.IsVisible)
+            {
+                window.Show();
+            }
+
             WaitUntil(() => window.StatusBadgeText.Text == Texts.T("ГОТОВО") && window.GenerateButton.IsEnabled, "task generated on load");
 
             var version = typeof(App).Assembly.GetName().Version!;
