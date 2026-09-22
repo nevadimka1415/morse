@@ -10,6 +10,9 @@ public partial class App : Application
 {
     private static readonly string CrashLogPath = AppPaths.CrashLogFile;
 
+    /// <summary>Дымовой UI-тест: ошибка диспетчера не показывает окно и не завершает процесс, а уходит тесту.</summary>
+    internal static bool HeadlessMode { get; set; }
+
     protected override void OnStartup(StartupEventArgs e)
     {
         // Язык нужно выбрать до разбора XAML главного окна
@@ -24,6 +27,11 @@ public partial class App : Application
     private void App_OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
     {
         WriteCrashLog("Dispatcher exception", e.Exception);
+        if (HeadlessMode)
+        {
+            return;
+        }
+
         e.Handled = true;
         MessageBox.Show(
             $"Morse Trainer encountered an error and must close.\n\nDiagnostic file:\n{CrashLogPath}\n\n{e.Exception.Message}",

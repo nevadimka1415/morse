@@ -48,9 +48,17 @@ public static class Program
 
         try
         {
+            // Продолжения await после наших кликов должны возвращаться на поток окна, а не в пул потоков
+            SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext(Dispatcher.CurrentDispatcher));
+
             var app = new App();
             app.InitializeComponent();
+            // Конструктор Application сам ставит в очередь OnStartup: без StartupUri он не откроет второе окно,
+            // в HeadlessMode не покажет окно ошибки. Прокручиваем старт до выбора языка теста.
+            app.StartupUri = null;
             app.ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            App.HeadlessMode = true;
+            DoEvents();
             Dispatcher.CurrentDispatcher.UnhandledException += (_, e) =>
             {
                 _dispatcherException ??= e.Exception;
