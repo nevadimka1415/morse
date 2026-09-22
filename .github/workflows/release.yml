@@ -218,3 +218,32 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh release upload "${{ github.ref_name }}" "dist/MorseTrainer-iOS-unsigned.ipa" --clobber
+
+  # Контрольные суммы всех файлов релиза: SHA256SUMS.txt прикладывается после APK и IPA
+  checksums:
+    needs: [release, android, ios]
+    if: ${{ !cancelled() && needs.release.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Download release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          mkdir -p assets
+          cd assets
+          gh release download "${{ github.ref_name }}" --repo "${{ github.repository }}" --pattern "MorseTrainer-*"
+          ls -la
+
+      - name: Compute SHA256SUMS
+        run: |
+          set -e
+          cd assets
+          sha256sum MorseTrainer-* > ../SHA256SUMS.txt
+          cat ../SHA256SUMS.txt
+
+      - name: Attach SHA256SUMS to GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ github.ref_name }}" SHA256SUMS.txt --clobber --repo "${{ github.repository }}"

@@ -201,6 +201,7 @@ for (const [name, workflow] of [['build', buildWorkflow], ['mobile', mobileWorkf
   assert(!/uses: actions\/[a-z-]+@v[1-4]\b/.test(workflow), `The ${name} workflow uses an outdated action version (Node 20).`);
 }
 assert(releaseWorkflow.includes('MorseTrainer-Android.apk'), 'Release workflow does not attach the Android APK.');
+assert(releaseWorkflow.includes('SHA256SUMS.txt') && releaseWorkflow.includes('sha256sum'), 'Release workflow must attach SHA256SUMS.txt with checksums of all assets.');
 assert(releaseWorkflow.includes('MorseTrainer-iOS-unsigned.ipa') && mobileWorkflow.includes('MorseTrainer-iOS-unsigned.ipa'), 'Workflows must build the unsigned iPhone IPA.');
 assert(mobileWorkflow.includes('EnableCodeSigning=false') && mobileWorkflow.includes('RuntimeIdentifier=ios-arm64'), 'iPhone device build must be unsigned and target ios-arm64.');
 for (const [name, workflow] of [['mobile', mobileWorkflow], ['release', releaseWorkflow]]) {

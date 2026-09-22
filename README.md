@@ -48,6 +48,8 @@
 
 Прямая ссылка на последний APK для телефона: <https://github.com/nevadimka1415/morse/releases/latest/download/MorseTrainer-Android.apk>
 
+В каждом релизе лежит `SHA256SUMS.txt` с контрольными суммами всех файлов. Проверить скачанный файл на Windows: `certutil -hashfile MorseTrainer-Setup-x64.exe SHA256`, на Linux и macOS: `sha256sum -c SHA256SUMS.txt`.
+
 Приложение собирается как self-contained EXE: устанавливать .NET пользователю не требуется.
 
 ## Быстрые клавиши
