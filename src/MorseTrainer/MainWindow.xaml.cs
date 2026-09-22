@@ -189,18 +189,73 @@ public partial class MainWindow : Window
         Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
     }
 
+    private bool _refreshingProfileFilter;
+
+    /// <summary>История, видимая на вкладке «Прогресс»: вся или одного профиля из фильтра.</summary>
+    private IReadOnlyList<TrainingRecord> VisibleHistory =>
+        ProgressProfileCombo?.SelectedIndex > 0 && ProgressProfileCombo.SelectedItem is string name
+            ? TrainingStatistics.ForProfile(_history, name)
+            : _history;
+
+    private void RefreshProfileFilter()
+    {
+        var items = new List<string> { Texts.T("Все профили") };
+        items.AddRange(TrainingStatistics.ProfileNames(_history));
+        var selected = ProgressProfileCombo.SelectedItem as string;
+        _refreshingProfileFilter = true;
+        ProgressProfileCombo.ItemsSource = items;
+        var index = selected is null ? -1 : items.FindIndex(item => string.Equals(item, selected, StringComparison.OrdinalIgnoreCase));
+        ProgressProfileCombo.SelectedIndex = index > 0 ? index : 0;
+        _refreshingProfileFilter = false;
+    }
+
+    private void ProgressProfileCombo_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (!_refreshingProfileFilter && _windowLoaded)
+        {
+            RefreshProgress();
+        }
+    }
+
+    private void ExportCsvButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        var dialog = new SaveFileDialog
+        {
+            Title = Texts.T("Экспорт CSV"),
+            Filter = Texts.T("Таблица CSV (*.csv)|*.csv"),
+            FileName = $"morse-history-{DateTime.Now:yyyy-MM-dd}.csv",
+            AddExtension = true
+        };
+        if (dialog.ShowDialog(this) != true)
+        {
+            return;
+        }
+
+        try
+        {
+            // BOM нужен, чтобы Excel распознал UTF-8 и кириллицу
+            File.WriteAllText(dialog.FileName, TrainingStatistics.ToCsv(VisibleHistory), new UTF8Encoding(encoderShouldEmitUTF8Identifier: true));
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            MessageBox.Show(this, exception.Message, Texts.T("Экспорт CSV"), MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
     private void RefreshProgress()
     {
-        var summary = TrainingStatistics.Summarize(_history);
+        RefreshProfileFilter();
+        var history = VisibleHistory;
+        var summary = TrainingStatistics.Summarize(history);
         ProgressSessionsText.Text = summary.Sessions.ToString(CultureInfo.InvariantCulture);
         ProgressAverageText.Text = summary.Sessions == 0 ? "—" : $"{summary.AverageAccuracy:0.#}%";
         ProgressBestText.Text = summary.Sessions == 0 ? "—" : $"{summary.BestAccuracy:0.#}%";
         ProgressSymbolsText.Text = summary.Sessions == 0 ? "—" : $"{summary.CorrectSymbols} / {summary.TotalSymbols}";
-        var problems = TrainingStatistics.ProblemSymbols(_history);
+        var problems = TrainingStatistics.ProblemSymbols(history);
         HistoryProblemSymbolsText.Text = problems.Count == 0
             ? "—"
             : string.Join("  ", problems.Select(item => $"{item.Symbol} ×{item.Count}"));
-        HistoryListView.ItemsSource = _history
+        HistoryListView.ItemsSource = history
             .OrderByDescending(item => item.CompletedAt)
             .Take(50)
             .Select(item => new HistoryRow(
@@ -213,7 +268,7 @@ public partial class MainWindow : Window
             .ToList();
 
         DailyBarsPanel.Children.Clear();
-        var days = TrainingStatistics.ByDay(_history);
+        var days = TrainingStatistics.ByDay(history);
         if (days.Count == 0)
         {
             DailyBarsPanel.Children.Add(new TextBlock { Text = Texts.T("Пока пусто"), Foreground = (Brush)FindResource("MutedTextBrush") });

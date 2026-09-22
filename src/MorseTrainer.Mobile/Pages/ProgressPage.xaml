@@ -8,6 +8,7 @@
     <ScrollView>
         <VerticalStackLayout x:Name="RootLayout" Padding="16" Spacing="14">
             <Label Text="{loc:Loc 'Прогресс'}" FontSize="26" FontAttributes="Bold" />
+            <Picker x:Name="ProfilePicker" Title="{loc:Loc 'Профиль'}" SelectedIndexChanged="ProfilePicker_OnChanged" />
 
             <Border BackgroundColor="{AppThemeBinding Light=#ECFDF5, Dark=#102F29}">
                 <VerticalStackLayout Spacing="6">
@@ -45,7 +46,10 @@
                 </VerticalStackLayout>
             </Border>
 
-            <Button Text="{loc:Loc 'Очистить историю'}" Clicked="ClearButton_OnClicked" />
+            <Grid ColumnDefinitions="*,8,*">
+                <Button Text="{loc:Loc 'Поделиться CSV'}" Clicked="ShareCsvButton_OnClicked" />
+                <Button Grid.Column="2" Text="{loc:Loc 'Очистить историю'}" Clicked="ClearButton_OnClicked" />
+            </Grid>
             <Label Text="{loc:Loc 'История хранится только на этом устройстве.'}" HorizontalTextAlignment="Center" Opacity="0.65" />
         </VerticalStackLayout>
     </ScrollView>

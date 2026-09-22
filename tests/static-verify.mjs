@@ -160,6 +160,10 @@ assert(read('src/MorseTrainer/MainWindow.xaml').includes('x:Name="AutoSpeedCheck
   'Both apps must offer the auto speed switch.');
 assert(read('src/MorseTrainer/MainWindow.xaml').includes('x:Name="KeyerAnalyzeButton"') && read('src/MorseTrainer.Mobile/Pages/KeyerPage.xaml').includes('x:Name="AnalyzeButton"'),
   'Both apps must offer the keyer quality analysis.');
+assert(read('src/MorseTrainer/MainWindow.xaml').includes('x:Name="ProgressProfileCombo"') && read('src/MorseTrainer.Mobile/Pages/ProgressPage.xaml').includes('x:Name="ProfilePicker"'),
+  'Both apps must filter progress by profile.');
+assert(read('src/MorseTrainer/MainWindow.xaml').includes('x:Name="ExportCsvButton"') && read('src/MorseTrainer.Mobile/Pages/ProgressPage.xaml').includes('ShareCsvButton_OnClicked'),
+  'Both apps must export the history as CSV.');
 
 for (const file of ['src/MorseTrainer/MainWindow.xaml', 'src/MorseTrainer/SymbolSelectionWindow.xaml', ...['TrainingPage', 'LearningPage', 'SettingsPage', 'ProgressPage', 'KeyerPage'].map((page) => `src/MorseTrainer.Mobile/Pages/${page}.xaml`)]) {
   const xaml = read(file);

@@ -34,7 +34,8 @@ var tests = new (string Name, Action Run)[]
     ("Exam session", TestExam),
     ("Noise, QSB and drift", TestNoise),
     ("Speed ladder", TestSpeedLadder),
-    ("Keyer analysis", TestKeyerAnalysis)
+    ("Keyer analysis", TestKeyerAnalysis),
+    ("Progress filter and CSV", TestProgressCsv)
 };
 
 var failures = new List<string>();
@@ -623,6 +624,34 @@ static void TestKeyerAnalysis()
 
     keyer.Clear();
     Assert(keyer.Analyze().DotCount == 0 && !keyer.Analyze().HasEnoughData, "Clear must reset the statistics.");
+}
+
+static void TestProgressCsv()
+{
+    Texts.Apply(AppLanguage.Russian);
+    var day = new DateTime(2026, 9, 22, 9, 30, 0);
+    var perfect = TrainingEvaluator.Evaluate("АБВГД", "АБВГД");
+    var flawed = TrainingEvaluator.Evaluate("АБВГД", "АБВГЖ");
+    var records = new[]
+    {
+        TrainingStatistics.CreateRecord(day, "Основной", 60, 1, flawed),
+        TrainingStatistics.CreateRecord(day.AddHours(1), "Быстрый", 90, 1, perfect, isExam: true),
+        TrainingStatistics.CreateRecord(day.AddHours(2), "основной", 65, 1, perfect)
+    };
+    var names = TrainingStatistics.ProfileNames(records);
+    Assert(names.Count == 2 && names[0] == "Быстрый" && names[1] == "Основной", "Profile names must be distinct (case-insensitive) and sorted: " + string.Join(",", names));
+    Assert(TrainingStatistics.ForProfile(records, "ОСНОВНОЙ").Count == 2 && TrainingStatistics.ForProfile(records, null).Count == 3 && TrainingStatistics.ForProfile(records, "").Count == 3,
+        "ForProfile must filter case-insensitively and return everything for an empty name.");
+
+    var csv = TrainingStatistics.ToCsv(records);
+    var lines = csv.Split('\n', StringSplitOptions.RemoveEmptyEntries).Select(line => line.TrimEnd('\r')).ToArray();
+    Assert(lines.Length == 4 && lines[0].StartsWith("Дата;Профиль;Экзамен;Скорость (зн/мин);Групп;Символов;Верно;Точность (%);Ошибки"), "CSV header is wrong: " + lines[0]);
+    Assert(lines[1].StartsWith("2026-09-22 09:30;Основной;;60;1;5;4;80;Д"), "CSV row is wrong: " + lines[1]);
+    Assert(lines[2].Contains(";Быстрый;да;90;"), "Exam row must be marked: " + lines[2]);
+    Assert(TrainingStatistics.ToCsv(new[] { TrainingStatistics.CreateRecord(day, "А;Б", 60, 1, perfect) }).Contains("\"А;Б\""), "Semicolon in a name must be quoted.");
+    Texts.Apply(AppLanguage.English);
+    Assert(TrainingStatistics.ToCsv(records).StartsWith("Date;Profile;Exam;Speed (cpm);Groups;Symbols;Correct;Accuracy (%);Mistakes"), "CSV header must be translated.");
+    Texts.Apply(AppLanguage.Russian);
 }
 
 static string FindRepositoryRoot()

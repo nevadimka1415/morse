@@ -630,6 +630,10 @@
                     <Border Grid.Column="2" Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource BorderBrush}"
                             BorderThickness="1" CornerRadius="16" Padding="22">
                         <StackPanel>
+                            <TextBlock Text="{loc:Loc 'Профиль'}" Foreground="{DynamicResource MutedTextBrush}" />
+                            <ComboBox x:Name="ProgressProfileCombo" SelectionChanged="ProgressProfileCombo_OnSelectionChanged" Margin="0,4,0,10" />
+                            <Button x:Name="ExportCsvButton" Content="{loc:Loc 'Экспорт CSV'}" Click="ExportCsvButton_OnClick" HorizontalAlignment="Left" Margin="0,0,0,16"
+                                    ToolTip="{loc:Loc 'Сохранить видимую историю в CSV для Excel'}" />
                             <TextBlock Text="{loc:Loc 'По дням'}" FontSize="18" FontWeight="SemiBold" />
                             <StackPanel x:Name="DailyBarsPanel" Margin="0,12,0,0" />
                             <TextBlock Text="{loc:Loc 'СЛОЖНЫЕ СИМВОЛЫ ЗА ВСЁ ВРЕМЯ'}" Foreground="{DynamicResource MutedTextBrush}" FontSize="10" Margin="0,18,0,4" />

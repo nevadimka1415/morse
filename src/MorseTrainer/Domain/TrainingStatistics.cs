@@ -1,3 +1,6 @@
+using System.Globalization;
+using System.Text;
+using MorseTrainer.Localization;
 using MorseTrainer.Models;
 
 namespace MorseTrainer.Domain;
@@ -89,6 +92,71 @@ public static class TrainingStatistics
             .ThenBy(item => item.Symbol)
             .Take(Math.Max(1, top))
             .ToArray();
+    }
+
+    /// <summary>Имена профилей, встречающиеся в истории, по алфавиту.</summary>
+    public static IReadOnlyList<string> ProfileNames(IReadOnlyList<TrainingRecord> records)
+    {
+        ArgumentNullException.ThrowIfNull(records);
+        return records
+            .Select(item => item.ProfileName)
+            .Where(name => !string.IsNullOrWhiteSpace(name))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(name => name, StringComparer.CurrentCultureIgnoreCase)
+            .ToArray();
+    }
+
+    /// <summary>Записи одного профиля (без учёта регистра); null или пустое имя — вся история.</summary>
+    public static IReadOnlyList<TrainingRecord> ForProfile(IReadOnlyList<TrainingRecord> records, string? profileName)
+    {
+        ArgumentNullException.ThrowIfNull(records);
+        return string.IsNullOrWhiteSpace(profileName)
+            ? records
+            : records.Where(item => string.Equals(item.ProfileName, profileName, StringComparison.OrdinalIgnoreCase)).ToArray();
+    }
+
+    /// <summary>
+    /// Таблица CSV для Excel: разделитель «;», десятичный знак текущей культуры, даты ISO.
+    /// Файл лучше сохранять в UTF-8 с BOM, чтобы Excel распознал кириллицу.
+    /// </summary>
+    public static string ToCsv(IReadOnlyList<TrainingRecord> records)
+    {
+        ArgumentNullException.ThrowIfNull(records);
+        var culture = CultureInfo.CurrentCulture;
+        var builder = new StringBuilder();
+        builder.AppendLine(string.Join(';', new[]
+        {
+            Texts.T("Дата"), Texts.T("Профиль"), Texts.T("Экзамен"), Texts.T("Скорость (зн/мин)"), Texts.T("Групп"),
+            Texts.T("Символов"), Texts.T("Верно"), Texts.T("Точность (%)"), Texts.T("Ошибки")
+        }));
+        foreach (var item in records.OrderBy(item => item.CompletedAt))
+        {
+            builder.AppendLine(string.Join(';', new[]
+            {
+                item.CompletedAt.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture),
+                Escape(item.ProfileName),
+                item.IsExam ? Texts.T("да") : string.Empty,
+                item.CharactersPerMinute.ToString(CultureInfo.InvariantCulture),
+                item.GroupCount.ToString(CultureInfo.InvariantCulture),
+                item.TotalCount.ToString(CultureInfo.InvariantCulture),
+                item.CorrectCount.ToString(CultureInfo.InvariantCulture),
+                item.AccuracyPercent.ToString("0.#", culture),
+                Escape(item.ProblemSymbols)
+            }));
+        }
+
+        return builder.ToString();
+    }
+
+    private static string Escape(string value)
+    {
+        if (value.Length == 0)
+        {
+            return value;
+        }
+
+        var needsQuotes = value.Contains(';') || value.Contains('"') || value.Contains('\n');
+        return needsQuotes ? "\"" + value.Replace("\"", "\"\"") + "\"" : value;
     }
 
     /// <summary>Последние дни с тренировками (не больше days), от старых к новым.</summary>

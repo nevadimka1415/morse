@@ -1,3 +1,5 @@
+using System.Text;
+using Microsoft.Maui.ApplicationModel.DataTransfer;
 using MorseTrainer.Domain;
 using MorseTrainer.Localization;
 using MorseTrainer.Models;
@@ -10,6 +12,7 @@ namespace MorseTrainer.Mobile.Pages;
 public partial class ProgressPage : ContentPage
 {
     private readonly TrainingHistoryStore _historyStore;
+    private bool _refreshingFilter;
 
     public ProgressPage(TrainingHistoryStore historyStore)
     {
@@ -23,9 +26,51 @@ public partial class ProgressPage : ContentPage
         Refresh();
     }
 
+    private void ProfilePicker_OnChanged(object sender, EventArgs e)
+    {
+        if (!_refreshingFilter)
+        {
+            Refresh();
+        }
+    }
+
+    /// <summary>Пикер профилей: «Все профили» + имена из истории; выбор сохраняется при обновлении.</summary>
+    private IReadOnlyList<TrainingRecord> LoadVisibleHistory()
+    {
+        var all = _historyStore.Load();
+        var items = new List<string> { Texts.T("Все профили") };
+        items.AddRange(TrainingStatistics.ProfileNames(all));
+        var selected = ProfilePicker.SelectedItem as string;
+        _refreshingFilter = true;
+        ProfilePicker.ItemsSource = items;
+        var index = selected is null ? -1 : items.FindIndex(item => string.Equals(item, selected, StringComparison.OrdinalIgnoreCase));
+        ProfilePicker.SelectedIndex = index > 0 ? index : 0;
+        _refreshingFilter = false;
+        return ProfilePicker.SelectedIndex > 0 ? TrainingStatistics.ForProfile(all, items[ProfilePicker.SelectedIndex]) : all;
+    }
+
+    private async void ShareCsvButton_OnClicked(object sender, EventArgs e)
+    {
+        try
+        {
+            var path = Path.Combine(FileSystem.CacheDirectory, $"morse-history-{DateTime.Now:yyyy-MM-dd}.csv");
+            // BOM нужен, чтобы Excel распознал UTF-8 и кириллицу
+            await File.WriteAllTextAsync(path, TrainingStatistics.ToCsv(LoadVisibleHistory()), new UTF8Encoding(encoderShouldEmitUTF8Identifier: true));
+            await Share.Default.RequestAsync(new ShareFileRequest
+            {
+                Title = Texts.T("История тренировок Morse Trainer"),
+                File = new ShareFile(path)
+            });
+        }
+        catch (Exception exception)
+        {
+            await DisplayAlertAsync(Texts.T("Не удалось поделиться"), exception.Message, Texts.T("Закрыть"));
+        }
+    }
+
     private void Refresh()
     {
-        var records = _historyStore.Load();
+        var records = LoadVisibleHistory();
         var summary = TrainingStatistics.Summarize(records);
         if (summary.Sessions == 0)
         {
