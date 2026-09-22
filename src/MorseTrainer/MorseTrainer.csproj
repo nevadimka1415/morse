@@ -9,7 +9,7 @@
     <RootNamespace>MorseTrainer</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>Assets\MorseTrainer.ico</ApplicationIcon>
-    <Version>2.3.0</Version>
+    <Version>2.4.0</Version>
     <Authors>Morse Trainer contributors</Authors>
     <Product>Morse Trainer</Product>
     <Description>Offline Morse code trainer for Windows.</Description>

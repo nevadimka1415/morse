@@ -118,12 +118,12 @@ dotnet run --project .\tests\MorseTrainer.Tests\MorseTrainer.Tests.csproj -c Rel
 
 ## Как устроен проект
 
-- `src/MorseTrainer` — WPF-приложение для Windows на C# и .NET 8;
+- `src/MorseTrainer` — WPF-приложение для Windows на C# и .NET 10;
 - `src/MorseTrainer.Mobile` — мобильный интерфейс .NET MAUI для Android и iPhone;
 - `src/MorseTrainer.Core` — общая логика Морзе, используемая мобильным приложением;
 - `Domain` — алфавиты, напевы, генерация задания и проверка ответа;
 - `Services` — синтез WAV, встроенный голос, темы, профили и хранение локальных настроек;
-- `tests` — автономные проверки основной логики;
+- `tests` — автономные проверки основной логики (`MorseTrainer.Tests`) и дымовой UI-тест Windows (`MorseTrainer.UiSmoke`);
 - `installer` — сценарий установщика Inno Setup;
 - `.github/workflows` — сборка EXE и публикация Releases.
 

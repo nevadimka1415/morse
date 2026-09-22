@@ -23,7 +23,7 @@ dotnet publish "%MORSE_PROJECT%" ^
     --runtime win-x64 ^
     --self-contained false ^
     --output "%MORSE_OUTPUT%" ^
-    -p:Version=2.3.0 ^
+    -p:Version=2.4.0 ^
     -p:PublishSingleFile=true ^
     -p:RestoreIgnoreFailedSources=true ^
     -p:DebugType=None ^
