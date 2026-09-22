@@ -20,6 +20,7 @@ const requiredFiles = [
   'src/MorseTrainer/Domain/KeyerDecoder.cs',
   'src/MorseTrainer/Domain/WordLists.cs',
   'src/MorseTrainer/Domain/ExamSession.cs',
+  'src/MorseTrainer/Domain/SpeedLadder.cs',
   'src/MorseTrainer.Mobile/Pages/KeyerPage.xaml',
   'src/MorseTrainer.Mobile/Pages/KeyerPage.xaml.cs',
   'src/MorseTrainer.Mobile/Services/TabletLayout.cs',
@@ -120,6 +121,7 @@ for (const relativePath of [
   'src/MorseTrainer/Domain/KeyerDecoder.cs',
   'src/MorseTrainer/Domain/WordLists.cs',
   'src/MorseTrainer/Domain/ExamSession.cs',
+  'src/MorseTrainer/Domain/SpeedLadder.cs',
   'src/MorseTrainer.Mobile/Pages/KeyerPage.xaml.cs',
   'src/MorseTrainer.Mobile/Services/TabletLayout.cs',
   'src/MorseTrainer/Localization/Texts.cs',
@@ -152,6 +154,8 @@ assert(read('src/MorseTrainer/MainWindow.xaml').includes('x:Name="ExamButton"') 
   'Both apps must offer the exam mode.');
 assert(read('src/MorseTrainer/MainWindow.xaml').includes('x:Name="NoiseSlider"') && read('src/MorseTrainer.Mobile/Pages/SettingsPage.xaml').includes('x:Name="NoiseSlider"'),
   'Both apps must offer the interference sliders (noise, QSB, drift).');
+assert(read('src/MorseTrainer/MainWindow.xaml').includes('x:Name="AutoSpeedCheckBox"') && read('src/MorseTrainer.Mobile/Pages/SettingsPage.xaml').includes('x:Name="AutoSpeedSwitch"'),
+  'Both apps must offer the auto speed switch.');
 
 for (const file of ['src/MorseTrainer/MainWindow.xaml', 'src/MorseTrainer/SymbolSelectionWindow.xaml', ...['TrainingPage', 'LearningPage', 'SettingsPage', 'ProgressPage', 'KeyerPage'].map((page) => `src/MorseTrainer.Mobile/Pages/${page}.xaml`)]) {
   const xaml = read(file);

@@ -114,6 +114,7 @@ public partial class SettingsPage : ContentPage
         ContentPicker.SelectedIndex = (int)ContentModes.Clamp(_settings.ContentModeIndex);
         KochStepper.Value = KochMethod.ClampLevel((AlphabetMode)Math.Clamp(_settings.AlphabetIndex, 0, 2), _settings.KochLevel);
         EmphasizeSwitch.IsToggled = _settings.EmphasizeProblemSymbols;
+        AutoSpeedSwitch.IsToggled = _settings.AutoSpeed;
         GroupCountStepper.Value = Math.Clamp(_settings.GroupCount, 1, 100);
         SpeedSlider.Value = Math.Clamp(_settings.CharactersPerMinute, 20, 300);
         FrequencySlider.Value = Math.Clamp(_settings.FrequencyHz, 300, 1200);
@@ -223,8 +224,9 @@ public partial class SettingsPage : ContentPage
         _settings.ContentModeIndex = (int)ContentModes.Clamp(ContentPicker.SelectedIndex);
         _settings.KochLevel = (int)KochStepper.Value;
         _settings.EmphasizeProblemSymbols = EmphasizeSwitch.IsToggled;
+        _settings.AutoSpeed = AutoSpeedSwitch.IsToggled;
         _settings.GroupCount = (int)Math.Round(GroupCountStepper.Value);
-        _settings.CharactersPerMinute = Snap(SpeedSlider.Value, 10, 20, 300);
+        _settings.CharactersPerMinute = Snap(SpeedSlider.Value, 5, 20, 300);
         _settings.FrequencyHz = Snap(FrequencySlider.Value, 50, 300, 1200);
         _settings.VolumePercent = Snap(VolumeSlider.Value, 5, 0, 100);
         _settings.CharacterGapUnits = (int)Math.Round(CharacterGapSlider.Value);
@@ -244,7 +246,7 @@ public partial class SettingsPage : ContentPage
     private void UpdateLabelsAndSymbols()
     {
         GroupCountValue.Text = ((int)Math.Round(GroupCountStepper.Value)).ToString();
-        SpeedValue.Text = Texts.F("{0} зн/мин", Snap(SpeedSlider.Value, 10, 20, 300));
+        SpeedValue.Text = Texts.F("{0} зн/мин", Snap(SpeedSlider.Value, 5, 20, 300));
         FrequencyValue.Text = Texts.F("{0} Гц", Snap(FrequencySlider.Value, 50, 300, 1200));
         VolumeValue.Text = $"{Snap(VolumeSlider.Value, 5, 0, 100)}%";
         CharacterGapValue.Text = Texts.F("{0} точек", (int)Math.Round(CharacterGapSlider.Value));
@@ -398,7 +400,7 @@ public partial class SettingsPage : ContentPage
 
     private void FarnsworthButton_OnClicked(object sender, EventArgs e)
     {
-        var preset = new AppSettings { CharactersPerMinute = Snap(SpeedSlider.Value, 10, 20, 300) };
+        var preset = new AppSettings { CharactersPerMinute = Snap(SpeedSlider.Value, 5, 20, 300) };
         TrainingPresets.ApplyFarnsworth(preset);
         _ready = false;
         SpeedSlider.Value = preset.CharactersPerMinute;

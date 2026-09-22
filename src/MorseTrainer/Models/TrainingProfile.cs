@@ -19,6 +19,7 @@ public sealed class TrainingProfile
     public string CustomSymbols { get; set; } = "АБВГДЕЖЗИКЛМНОПРСТУ";
     public int KochLevel { get; set; } = 2;
     public bool EmphasizeProblemSymbols { get; set; } = true;
+    public bool AutoSpeed { get; set; }
 
     public static TrainingProfile FromSettings(string name, AppSettings settings)
     {
@@ -41,7 +42,8 @@ public sealed class TrainingProfile
             DriftHz = settings.DriftHz,
             CustomSymbols = settings.CustomSymbols,
             KochLevel = settings.KochLevel,
-            EmphasizeProblemSymbols = settings.EmphasizeProblemSymbols
+            EmphasizeProblemSymbols = settings.EmphasizeProblemSymbols,
+            AutoSpeed = settings.AutoSpeed
         };
     }
 
@@ -64,6 +66,7 @@ public sealed class TrainingProfile
         settings.CustomSymbols = CustomSymbols;
         settings.KochLevel = KochLevel;
         settings.EmphasizeProblemSymbols = EmphasizeProblemSymbols;
+        settings.AutoSpeed = AutoSpeed;
         settings.ActiveProfileName = Name;
     }
 

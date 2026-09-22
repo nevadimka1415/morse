@@ -30,6 +30,7 @@ public partial class MainWindow : Window
     private ExamSession? _exam;
     private DispatcherTimer? _examTimer;
     private string? _examReport;
+    private string _autoSpeedNote = string.Empty;
     private const int KeyerTabIndex = 2;
     private readonly Stopwatch _keyerClock = Stopwatch.StartNew();
     private KeyerDecoder? _keyer;
@@ -820,6 +821,18 @@ public partial class MainWindow : Window
                 taskSettings.CharactersPerMinute, _currentTask.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length, result, examResult is not null);
             _history = _historyStore.Add(record);
             RefreshProgress();
+            // Лестница скорости: по истории этого профиля
+            if (taskSettings.AutoSpeed)
+            {
+                var nextSpeed = SpeedLadder.Next(_history, taskSettings.CharactersPerMinute, taskSettings.ActiveProfileName);
+                if (nextSpeed != taskSettings.CharactersPerMinute)
+                {
+                    SpeedSlider.Value = nextSpeed;
+                    UpdateSettingLabels();
+                    _autoSpeedNote = SpeedLadder.Describe(taskSettings.CharactersPerMinute, nextSpeed);
+                    _settingsService.Save(ReadSettings());
+                }
+            }
         }
         AccuracyText.Text = $"{result.AccuracyPercent:0.#}%";
 
@@ -858,6 +871,12 @@ public partial class MainWindow : Window
         {
             var kochAlphabet = (AlphabetMode)Math.Clamp(_currentSettings.AlphabetIndex, 0, 2);
             ResultDetailsText.Text += "\n" + KochMethod.Advice(kochAlphabet, _currentSettings.KochLevel, result.AccuracyPercent);
+        }
+
+        if (_autoSpeedNote.Length > 0)
+        {
+            ResultDetailsText.Text += "\n" + _autoSpeedNote;
+            _autoSpeedNote = string.Empty;
         }
 
         _answerVisible = true;
@@ -1372,6 +1391,7 @@ public partial class MainWindow : Window
             ContentModeIndex = (int)ContentModes.Clamp(ContentModeCombo.SelectedIndex),
             KochLevel = (int)KochLevelSlider.Value,
             EmphasizeProblemSymbols = EmphasizeProblemsCheckBox.IsChecked == true,
+            AutoSpeed = AutoSpeedCheckBox.IsChecked == true,
             GroupCount = groupCount,
             CharactersPerMinute = (int)SpeedSlider.Value,
             FrequencyHz = (int)FrequencySlider.Value,
@@ -1400,6 +1420,7 @@ public partial class MainWindow : Window
         ContentModeCombo.SelectedIndex = (int)ContentModes.Clamp(settings.ContentModeIndex);
         KochLevelSlider.Value = KochMethod.ClampLevel((AlphabetMode)Math.Clamp(settings.AlphabetIndex, 0, 2), settings.KochLevel);
         EmphasizeProblemsCheckBox.IsChecked = settings.EmphasizeProblemSymbols;
+        AutoSpeedCheckBox.IsChecked = settings.AutoSpeed;
         GroupCountText.Text = Math.Clamp(settings.GroupCount, 1, 100).ToString(CultureInfo.InvariantCulture);
         SpeedSlider.Value = Math.Clamp(settings.CharactersPerMinute, 20, 300);
         FrequencySlider.Value = Math.Clamp(settings.FrequencyHz, 300, 1_200);

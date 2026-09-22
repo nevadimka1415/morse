@@ -110,6 +110,12 @@
                         <Switch x:Name="EmphasizeSwitch" Grid.Column="1" Toggled="SettingsControl_OnChanged" />
                     </Grid>
                     <Grid ColumnDefinitions="*,Auto">
+                        <Label Text="{loc:Loc 'Авто-скорость'}" VerticalOptions="Center" />
+                        <Switch x:Name="AutoSpeedSwitch" Grid.Column="1" Toggled="SettingsControl_OnChanged" />
+                    </Grid>
+                    <Label Text="{loc:Loc 'Лестница скорости: два задания подряд с точностью от 90 % — скорость +5 знаков/мин, задание с точностью ниже 70 % — сразу −5.'}"
+                           Opacity="0.65" FontSize="13" LineBreakMode="WordWrap" />
+                    <Grid ColumnDefinitions="*,Auto">
                         <Label Text="{loc:Loc 'Сигнал Ж Ж Ж перед заданием'}" VerticalOptions="Center" />
                         <Switch x:Name="StartSignalSwitch" Grid.Column="1" Toggled="SettingsControl_OnChanged" />
                     </Grid>

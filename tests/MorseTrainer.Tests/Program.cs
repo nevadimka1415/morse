@@ -32,7 +32,8 @@ var tests = new (string Name, Action Run)[]
     ("Word tasks", TestWordTasks),
     ("Same-code evaluation", TestSameCodeEvaluation),
     ("Exam session", TestExam),
-    ("Noise, QSB and drift", TestNoise)
+    ("Noise, QSB and drift", TestNoise),
+    ("Speed ladder", TestSpeedLadder)
 };
 
 var failures = new List<string>();
@@ -552,6 +553,30 @@ static double SumAbs(AudioClip clip)
     }
 
     return sum;
+}
+
+static void TestSpeedLadder()
+{
+    var day = new DateTime(2026, 9, 22, 9, 0, 0);
+    TrainingRecord Record(int minutes, int speed, double accuracy, string profile = "Основной") => new()
+    {
+        CompletedAt = day.AddMinutes(minutes), ProfileName = profile, CharactersPerMinute = speed, AccuracyPercent = accuracy, TotalCount = 10, CorrectCount = (int)(accuracy / 10)
+    };
+
+    Assert(SpeedLadder.Next(Array.Empty<TrainingRecord>(), 60) == 60, "Empty history keeps the speed.");
+    Assert(SpeedLadder.Next(new[] { Record(1, 60, 95) }, 60) == 60, "One good task is not enough.");
+    Assert(SpeedLadder.Next(new[] { Record(1, 60, 95), Record(2, 60, 92) }, 60) == 65, "Two good tasks in a row raise the speed by 5.");
+    Assert(SpeedLadder.Next(new[] { Record(1, 60, 95), Record(2, 65, 92) }, 65) == 65, "The streak restarts after a raise: the older task was at a different speed.");
+    Assert(SpeedLadder.Next(new[] { Record(1, 60, 95), Record(2, 60, 85), Record(3, 60, 95) }, 60) == 60, "A task below 90 % breaks the streak.");
+    Assert(SpeedLadder.Next(new[] { Record(1, 60, 95), Record(2, 60, 60) }, 60) == 55, "A task below 70 % lowers the speed by 5.");
+    Assert(SpeedLadder.Next(new[] { Record(1, 20, 10) }, 20) == 20 && SpeedLadder.Next(new[] { Record(1, 300, 100), Record(2, 300, 100) }, 300) == 300, "Speed stays within 20–300.");
+    Assert(SpeedLadder.Next(new[] { Record(1, 60, 95, "Другой"), Record(2, 60, 95) }, 60, "Основной") == 60, "Other profiles are ignored.");
+    Texts.Apply(AppLanguage.Russian);
+    Assert(SpeedLadder.Describe(60, 60).Length == 0 && SpeedLadder.Describe(60, 65).Contains("60 → 65") && SpeedLadder.Describe(60, 55).Contains("ниже 70"), "Describe must explain the change.");
+
+    var restored = new AppSettings();
+    TrainingProfile.FromSettings("Лестница", new AppSettings { AutoSpeed = true }).ApplyTo(restored);
+    Assert(restored.AutoSpeed, "Profile must carry the auto speed switch.");
 }
 
 static string FindRepositoryRoot()

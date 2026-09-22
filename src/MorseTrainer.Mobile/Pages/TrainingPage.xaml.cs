@@ -216,6 +216,7 @@ public partial class TrainingPage : ContentPage
         }
 
         var result = TrainingEvaluator.Evaluate(_currentTask, AnswerEditor.Text ?? string.Empty);
+        var autoSpeedNote = string.Empty;
         // Экзамен завершается первой проверкой: время останавливается, протокол готов
         ExamResult? examResult = null;
         if (_exam is not null && !_exam.IsFinished)
@@ -232,9 +233,20 @@ public partial class TrainingPage : ContentPage
         {
             _currentTaskRecorded = true;
             var settings = _settingsService.LoadSettings();
-            _historyStore.Add(TrainingStatistics.CreateRecord(DateTime.Now, settings.ActiveProfileName,
+            var history = _historyStore.Add(TrainingStatistics.CreateRecord(DateTime.Now, settings.ActiveProfileName,
                 settings.CharactersPerMinute, _currentGroupCount, result, examResult is not null));
             UpdateHistoryLabel();
+            // Лестница скорости: новая скорость сохраняется в настройки и попадёт в следующее задание
+            if (settings.AutoSpeed)
+            {
+                var nextSpeed = SpeedLadder.Next(history, settings.CharactersPerMinute, settings.ActiveProfileName);
+                if (nextSpeed != settings.CharactersPerMinute)
+                {
+                    autoSpeedNote = SpeedLadder.Describe(settings.CharactersPerMinute, nextSpeed);
+                    settings.CharactersPerMinute = nextSpeed;
+                    _settingsService.SaveSettings(settings);
+                }
+            }
         }
         AccuracyLabel.Text = Texts.F("Точность: {0:0.#}%", result.AccuracyPercent);
         if (result.IsPerfect)
@@ -258,6 +270,11 @@ public partial class TrainingPage : ContentPage
         {
             var kochAlphabet = (AlphabetMode)Math.Clamp(checkedSettings.AlphabetIndex, 0, 2);
             ResultLabel.Text += "\n" + KochMethod.Advice(kochAlphabet, checkedSettings.KochLevel, result.AccuracyPercent);
+        }
+
+        if (autoSpeedNote.Length > 0)
+        {
+            ResultLabel.Text += "\n" + autoSpeedNote;
         }
 
         _answerVisible = true;

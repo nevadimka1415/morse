@@ -156,7 +156,7 @@
                                     <TextBlock Text="{loc:Loc 'Скорость знака'}" Foreground="{DynamicResource MutedTextBrush}" />
                                     <TextBlock x:Name="SpeedValueText" Text="{loc:Loc '60 знаков/мин'}" HorizontalAlignment="Right" />
                                 </Grid>
-                                <Slider x:Name="SpeedSlider" Minimum="20" Maximum="300" Value="60" TickFrequency="10"
+                                <Slider x:Name="SpeedSlider" Minimum="20" Maximum="300" Value="60" TickFrequency="5"
                                         IsSnapToTickEnabled="True" ValueChanged="SettingSlider_OnValueChanged" Margin="0,0,0,17" />
 
                                 <Grid Margin="0,0,0,5">
@@ -212,6 +212,8 @@
                                           IsChecked="True" Margin="0,0,0,12"
                                           ToolTip="{loc:Loc 'Символы, в которых вы ошибались (по истории тренировок), попадают в задание втрое чаще.'}" />
 
+                                <CheckBox x:Name="AutoSpeedCheckBox" Content="{loc:Loc 'Авто-скорость'}" IsChecked="False" Margin="0,0,0,12"
+                                          ToolTip="{loc:Loc 'Лестница скорости: два задания подряд с точностью от 90 % — скорость +5 знаков/мин, задание с точностью ниже 70 % — сразу −5.'}" />
                                 <CheckBox x:Name="PlayStartSignalCheckBox" Content="{loc:Loc 'Перед заданием проигрывать Ж Ж Ж'}"
                                           IsChecked="True" Margin="0,0,0,12" />
                                 <Grid Margin="0,0,0,5">

@@ -19,6 +19,8 @@ public sealed class AppSettings
     public string CustomSymbols { get; set; } = "АБВГДЕЖЗИКЛМНОПРСТУ";
     public int KochLevel { get; set; } = 2;
     public bool EmphasizeProblemSymbols { get; set; } = true;
+    // Лестница скорости: +5 после двух заданий от 90 %, −5 при точности ниже 70 %
+    public bool AutoSpeed { get; set; }
     public int ThemeIndex { get; set; } = 0;
     public int LanguageIndex { get; set; } = 0;
     public int LearningAlphabetIndex { get; set; } = 0;
