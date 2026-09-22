@@ -52,6 +52,20 @@
 
 Мобильная версия использует тот же алгоритм и офлайн-пакет напевов. Android устанавливается из APK, а iPhone-версия собирается из той же кодовой базы и требует подписи Apple. Подробности: [MOBILE.md](MOBILE.md).
 
+## Скриншоты
+
+Снимки окна Windows делает дымовой UI-тест в CI (`docs/screenshots`, обновляются вручную из артефакта `MorseTrainer-Screenshots`).
+
+| Тренировка | Обучение |
+|---|---|
+| ![Тренировка](docs/screenshots/training.png) | ![Обучение](docs/screenshots/learning.png) |
+
+| Передача ключом | Прогресс |
+|---|---|
+| ![Передача](docs/screenshots/keyer.png) | ![Прогресс](docs/screenshots/progress.png) |
+
+Английский интерфейс: [training-en.png](docs/screenshots/training-en.png).
+
 ## Скачать готовую программу
 
 Откройте **Releases** в репозитории и выберите один из файлов:
