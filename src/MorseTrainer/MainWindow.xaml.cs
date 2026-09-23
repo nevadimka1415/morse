@@ -321,6 +321,16 @@ public partial class MainWindow : Window
             await GenerateTaskAsync();
             e.Handled = true;
         }
+        else if (e.Key == Key.E && Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
+        {
+            e.Handled = true;
+            await StartExamAsync();
+        }
+        else if (e.Key == Key.K && Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
+        {
+            MainTabs.SelectedIndex = KeyerTabIndex;
+            e.Handled = true;
+        }
         else if (e.Key == Key.F5 && MainTabs.SelectedIndex == 0)
         {
             await PlayCurrentAsync();
@@ -840,6 +850,30 @@ public partial class MainWindow : Window
         KeyerCodeText.Text = pending.Length == 0 ? " " : pending;
         KeyerOutputText.Text = _keyer.Text;
         KeyerOutputText.CaretIndex = KeyerOutputText.Text.Length;
+        UpdateKeyerTarget();
+    }
+
+    /// <summary>Задание в «Передаче»: уже переданное верно подряд с начала подсвечено, остальное приглушено.</summary>
+    private void UpdateKeyerTarget()
+    {
+        KeyerTargetText.Inlines.Clear();
+        if (_keyerTarget.Length == 0)
+        {
+            return;
+        }
+
+        var matched = KeyerProgress.MatchedLength(_keyerTarget, _keyer?.Text);
+        if (matched > 0)
+        {
+            var done = new Run(_keyerTarget[..matched]) { FontWeight = FontWeights.Bold };
+            done.SetResourceReference(TextElement.ForegroundProperty, "PrimaryBrush");
+            KeyerTargetText.Inlines.Add(done);
+        }
+
+        if (matched < _keyerTarget.Length)
+        {
+            KeyerTargetText.Inlines.Add(new Run(_keyerTarget[matched..]));
+        }
     }
 
     private void KeyPad_OnMouseDown(object sender, MouseButtonEventArgs e)
@@ -901,7 +935,7 @@ public partial class MainWindow : Window
         }
 
         _keyerTarget = TrainingGenerator.GenerateTask(content, alphabet, pool, Math.Clamp(Math.Min(settings.GroupCount, 4), 1, 4));
-        KeyerTargetText.Text = _keyerTarget;
+        UpdateKeyerTarget();
         KeyerResultText.Text = Texts.T("Передайте текст выше, затем нажмите «Проверить передачу».");
         KeyerResultText.Foreground = (Brush)FindResource("MutedTextBrush");
         KeyerClearButton_OnClick(sender, e);

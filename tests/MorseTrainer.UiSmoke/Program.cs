@@ -71,9 +71,11 @@ public static class Program
             Check(Texts.Language == AppLanguage.Russian, "OnStartup applied the language from settings.json");
 
             Run("Main window (Russian, StartupUri)", () => ExerciseMainWindow(startupWindow, screenshots, "ru"));
-            Run("Main window (English)", () =>
+            Run("Main window (English, dark theme)", () =>
             {
+                // Второй прогон — английский интерфейс в тёмной теме: скриншоты обеих тем для README
                 ResetData(deleteDirectory: false);
+                new SettingsService().Save(new AppSettings { LanguageIndex = (int)AppLanguage.English, ThemeIndex = 1 });
                 Texts.Apply(AppLanguage.English);
                 ExerciseMainWindow(new MainWindow(), screenshots, "en");
             });
@@ -219,7 +221,8 @@ public static class Program
             DoEvents();
             window.KeyerModeCombo.SelectedIndex = 1;
             DoEvents();
-            Check(window.KeyerTargetText.Text.Length >= 5, "keyer task generated: " + window.KeyerTargetText.Text);
+            var keyerTarget = string.Concat(window.KeyerTargetText.Inlines.OfType<System.Windows.Documents.Run>().Select(run => run.Text));
+            Check(keyerTarget.Length >= 5, "keyer task generated: " + keyerTarget);
             Check(window.KeyerNewTaskButton.Visibility == Visibility.Visible && window.KeyerCheckButton.Visibility == Visibility.Visible, "keyer task buttons are visible");
             Click(window.KeyerNewTaskButton);
             Click(window.KeyerBackspaceButton);

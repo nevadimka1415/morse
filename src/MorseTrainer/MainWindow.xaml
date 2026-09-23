@@ -781,7 +781,8 @@
             </TabItem>
         </TabControl>
 
-        <TextBlock Grid.Row="4" Text="{loc:Loc 'F5 — воспроизведение    Esc — остановка    Все данные хранятся только на этом компьютере'}"
-                   Foreground="{DynamicResource MutedTextBrush}" FontSize="11" HorizontalAlignment="Center" Margin="0,14,0,0" />
+        <TextBlock Grid.Row="4" Text="{loc:Loc 'F5 — слушать    Esc — стоп    Ctrl+G — новое задание    Ctrl+E — экзамен    Ctrl+K — передача    Все данные хранятся только на этом компьютере'}"
+                   Foreground="{DynamicResource MutedTextBrush}" FontSize="11" HorizontalAlignment="Center" Margin="0,14,0,0"
+                   TextWrapping="Wrap" TextAlignment="Center" />
     </Grid>
 </Window>

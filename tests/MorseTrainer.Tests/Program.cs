@@ -43,7 +43,8 @@ var tests = new (string Name, Action Run)[]
     ("History transfer", TestHistoryTransfer),
     ("Custom chants and voice", TestCustomChantsAndVoice),
     ("Windows practice nudge", TestPracticeNudge),
-    ("Course from zero to 60 cpm", TestCourse)
+    ("Course from zero to 60 cpm", TestCourse),
+    ("Keyer target highlight", TestKeyerProgress)
 };
 
 var failures = new List<string>();
@@ -1077,6 +1078,17 @@ static void TestCourse()
     var json = System.Text.Json.JsonSerializer.Serialize(history[1]);
     Assert(json.Contains("\"CourseStep\":1") && !json.Contains("HasKind"), "CourseStep is stored, HasKind is not.");
     Assert(HistoryTransfer.Import(HistoryTransfer.Export(history))[1].CourseStep == 1, "History transfer keeps the course step.");
+}
+
+static void TestKeyerProgress()
+{
+    Assert(KeyerProgress.MatchedLength("CQ DE R3ABC", null) == 0 && KeyerProgress.MatchedLength("", "CQ") == 0, "Nothing received — nothing highlighted.");
+    Assert(KeyerProgress.MatchedLength("CQ DE R3ABC", "C") == 1 && KeyerProgress.MatchedLength("CQ DE R3ABC", "CQ") == 2, "Received prefix is highlighted.");
+    Assert(KeyerProgress.MatchedLength("CQ DE R3ABC", "CQD") == 4, "Spaces between words are skipped: " + KeyerProgress.MatchedLength("CQ DE R3ABC", "CQD"));
+    Assert(KeyerProgress.MatchedLength("CQ DE R3ABC", "CQ DE R3ABC") == 11, "A full match covers the whole task.");
+    Assert(KeyerProgress.MatchedLength("CQ DE R3ABC", "CQ DX") == 4, "Highlight stops at the first mistake.");
+    Assert(KeyerProgress.MatchedLength("МАМА", "MAM") == 3, "Same-code symbols (М/M, А/A) match.");
+    Assert(KeyerProgress.MatchedLength("АБ", "АБВГ") == 2, "Extra symbols do not overflow the task.");
 }
 
 static void Assert(bool condition, string message)

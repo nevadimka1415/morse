@@ -159,6 +159,25 @@ public partial class KeyerPage : ContentPage
         var pending = _keyer.PendingCode.Replace('.', '•').Replace('-', '—');
         CodeLabel.Text = pending.Length == 0 ? " " : pending;
         OutputLabel.Text = _keyer.Text.Length == 0 ? " " : _keyer.Text;
+        UpdateTarget();
+    }
+
+    /// <summary>Задание: уже переданное верно подряд с начала подсвечено цветом.</summary>
+    private void UpdateTarget()
+    {
+        var matched = KeyerProgress.MatchedLength(_target, _keyer?.Text);
+        var text = new FormattedString();
+        if (matched > 0)
+        {
+            text.Spans.Add(new Span { Text = _target[..matched], TextColor = (Color)Application.Current!.Resources["PrimaryDark"] });
+        }
+
+        if (matched < _target.Length)
+        {
+            text.Spans.Add(new Span { Text = _target[matched..] });
+        }
+
+        TargetLabel.FormattedText = text;
     }
 
     private void AnalyzeButton_OnClicked(object sender, EventArgs e) => ShowAnalysis();
@@ -202,7 +221,7 @@ public partial class KeyerPage : ContentPage
 
         _target = TrainingGenerator.GenerateTask(content, alphabet, pool, Math.Clamp(Math.Min(settings.GroupCount, 3), 1, 3));
         EnsureKeyer();
-        TargetLabel.Text = _target;
+        UpdateTarget();
         ResultLabel.Text = string.Empty;
         CheckButton.IsEnabled = true;
         ClearButton_OnClicked(sender, e);

@@ -70,7 +70,7 @@ public static class Texts
         ["Скачиваю… {0} МБ"] = "Downloading… {0} MB",
         ["Запускаю установщик…"] = "Starting the installer…",
         ["Не удалось проверить обновления. Проверьте подключение к интернету.\n\n{0}"] = "Could not check for updates. Check your internet connection.\n\n{0}",
-        ["F5 — воспроизведение    Esc — остановка    Все данные хранятся только на этом компьютере"] = "F5 — play    Esc — stop    All data stays on this computer",
+        ["F5 — слушать    Esc — стоп    Ctrl+G — новое задание    Ctrl+E — экзамен    Ctrl+K — передача    Все данные хранятся только на этом компьютере"] = "F5 — play    Esc — stop    Ctrl+G — new task    Ctrl+E — exam    Ctrl+K — sending    All data stays on this computer",
         // ---- тренировка (Windows) ----
         ["Тренировка"] = "Training",
         ["Параметры задания"] = "Task settings",

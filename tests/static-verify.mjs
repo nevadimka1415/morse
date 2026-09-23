@@ -32,6 +32,7 @@ const requiredFiles = [
   'src/MorseTrainer/Domain/PracticeNudge.cs',
   'src/MorseTrainer/Services/TrayReminder.cs',
   'src/MorseTrainer/Domain/Course.cs',
+  'src/MorseTrainer/Domain/KeyerProgress.cs',
   'src/MorseTrainer.Mobile/Services/IReminderService.cs',
   'src/MorseTrainer.Mobile/Services/ReminderTexts.cs',
   'src/MorseTrainer.Mobile/Platforms/Android/ReminderService.cs',
@@ -212,6 +213,11 @@ assert(read('src/MorseTrainer/MainWindow.xaml').includes('x:Name="NudgeBanner"')
   'Windows app must show the practice banner and offer the reminder notification.');
 assert(read('src/MorseTrainer/MainWindow.xaml').includes('x:Name="CourseStartButton"') && read('src/MorseTrainer.Mobile/Pages/LearningPage.xaml').includes('x:Name="CourseStartButton"'),
   'Both apps must offer the course from zero to 60 cpm.');
+assert(read('src/MorseTrainer/MainWindow.xaml.cs').includes('e.Key == Key.E') && read('src/MorseTrainer/MainWindow.xaml.cs').includes('e.Key == Key.K'),
+  'Windows must offer Ctrl+E (exam) and Ctrl+K (sending tab).');
+assert(read('src/MorseTrainer/MainWindow.xaml.cs').includes('KeyerProgress.MatchedLength') && read('src/MorseTrainer.Mobile/Pages/KeyerPage.xaml.cs').includes('KeyerProgress.MatchedLength'),
+  'Both apps must highlight the sending task as it is received.');
+assert(read('tests/MorseTrainer.UiSmoke/Program.cs').includes('ThemeIndex = 1'), 'UI smoke test must take dark theme screenshots.');
 const mobileApp = read('src/MorseTrainer.Mobile/App.xaml.cs');
 assert(!mobileApp.includes('App(AppShell') && mobileApp.includes('GetRequiredService<AppShell>()'),
   'Mobile App must resolve AppShell in CreateWindow: pages created before App.InitializeComponent crash on StaticResource.');
