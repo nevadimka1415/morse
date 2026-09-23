@@ -131,6 +131,18 @@ public static class Program
                 $"window fits the work area: {window.ActualWidth:0}×{window.ActualHeight:0} in {area.Width:0}×{area.Height:0}");
             Check(window.ExamPlaybacksCombo.Items.Count == 3 && window.ExamPlaybacksCombo.SelectedIndex == 0, "exam playbacks default to one");
             Check(window.NudgeBanner.Visibility == Visibility.Collapsed, "no 'you have not practiced' banner for an empty history");
+
+            // Что тренировать: четыре кнопки сверху управляют полным списком режимов в дополнительных настройках
+            Check(window.AdvancedPanel.Visibility == Visibility.Collapsed && window.ModeHintText.Text.Length > 1, "advanced settings are collapsed, mode hint is shown");
+            Click(window.ModeDigitsButton);
+            Check(window.ContentModeCombo.SelectedIndex == (int)Domain.ContentMode.Digits && window.ModeDigitsButton.Style == window.FindResource("PrimaryButton"),
+                "digits button selects the digits mode and is highlighted");
+            Click(window.ModeBothButton);
+            Check(window.ContentModeCombo.SelectedIndex == (int)Domain.ContentMode.LettersAndDigits, "letters and digits button restores the default mode");
+            Click(window.AdvancedButton);
+            Check(window.AdvancedPanel.Visibility == Visibility.Visible && window.AdvancedButton.Content as string == Texts.T("Дополнительные настройки ▴"), "advanced settings expand");
+            Click(window.AdvancedButton);
+            Check(window.AdvancedPanel.Visibility == Visibility.Collapsed, "advanced settings collapse again");
             Check(window.ReminderCheckBox.IsChecked == false && window.ReminderTimeCombo.Items.Count == 48 && window.ReminderTimeCombo.SelectedItem as string == "19:00",
                 "Windows reminder is off by default at 19:00");
             Check(window.ExamLimitCombo.Items.Count == Domain.ExamSession.TimeLimitChoices.Count && window.ExamLimitCombo.Items[0] as string == Texts.T("без лимита"),

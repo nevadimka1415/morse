@@ -417,7 +417,7 @@ public static class Texts
         ["Профили Morse Trainer"] = "Morse Trainer profiles",
         // ---- экзамен ----
         ["Экзамен"] = "Exam",
-        ["Экзамен: задание с текущими параметрами, ограниченное число прослушиваний и лимит времени (выбираются выше), ответ скрыт, идёт время. После проверки — протокол и запись в истории с пометкой."] = "Exam: a task with the current settings, limited playbacks and a time limit (chosen above), hidden answer, the clock is running. After the check you get a report and a marked history record.",
+        ["Экзамен: задание с текущими параметрами, ограниченное число прослушиваний и лимит времени (в дополнительных настройках), ответ скрыт, идёт время. После проверки — протокол и запись в истории с пометкой."] = "Exam: a task with the current settings, limited playbacks and a time limit (in More settings), hidden answer, the clock is running. After the check you get a report and a marked history record.",
         ["Экзамен: прослушиваний"] = "Exam: playbacks",
         ["Лимит времени"] = "Time limit",
         ["Когда время выйдет, ответ проверится автоматически"] = "When the time is up, the answer is checked automatically",
@@ -562,6 +562,7 @@ public static class Texts
         ["Свои символы"] = "My symbols",
         ["Дополнительные настройки ▾"] = "More settings ▾",
         ["Дополнительные настройки ▴"] = "More settings ▴",
+        ["Профили, алфавит и особые режимы, пресет Фарнсворта, помехи, авто-скорость, сигнал Ж Ж Ж, правила экзамена"] = "Profiles, alphabet and special modes, the Farnsworth preset, noise, auto speed, the Ж Ж Ж signal, exam rules",
         ["Алфавит и особые режимы"] = "Alphabet and special modes",
         ["Режим (все варианты)"] = "Mode (all options)",
         ["Кроме четырёх основных: все символы со знаками, метод Коха, слова, позывные, Q-код."] = "Besides the four main ones: all symbols with punctuation, the Koch method, words, callsigns, Q-codes.",

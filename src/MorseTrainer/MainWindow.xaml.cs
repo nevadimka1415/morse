@@ -691,6 +691,7 @@ public partial class MainWindow : Window
     private void AlphabetCombo_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         UpdateKochSummary();
+        UpdateModeButtons();
         if (_windowLoaded)
         {
             RefreshCourse();
@@ -1499,6 +1500,7 @@ public partial class MainWindow : Window
 
     private void UpdateSelectedSymbolsSummary()
     {
+        UpdateModeButtons();
         SelectedSymbolsSummaryText.Text = string.IsNullOrEmpty(_selectedSymbols)
             ? Texts.T("Ничего не выбрано")
             : Texts.F("{0} символов: {1}", _selectedSymbols.Length, Truncate(_selectedSymbols, 45));
@@ -1927,8 +1929,58 @@ public partial class MainWindow : Window
 
     private void ContentModeCombo_OnSelectionChanged(object sender, SelectionChangedEventArgs e) => UpdateCustomSymbolsVisibility();
 
+    // ---------- Что тренировать: четыре основных режима сверху, остальное — в дополнительных ----------
+
+    private static readonly ContentMode[] MainModes = { ContentMode.Letters, ContentMode.Digits, ContentMode.LettersAndDigits, ContentMode.Custom };
+
+    private void ModeButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: string tag } || !int.TryParse(tag, out var mode))
+        {
+            return;
+        }
+
+        // Полный список режимов в дополнительных настройках — единственный источник режима
+        ContentModeCombo.SelectedIndex = mode;
+        if (_windowLoaded)
+        {
+            _settingsService.Save(ReadSettings());
+        }
+    }
+
+    private void UpdateModeButtons()
+    {
+        // Во время InitializeComponent часть элементов ещё не создана
+        if (ModeLettersButton is null || ModeHintText is null || ContentModeCombo is null || AlphabetCombo is null || KochLevelSlider is null)
+        {
+            return;
+        }
+
+        var mode = ContentModes.Clamp(ContentModeCombo.SelectedIndex);
+        var buttons = new[] { ModeLettersButton, ModeDigitsButton, ModeBothButton, ModeCustomButton };
+        for (var index = 0; index < buttons.Length; index++)
+        {
+            buttons[index].Style = (Style)FindResource(MainModes[index] == mode ? "PrimaryButton" : typeof(Button));
+        }
+
+        var alphabet = (AlphabetMode)Math.Clamp(AlphabetCombo.SelectedIndex, 0, 2);
+        ModeHintText.Text = Array.IndexOf(MainModes, mode) < 0
+            ? Texts.F("Сейчас особый режим «{0}» — он выбран в дополнительных настройках.", (ContentModeCombo.SelectedItem as ComboBoxItem)?.Content as string ?? string.Empty)
+            : Texts.F("Символов в задании: {0} · алфавит: {1} (меняется в дополнительных настройках)",
+                MorseAlphabet.BuildPool(alphabet, mode, _selectedSymbols, (int)KochLevelSlider.Value).Count,
+                (AlphabetCombo.SelectedItem as ComboBoxItem)?.Content as string ?? string.Empty);
+    }
+
+    private void AdvancedButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        var show = AdvancedPanel.Visibility != Visibility.Visible;
+        AdvancedPanel.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
+        AdvancedButton.Content = show ? Texts.T("Дополнительные настройки ▴") : Texts.T("Дополнительные настройки ▾");
+    }
+
     private void UpdateCustomSymbolsVisibility()
     {
+        UpdateModeButtons();
         if (CustomSymbolsPanel is not null && ContentModeCombo is not null)
         {
             CustomSymbolsPanel.Visibility = ContentModeCombo.SelectedIndex == (int)ContentMode.Custom

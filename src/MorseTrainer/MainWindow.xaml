@@ -91,51 +91,15 @@
                             <StackPanel>
                                 <TextBlock Text="{loc:Loc 'Параметры задания'}" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,20" />
 
-                                <Label Content="{loc:Loc 'Профиль настроек'}" />
-                                <ComboBox x:Name="ProfileCombo" IsEditable="True" IsTextSearchEnabled="True"
-                                          SelectionChanged="ProfileCombo_OnSelectionChanged" Margin="0,0,0,8" />
-                                <Grid Margin="0,0,0,15">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="8" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
-                                    <Button Content="{loc:Loc 'Сохранить профиль'}" Click="SaveProfileButton_OnClick" Padding="10,7" />
-                                    <Button Grid.Column="2" Content="{loc:Loc 'Удалить'}" Click="DeleteProfileButton_OnClick" Padding="10,7" />
-                                </Grid>
-                                <Grid Margin="0,-7,0,15">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="8" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
-                                    <Button Content="{loc:Loc 'Экспорт…'}" Click="ExportProfilesButton_OnClick" Padding="10,7"
-                                            ToolTip="{loc:Loc 'Сохранить все профили в файл, чтобы перенести на другой компьютер или телефон'}" />
-                                    <Button Grid.Column="2" Content="{loc:Loc 'Импорт…'}" Click="ImportProfilesButton_OnClick" Padding="10,7"
-                                            ToolTip="{loc:Loc 'Загрузить профили из файла; одноимённые профили будут заменены'}" />
-                                </Grid>
-
-                                <Label Content="{loc:Loc 'Алфавит'}" />
-                                <ComboBox x:Name="AlphabetCombo" SelectedIndex="0" Margin="0,0,0,15"
-                                          SelectionChanged="AlphabetCombo_OnSelectionChanged">
-                                    <ComboBoxItem Content="{loc:Loc 'Русский'}" />
-                                    <ComboBoxItem Content="{loc:Loc 'Латинский'}" />
-                                    <ComboBoxItem Content="{loc:Loc 'Русский и латинский'}" />
-                                </ComboBox>
-
-                                <Label Content="{loc:Loc 'Состав задания'}" />
-                                <ComboBox x:Name="ContentModeCombo" SelectedIndex="2" Margin="0,0,0,15"
-                                          SelectionChanged="ContentModeCombo_OnSelectionChanged">
-                                    <ComboBoxItem Content="{loc:Loc 'Только буквы'}" />
-                                    <ComboBoxItem Content="{loc:Loc 'Только цифры'}" />
-                                    <ComboBoxItem Content="{loc:Loc 'Буквы и цифры'}" />
-                                    <ComboBoxItem Content="{loc:Loc 'Буквы, цифры и знаки'}" />
-                                    <ComboBoxItem Content="{loc:Loc 'Выбранные символы'}" />
-                                    <ComboBoxItem Content="{loc:Loc 'Метод Коха: по уровням'}" />
-                                    <ComboBoxItem Content="{loc:Loc 'Слова'}" />
-                                    <ComboBoxItem Content="{loc:Loc 'Позывные'}" />
-                                    <ComboBoxItem Content="{loc:Loc 'Q-код и сокращения'}" />
-                                </ComboBox>
+                                <TextBlock Text="{loc:Loc 'Что тренировать'}" FontWeight="SemiBold" Margin="0,0,0,8" />
+                                <UniformGrid Columns="2" Margin="-3,0,-3,6">
+                                    <Button x:Name="ModeLettersButton" Content="{loc:Loc 'Все буквы'}" Tag="0" Click="ModeButton_OnClick" Padding="8,8" Margin="3" />
+                                    <Button x:Name="ModeDigitsButton" Content="{loc:Loc 'Все цифры'}" Tag="1" Click="ModeButton_OnClick" Padding="8,8" Margin="3" />
+                                    <Button x:Name="ModeBothButton" Content="{loc:Loc 'Буквы и цифры'}" Tag="2" Click="ModeButton_OnClick" Padding="8,8" Margin="3" />
+                                    <Button x:Name="ModeCustomButton" Content="{loc:Loc 'Свои символы'}" Tag="4" Click="ModeButton_OnClick" Padding="8,8" Margin="3" />
+                                </UniformGrid>
+                                <TextBlock x:Name="ModeHintText" Text=" " Foreground="{DynamicResource MutedTextBrush}" FontSize="11"
+                                           TextWrapping="Wrap" Margin="0,0,0,15" />
 
                                 <Border x:Name="CustomSymbolsPanel" Visibility="Collapsed" Background="{DynamicResource CardAltBrush}"
                                         CornerRadius="10" Padding="12" Margin="0,0,0,15">
@@ -144,19 +108,6 @@
                                         <TextBlock x:Name="SelectedSymbolsSummaryText" Text="{loc:Loc 'Ничего не выбрано'}"
                                                    Foreground="{DynamicResource MutedTextBrush}" TextWrapping="Wrap" Margin="0,5,0,9" />
                                         <Button Content="{loc:Loc 'Выбрать символы'}" Click="SelectSymbolsButton_OnClick" Padding="12,7" />
-                                    </StackPanel>
-                                </Border>
-
-                                <Border x:Name="KochPanel" Visibility="Collapsed" Background="{DynamicResource CardAltBrush}"
-                                        CornerRadius="10" Padding="12" Margin="0,0,0,15">
-                                    <StackPanel>
-                                        <TextBlock Text="{loc:Loc 'Метод Коха'}" FontWeight="SemiBold" />
-                                        <TextBlock x:Name="KochSummaryText" Text="{loc:Loc 'Уровень 2'}" Foreground="{DynamicResource MutedTextBrush}"
-                                                   TextWrapping="Wrap" Margin="0,5,0,6" />
-                                        <Slider x:Name="KochLevelSlider" Minimum="2" Maximum="42" Value="2" TickFrequency="1"
-                                                IsSnapToTickEnabled="True" ValueChanged="KochLevelSlider_OnValueChanged" />
-                                        <TextBlock Text="{loc:Loc 'Новый символ добавляйте, когда точность держится на 90% и выше. Последний добавленный звучит чаще остальных.'}"
-                                                   Foreground="{DynamicResource MutedTextBrush}" FontSize="11" TextWrapping="Wrap" Margin="0,6,0,0" />
                                     </StackPanel>
                                 </Border>
 
@@ -205,71 +156,136 @@
                                 </Grid>
                                 <Slider x:Name="GroupGapSlider" Minimum="7" Maximum="30" Value="7" TickFrequency="1"
                                         IsSnapToTickEnabled="True" ValueChanged="SettingSlider_OnValueChanged" Margin="0,0,0,10" />
-                                <Button x:Name="FarnsworthButton" Content="{loc:Loc 'Пресет Фарнсворта'}" Click="FarnsworthButton_OnClick"
-                                        Padding="10,6" HorizontalAlignment="Left" Margin="0,0,0,14"
-                                        ToolTip="{loc:Loc 'Символы не медленнее 90 знаков/мин, паузы 9 точек между символами и 21 между группами: ухо запоминает ритм знака, а не считает точки.'}" />
-                                <Grid Margin="0,0,0,5">
-                                    <TextBlock Text="{loc:Loc 'Помехи (шум)'}" Foreground="{DynamicResource MutedTextBrush}"
-                                               ToolTip="{loc:Loc 'Белый шум приёмника, медленные замирания и уход частоты, как в эфире. 0 — чистый сигнал.'}" />
-                                    <TextBlock x:Name="NoiseValueText" Text="0%" HorizontalAlignment="Right" />
-                                </Grid>
-                                <Slider x:Name="NoiseSlider" Minimum="0" Maximum="100" Value="0" TickFrequency="5"
-                                        IsSnapToTickEnabled="True" ValueChanged="SettingSlider_OnValueChanged" Margin="0,0,0,17" />
-                                <Grid Margin="0,0,0,5">
-                                    <TextBlock Text="{loc:Loc 'Замирания (QSB)'}" Foreground="{DynamicResource MutedTextBrush}" />
-                                    <TextBlock x:Name="QsbValueText" Text="0%" HorizontalAlignment="Right" />
-                                </Grid>
-                                <Slider x:Name="QsbSlider" Minimum="0" Maximum="100" Value="0" TickFrequency="5"
-                                        IsSnapToTickEnabled="True" ValueChanged="SettingSlider_OnValueChanged" Margin="0,0,0,17" />
-                                <Grid Margin="0,0,0,5">
-                                    <TextBlock Text="{loc:Loc 'Дрейф тона'}" Foreground="{DynamicResource MutedTextBrush}" />
-                                    <TextBlock x:Name="DriftValueText" Text="{loc:Loc '±0 Гц'}" HorizontalAlignment="Right" />
-                                </Grid>
-                                <Slider x:Name="DriftSlider" Minimum="0" Maximum="50" Value="0" TickFrequency="5"
-                                        IsSnapToTickEnabled="True" ValueChanged="SettingSlider_OnValueChanged" Margin="0,0,0,17" />
-                                <CheckBox x:Name="EmphasizeProblemsCheckBox" Content="{loc:Loc 'Чаще повторять символы с ошибками'}"
-                                          IsChecked="True" Margin="0,0,0,12"
-                                          ToolTip="{loc:Loc 'Символы, в которых вы ошибались (по истории тренировок), попадают в задание втрое чаще.'}" />
-
-                                <CheckBox x:Name="AutoSpeedCheckBox" Content="{loc:Loc 'Авто-скорость'}" IsChecked="False" Margin="0,0,0,12"
-                                          ToolTip="{loc:Loc 'Лестница скорости: два задания подряд с точностью от 90 % — скорость +5 знаков/мин, задание с точностью ниже 70 % — сразу −5.'}" />
-                                <CheckBox x:Name="PlayStartSignalCheckBox" Content="{loc:Loc 'Перед заданием проигрывать Ж Ж Ж'}"
-                                          IsChecked="True" Margin="0,0,0,12" />
-                                <Grid Margin="0,0,0,5">
-                                    <TextBlock Text="{loc:Loc 'Пауза после Ж Ж Ж'}" Foreground="{DynamicResource MutedTextBrush}" />
-                                    <TextBlock x:Name="StartPauseValueText" Text="{loc:Loc '21 точка'}" HorizontalAlignment="Right" />
-                                </Grid>
-                                <Slider x:Name="StartPauseSlider" Minimum="7" Maximum="60" Value="21" TickFrequency="1"
-                                        IsSnapToTickEnabled="True" ValueChanged="SettingSlider_OnValueChanged" Margin="0,0,0,18" />
-
                                 <Button x:Name="GenerateButton" Content="{loc:Loc 'Сгенерировать задание'}" Style="{StaticResource PrimaryButton}"
                                         Click="GenerateButton_OnClick" Padding="16,13" />
                                 <TextBlock Text="{loc:Loc 'Ctrl+G — создать новое задание'}" Foreground="{DynamicResource MutedTextBrush}"
                                            FontSize="11" HorizontalAlignment="Center" Margin="0,8,0,0" />
-                                <Grid Margin="0,14,0,0">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="8" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
-                                    <StackPanel>
-                                        <TextBlock Text="{loc:Loc 'Экзамен: прослушиваний'}" Foreground="{DynamicResource MutedTextBrush}" FontSize="11" Margin="0,0,0,3" />
-                                        <ComboBox x:Name="ExamPlaybacksCombo" SelectedIndex="0">
-                                            <ComboBoxItem Content="1" />
-                                            <ComboBoxItem Content="2" />
-                                            <ComboBoxItem Content="3" />
-                                        </ComboBox>
-                                    </StackPanel>
-                                    <StackPanel Grid.Column="2">
-                                        <TextBlock Text="{loc:Loc 'Лимит времени'}" Foreground="{DynamicResource MutedTextBrush}" FontSize="11" Margin="0,0,0,3" />
-                                        <ComboBox x:Name="ExamLimitCombo" SelectedIndex="0"
-                                                  ToolTip="{loc:Loc 'Когда время выйдет, ответ проверится автоматически'}" />
-                                    </StackPanel>
-                                </Grid>
                                 <Button x:Name="ExamButton" Content="{loc:Loc 'Экзамен'}" Click="ExamButton_OnClick" Padding="12,9" Margin="0,8,0,0"
-                                        ToolTip="{loc:Loc 'Экзамен: задание с текущими параметрами, ограниченное число прослушиваний и лимит времени (выбираются выше), ответ скрыт, идёт время. После проверки — протокол и запись в истории с пометкой.'}" />
+                                        ToolTip="{loc:Loc 'Экзамен: задание с текущими параметрами, ограниченное число прослушиваний и лимит времени (в дополнительных настройках), ответ скрыт, идёт время. После проверки — протокол и запись в истории с пометкой.'}" />
                                 <Button x:Name="DrillButton" Content="{loc:Loc 'Повторить сложные символы'}" Click="DrillButton_OnClick" Padding="12,9" Margin="0,8,0,0"
                                         ToolTip="{loc:Loc 'Задание только из символов, в которых вы чаще всего ошибались в последних 100 заданиях, и похожих на них по коду. Сложные звучат втрое чаще.'}" />
+                                <Button x:Name="AdvancedButton" Content="{loc:Loc 'Дополнительные настройки ▾'}" Click="AdvancedButton_OnClick"
+                                        Padding="12,8" Margin="0,16,0,0"
+                                        ToolTip="{loc:Loc 'Профили, алфавит и особые режимы, пресет Фарнсворта, помехи, авто-скорость, сигнал Ж Ж Ж, правила экзамена'}" />
+                                <!-- Всё, что нужно редко, — под кнопкой, чтобы не мешало и не путало -->
+                                <StackPanel x:Name="AdvancedPanel" Visibility="Collapsed" Margin="0,14,0,0">
+                                    <Label Content="{loc:Loc 'Профиль настроек'}" />
+                                    <ComboBox x:Name="ProfileCombo" IsEditable="True" IsTextSearchEnabled="True"
+                                              SelectionChanged="ProfileCombo_OnSelectionChanged" Margin="0,0,0,8" />
+                                    <Grid Margin="0,0,0,15">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="8" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <Button Content="{loc:Loc 'Сохранить профиль'}" Click="SaveProfileButton_OnClick" Padding="10,7" />
+                                        <Button Grid.Column="2" Content="{loc:Loc 'Удалить'}" Click="DeleteProfileButton_OnClick" Padding="10,7" />
+                                    </Grid>
+                                    <Grid Margin="0,-7,0,15">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="8" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <Button Content="{loc:Loc 'Экспорт…'}" Click="ExportProfilesButton_OnClick" Padding="10,7"
+                                                ToolTip="{loc:Loc 'Сохранить все профили в файл, чтобы перенести на другой компьютер или телефон'}" />
+                                        <Button Grid.Column="2" Content="{loc:Loc 'Импорт…'}" Click="ImportProfilesButton_OnClick" Padding="10,7"
+                                                ToolTip="{loc:Loc 'Загрузить профили из файла; одноимённые профили будут заменены'}" />
+                                    </Grid>
+
+                                    <Label Content="{loc:Loc 'Алфавит'}" />
+                                    <ComboBox x:Name="AlphabetCombo" SelectedIndex="0" Margin="0,0,0,15"
+                                              SelectionChanged="AlphabetCombo_OnSelectionChanged">
+                                        <ComboBoxItem Content="{loc:Loc 'Русский'}" />
+                                        <ComboBoxItem Content="{loc:Loc 'Латинский'}" />
+                                        <ComboBoxItem Content="{loc:Loc 'Русский и латинский'}" />
+                                    </ComboBox>
+
+                                    <Label Content="{loc:Loc 'Состав задания'}" />
+                                    <ComboBox x:Name="ContentModeCombo" SelectedIndex="2" Margin="0,0,0,15"
+                                              SelectionChanged="ContentModeCombo_OnSelectionChanged">
+                                        <ComboBoxItem Content="{loc:Loc 'Только буквы'}" />
+                                        <ComboBoxItem Content="{loc:Loc 'Только цифры'}" />
+                                        <ComboBoxItem Content="{loc:Loc 'Буквы и цифры'}" />
+                                        <ComboBoxItem Content="{loc:Loc 'Буквы, цифры и знаки'}" />
+                                        <ComboBoxItem Content="{loc:Loc 'Выбранные символы'}" />
+                                        <ComboBoxItem Content="{loc:Loc 'Метод Коха: по уровням'}" />
+                                        <ComboBoxItem Content="{loc:Loc 'Слова'}" />
+                                        <ComboBoxItem Content="{loc:Loc 'Позывные'}" />
+                                        <ComboBoxItem Content="{loc:Loc 'Q-код и сокращения'}" />
+                                    </ComboBox>
+
+                                    <Border x:Name="KochPanel" Visibility="Collapsed" Background="{DynamicResource CardAltBrush}"
+                                            CornerRadius="10" Padding="12" Margin="0,0,0,15">
+                                        <StackPanel>
+                                            <TextBlock Text="{loc:Loc 'Метод Коха'}" FontWeight="SemiBold" />
+                                            <TextBlock x:Name="KochSummaryText" Text="{loc:Loc 'Уровень 2'}" Foreground="{DynamicResource MutedTextBrush}"
+                                                       TextWrapping="Wrap" Margin="0,5,0,6" />
+                                            <Slider x:Name="KochLevelSlider" Minimum="2" Maximum="42" Value="2" TickFrequency="1"
+                                                    IsSnapToTickEnabled="True" ValueChanged="KochLevelSlider_OnValueChanged" />
+                                            <TextBlock Text="{loc:Loc 'Новый символ добавляйте, когда точность держится на 90% и выше. Последний добавленный звучит чаще остальных.'}"
+                                                       Foreground="{DynamicResource MutedTextBrush}" FontSize="11" TextWrapping="Wrap" Margin="0,6,0,0" />
+                                        </StackPanel>
+                                    </Border>
+
+                                    <Button x:Name="FarnsworthButton" Content="{loc:Loc 'Пресет Фарнсворта'}" Click="FarnsworthButton_OnClick"
+                                            Padding="10,6" HorizontalAlignment="Left" Margin="0,0,0,14"
+                                            ToolTip="{loc:Loc 'Символы не медленнее 90 знаков/мин, паузы 9 точек между символами и 21 между группами: ухо запоминает ритм знака, а не считает точки.'}" />
+                                    <Grid Margin="0,0,0,5">
+                                        <TextBlock Text="{loc:Loc 'Помехи (шум)'}" Foreground="{DynamicResource MutedTextBrush}"
+                                                   ToolTip="{loc:Loc 'Белый шум приёмника, медленные замирания и уход частоты, как в эфире. 0 — чистый сигнал.'}" />
+                                        <TextBlock x:Name="NoiseValueText" Text="0%" HorizontalAlignment="Right" />
+                                    </Grid>
+                                    <Slider x:Name="NoiseSlider" Minimum="0" Maximum="100" Value="0" TickFrequency="5"
+                                            IsSnapToTickEnabled="True" ValueChanged="SettingSlider_OnValueChanged" Margin="0,0,0,17" />
+                                    <Grid Margin="0,0,0,5">
+                                        <TextBlock Text="{loc:Loc 'Замирания (QSB)'}" Foreground="{DynamicResource MutedTextBrush}" />
+                                        <TextBlock x:Name="QsbValueText" Text="0%" HorizontalAlignment="Right" />
+                                    </Grid>
+                                    <Slider x:Name="QsbSlider" Minimum="0" Maximum="100" Value="0" TickFrequency="5"
+                                            IsSnapToTickEnabled="True" ValueChanged="SettingSlider_OnValueChanged" Margin="0,0,0,17" />
+                                    <Grid Margin="0,0,0,5">
+                                        <TextBlock Text="{loc:Loc 'Дрейф тона'}" Foreground="{DynamicResource MutedTextBrush}" />
+                                        <TextBlock x:Name="DriftValueText" Text="{loc:Loc '±0 Гц'}" HorizontalAlignment="Right" />
+                                    </Grid>
+                                    <Slider x:Name="DriftSlider" Minimum="0" Maximum="50" Value="0" TickFrequency="5"
+                                            IsSnapToTickEnabled="True" ValueChanged="SettingSlider_OnValueChanged" Margin="0,0,0,17" />
+                                    <CheckBox x:Name="EmphasizeProblemsCheckBox" Content="{loc:Loc 'Чаще повторять символы с ошибками'}"
+                                              IsChecked="True" Margin="0,0,0,12"
+                                              ToolTip="{loc:Loc 'Символы, в которых вы ошибались (по истории тренировок), попадают в задание втрое чаще.'}" />
+
+                                    <CheckBox x:Name="AutoSpeedCheckBox" Content="{loc:Loc 'Авто-скорость'}" IsChecked="False" Margin="0,0,0,12"
+                                              ToolTip="{loc:Loc 'Лестница скорости: два задания подряд с точностью от 90 % — скорость +5 знаков/мин, задание с точностью ниже 70 % — сразу −5.'}" />
+                                    <CheckBox x:Name="PlayStartSignalCheckBox" Content="{loc:Loc 'Перед заданием проигрывать Ж Ж Ж'}"
+                                              IsChecked="True" Margin="0,0,0,12" />
+                                    <Grid Margin="0,0,0,5">
+                                        <TextBlock Text="{loc:Loc 'Пауза после Ж Ж Ж'}" Foreground="{DynamicResource MutedTextBrush}" />
+                                        <TextBlock x:Name="StartPauseValueText" Text="{loc:Loc '21 точка'}" HorizontalAlignment="Right" />
+                                    </Grid>
+                                    <Slider x:Name="StartPauseSlider" Minimum="7" Maximum="60" Value="21" TickFrequency="1"
+                                            IsSnapToTickEnabled="True" ValueChanged="SettingSlider_OnValueChanged" Margin="0,0,0,18" />
+
+                                    <Grid Margin="0,14,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="8" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel>
+                                            <TextBlock Text="{loc:Loc 'Экзамен: прослушиваний'}" Foreground="{DynamicResource MutedTextBrush}" FontSize="11" Margin="0,0,0,3" />
+                                            <ComboBox x:Name="ExamPlaybacksCombo" SelectedIndex="0">
+                                                <ComboBoxItem Content="1" />
+                                                <ComboBoxItem Content="2" />
+                                                <ComboBoxItem Content="3" />
+                                            </ComboBox>
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="2">
+                                            <TextBlock Text="{loc:Loc 'Лимит времени'}" Foreground="{DynamicResource MutedTextBrush}" FontSize="11" Margin="0,0,0,3" />
+                                            <ComboBox x:Name="ExamLimitCombo" SelectedIndex="0"
+                                                      ToolTip="{loc:Loc 'Когда время выйдет, ответ проверится автоматически'}" />
+                                        </StackPanel>
+                                    </Grid>
+                                </StackPanel>
                             </StackPanel>
                         </ScrollViewer>
                     </Border>
