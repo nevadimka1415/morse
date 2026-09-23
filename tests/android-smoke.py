@@ -1,0 +1,288 @@
+#!/usr/bin/env python3
+"""Дымовой тест APK на Android-эмуляторе (job android-smoke в .github/workflows/mobile.yml).
+
+Ставит APK, запускает главную активность, ждёт первое задание на вкладке «Тренировка»,
+нажимает «Слушать»/«Стоп», проходит по пяти вкладкам нижней панели и на каждом шаге
+снимает скриншот, проверяет, что процесс жив и в logcat нет падений приложения.
+
+Запуск: python3 tests/android-smoke.py <apk или папка с apk> <папка для скриншотов и логов>
+"""
+import os
+import re
+import subprocess
+import sys
+import time
+import xml.etree.ElementTree as ET
+from pathlib import Path
+
+PACKAGE = "ru.morsetrainer.app"
+# Вкладки в порядке AppShell: имя файла, русское и английское название (язык эмулятора — системный)
+TABS = [
+    ("training", "Тренировка", "Training"),
+    ("learning", "Обучение", "Learning"),
+    ("keyer", "Передача", "Sending"),
+    ("progress", "Прогресс", "Progress"),
+    ("settings", "Настройки", "Settings"),
+]
+READY_PREFIXES = ("Готово ·", "Done ·")
+PLAY_TEXTS = ("▶ Слушать", "▶ Play")
+STOP_TEXTS = ("■ Стоп", "■ Stop")
+
+out_dir = Path(sys.argv[2] if len(sys.argv) > 2 else "android-smoke")
+results = []
+
+
+def adb(*args, timeout=120, check=True, binary=False):
+    completed = subprocess.run(["adb", *args], capture_output=True, timeout=timeout)
+    if check and completed.returncode != 0:
+        raise RuntimeError(f"adb {' '.join(args)} -> {completed.returncode}\n"
+                           f"{completed.stdout.decode(errors='replace')}{completed.stderr.decode(errors='replace')}")
+    return completed.stdout if binary else completed.stdout.decode("utf-8", errors="replace")
+
+
+def find_apk(path):
+    path = Path(path)
+    if path.is_file():
+        return path
+    apks = sorted(path.rglob("*.apk"))
+    signed = [apk for apk in apks if apk.name.endswith("-Signed.apk")]
+    if not apks:
+        raise RuntimeError(f"APK не найден в {path}")
+    return (signed or apks)[0]
+
+
+def dump_ui():
+    """Дерево элементов экрана через uiautomator; повторяет, пока экран не успокоится."""
+    last_error = ""
+    for _ in range(6):
+        output = adb("shell", "uiautomator", "dump", "/sdcard/ui.xml", check=False, timeout=60)
+        if "dumped to" in output:
+            xml = adb("exec-out", "cat", "/sdcard/ui.xml")
+            root = ET.fromstring(xml)
+            parents = {child: parent for parent in root.iter() for child in parent}
+            return root, parents
+        last_error = output.strip()
+        time.sleep(1)
+    raise RuntimeError(f"uiautomator dump не удался: {last_error}")
+
+
+def bounds(node):
+    x1, y1, x2, y2 = map(int, re.findall(r"-?\d+", node.get("bounds", "[0,0][0,0]")))
+    return x1, y1, x2, y2
+
+
+def nodes_with_text(root, texts, prefix=False):
+    found = []
+    for node in root.iter("node"):
+        for value in (node.get("text", ""), node.get("content-desc", "")):
+            value = value.strip()
+            if value and any(value.startswith(t) if prefix else value == t for t in texts):
+                found.append(node)
+                break
+    return found
+
+
+def tap(node):
+    x1, y1, x2, y2 = bounds(node)
+    adb("shell", "input", "tap", str((x1 + x2) // 2), str((y1 + y2) // 2))
+
+
+def wait_for(texts, timeout, prefix=False):
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        ensure_alive()
+        dismiss_system_dialogs()
+        root, _ = dump_ui()
+        found = nodes_with_text(root, texts, prefix)
+        if found:
+            return found
+        time.sleep(2)
+    raise RuntimeError(f"За {timeout} с на экране не появилось: {', '.join(texts)}")
+
+
+def dismiss_system_dialogs():
+    """Медленный эмулятор иногда показывает «System UI isn't responding» — это не наше приложение."""
+    root, _ = dump_ui()
+    texts = " ".join(node.get("text", "") for node in root.iter("node"))
+    if "isn't responding" in texts and "Morse" not in texts:
+        for node in nodes_with_text(root, ("Wait",)):
+            print("Закрываю системный диалог «не отвечает» (Wait)")
+            tap(node)
+            time.sleep(2)
+            return
+
+
+def crash_lines():
+    """Строки о падении именно нашего процесса: Java/.NET-исключение, нативный сигнал, ANR."""
+    log = adb("logcat", "-d", "-b", "main", "-b", "system", "-b", "crash", timeout=60)
+    lines = log.splitlines()
+    bad = []
+    for index, line in enumerate(lines):
+        if f"Process: {PACKAGE}" in line or f">>> {PACKAGE} <<<" in line or f"ANR in {PACKAGE}" in line:
+            bad.extend(lines[max(0, index - 2):index + 25])
+        elif "UNHANDLED EXCEPTION" in line and ("mono" in line.lower() or "droid" in line.lower()):
+            bad.extend(lines[index:index + 25])
+    return bad
+
+
+def ensure_alive():
+    pid = adb("shell", "pidof", PACKAGE, check=False).strip()
+    if not pid:
+        raise RuntimeError("Процесс приложения не запущен (упал или закрылся)")
+    bad = crash_lines()
+    if bad:
+        raise RuntimeError("В logcat падение приложения:\n" + "\n".join(bad[:60]))
+    return pid
+
+
+def screenshot(name):
+    data = adb("exec-out", "screencap", "-p", binary=True, timeout=60)
+    path = out_dir / f"android-{name}.png"
+    path.write_bytes(data)
+    print(f"Скриншот {path} ({len(data)} байт)")
+    if len(data) < 5000:
+        raise RuntimeError(f"Скриншот {name} подозрительно маленький: {len(data)} байт")
+
+
+def tab_node(root, parents, titles):
+    """Кнопка вкладки — самый нижний элемент с таким названием (над ней может быть заголовок страницы)."""
+    candidates = nodes_with_text(root, titles)
+    if not candidates:
+        return None
+    return max(candidates, key=lambda node: bounds(node)[1])
+
+
+def is_selected(node, parents):
+    current = node
+    for _ in range(4):
+        if current is None:
+            return False
+        if current.get("selected") == "true":
+            return True
+        current = parents.get(current)
+    return False
+
+
+def step(name, action):
+    started = time.time()
+    try:
+        detail = action() or ""
+        results.append((name, "ok", f"{time.time() - started:.1f} с", detail))
+        print(f"[ok] {name} {detail}")
+    except Exception as error:
+        results.append((name, "FAIL", f"{time.time() - started:.1f} с", str(error).splitlines()[0]))
+        print(f"[FAIL] {name}: {error}")
+        raise
+
+
+def launch():
+    component = adb("shell", "cmd", "package", "resolve-activity", "--brief",
+                    "-a", "android.intent.action.MAIN", "-c", "android.intent.category.LAUNCHER", PACKAGE).strip().splitlines()[-1]
+    if "/" not in component:
+        raise RuntimeError(f"Не найдена главная активность: {component}")
+    output = adb("shell", "am", "start", "-W", "-n", component, timeout=180)
+    print(output)
+    if "Status: ok" not in output:
+        raise RuntimeError("am start не подтвердил запуск")
+    total = re.search(r"TotalTime: (\d+)", output)
+    return f"{component}, запуск {total.group(1) if total else '?'} мс"
+
+
+def training_ready():
+    found = wait_for(READY_PREFIXES, 120, prefix=True)
+    screenshot("training")
+    return found[0].get("text", "")
+
+
+def close_alert():
+    """Закрывает окно сообщения приложения (DisplayAlert) и возвращает его текст, если оно было."""
+    root, _ = dump_ui()
+    button = [node for node in root.iter("node") if node.get("resource-id", "").endswith(":id/button1")]
+    if not button:
+        return ""
+    text = " / ".join(node.get("text", "") for node in root.iter("node")
+                      if node.get("resource-id", "").endswith(("alertTitle", ":id/message")) and node.get("text"))
+    screenshot("alert")
+    tap(button[0])
+    time.sleep(1)
+    return text
+
+
+def play_and_stop():
+    root, _ = dump_ui()
+    play = nodes_with_text(root, PLAY_TEXTS)
+    if not play:
+        raise RuntimeError("Нет кнопки «Слушать»")
+    tap(play[0])
+    time.sleep(3)
+    ensure_alive()
+    alert = close_alert()
+    if alert:
+        # Ошибка звука на эмуляторе без аудиоустройства — не падение; падение ловит ensure_alive
+        return f"сообщение вместо звука: {alert}"
+    root, _ = dump_ui()
+    stop = nodes_with_text(root, STOP_TEXTS)
+    if stop:
+        tap(stop[0])
+    time.sleep(1)
+    ensure_alive()
+    return "звук запущен и остановлен"
+
+
+def open_tab(key, titles):
+    def action():
+        root, parents = dump_ui()
+        node = tab_node(root, parents, titles)
+        if node is None:
+            raise RuntimeError(f"Не найдена вкладка {titles}")
+        tap(node)
+        time.sleep(3)
+        ensure_alive()
+        root, parents = dump_ui()
+        node = tab_node(root, parents, titles)
+        selected = node is not None and is_selected(node, parents)
+        screenshot(key)
+        return "вкладка выбрана" if selected else "вкладка открыта (признак selected не найден)"
+    return action
+
+
+def write_summary():
+    lines = ["### Дымовой тест Android (эмулятор)", "", "| Шаг | Результат | Время | Подробности |", "|---|---|---|---|"]
+    for name, status, duration, detail in results:
+        lines.append(f"| {name} | {status} | {duration} | {detail.replace('|', '/')} |")
+    text = "\n".join(lines) + "\n"
+    (out_dir / "summary.md").write_text(text, encoding="utf-8")
+    summary_file = os.environ.get("GITHUB_STEP_SUMMARY")
+    if summary_file:
+        with open(summary_file, "a", encoding="utf-8") as handle:
+            handle.write(text)
+
+
+def main():
+    out_dir.mkdir(parents=True, exist_ok=True)
+    apk = find_apk(sys.argv[1] if len(sys.argv) > 1 else ".")
+    exit_code = 0
+    try:
+        adb("wait-for-device", timeout=300)
+        step("Установка APK", lambda: (adb("install", "-r", "-g", str(apk), timeout=300), f"{apk.name}, {apk.stat().st_size // 1024} КБ")[1])
+        adb("logcat", "-b", "all", "-c", check=False)
+        step("Запуск MainActivity", launch)
+        step("Первое задание на «Тренировке»", training_ready)
+        step("Слушать и Стоп", play_and_stop)
+        # По всем вкладкам и обратно на «Тренировку» (второй скриншот — под своим именем)
+        for key, russian, english in TABS[1:] + [("training-return",) + TABS[0][1:]]:
+            step(f"Вкладка «{russian}»", open_tab(key, (russian, english)))
+        step("Итог: процесс жив, падений нет", lambda: f"pid {ensure_alive()}")
+    except Exception:
+        exit_code = 1
+    finally:
+        try:
+            (out_dir / "logcat.txt").write_text(adb("logcat", "-d", "-b", "all", check=False, timeout=60), encoding="utf-8")
+        except Exception as error:
+            print(f"Не удалось сохранить logcat: {error}")
+        write_summary()
+    return exit_code
+
+
+if __name__ == "__main__":
+    sys.exit(main())

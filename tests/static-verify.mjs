@@ -70,7 +70,8 @@ const requiredFiles = [
   'src/MorseTrainer.Mobile/Pages/SettingsPage.xaml.cs',
   '.github/workflows/mobile.yml',
   '.github/dependabot.yml',
-  'docs/RUSTORE.md'
+  'docs/RUSTORE.md',
+  'tests/android-smoke.py'
 ];
 
 for (const relativePath of requiredFiles) {
@@ -235,6 +236,11 @@ assert(mobileWorkflow.includes('-p:MobileTargetFrameworks=net10.0-ios'), 'iOS jo
 assert(!mobileWorkflow.includes('-p:TargetFrameworks='), 'Do not pass TargetFrameworks globally: it breaks restore of MorseTrainer.Core.');
 assert(mobileProject.includes("'$(MobileTargetFrameworks)' != ''"), 'Mobile project must honour MobileTargetFrameworks.');
 assert(mobileWorkflow.includes('iossimulator-arm64'), 'iOS job must build for the ARM64 simulator.');
+assert(mobileWorkflow.includes('android-emulator-runner') && mobileWorkflow.includes('tests/android-smoke.py') && mobileWorkflow.includes('MorseTrainer-Screenshots-Android'),
+  'Mobile workflow must run the Android emulator smoke test and upload its screenshots.');
+const mobileApp = read('src/MorseTrainer.Mobile/App.xaml.cs');
+assert(!mobileApp.includes('App(AppShell') && mobileApp.includes('GetRequiredService<AppShell>()'),
+  'Mobile App must resolve AppShell in CreateWindow: pages created before App.InitializeComponent crash on StaticResource.');
 
 const releaseWorkflow = read('.github/workflows/release.yml');
 assert(releaseWorkflow.includes('gh release create'), 'Release workflow does not create a GitHub release.');
