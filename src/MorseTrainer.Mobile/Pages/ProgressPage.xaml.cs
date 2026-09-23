@@ -13,7 +13,6 @@ public partial class ProgressPage : ContentPage
 {
     private readonly TrainingHistoryStore _historyStore;
     private readonly MobileSettingsService _settingsService;
-    private bool _refreshingFilter;
     private bool _loadingGoal;
 
     public ProgressPage(TrainingHistoryStore historyStore, MobileSettingsService settingsService)
@@ -44,28 +43,8 @@ public partial class ProgressPage : ContentPage
         Refresh();
     }
 
-    private void ProfilePicker_OnChanged(object sender, EventArgs e)
-    {
-        if (!_refreshingFilter)
-        {
-            Refresh();
-        }
-    }
-
-    /// <summary>Пикер профилей: «Все профили» + имена из истории; выбор сохраняется при обновлении.</summary>
-    private IReadOnlyList<TrainingRecord> LoadVisibleHistory()
-    {
-        var all = _historyStore.Load();
-        var items = new List<string> { Texts.T("Все профили") };
-        items.AddRange(TrainingStatistics.ProfileNames(all));
-        var selected = ProfilePicker.SelectedItem as string;
-        _refreshingFilter = true;
-        ProfilePicker.ItemsSource = items;
-        var index = selected is null ? -1 : items.FindIndex(item => string.Equals(item, selected, StringComparison.OrdinalIgnoreCase));
-        ProfilePicker.SelectedIndex = index > 0 ? index : 0;
-        _refreshingFilter = false;
-        return ProfilePicker.SelectedIndex > 0 ? TrainingStatistics.ForProfile(all, items[ProfilePicker.SelectedIndex]) : all;
-    }
+    // Одно устройство — один человек: прогресс всегда по всей истории, без выбора профиля
+    private IReadOnlyList<TrainingRecord> LoadVisibleHistory() => _historyStore.Load();
 
     private async void ShareCsvButton_OnClicked(object sender, EventArgs e)
     {

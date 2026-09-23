@@ -8,7 +8,6 @@
     <ScrollView>
         <VerticalStackLayout x:Name="RootLayout" Padding="16" Spacing="14">
             <Label Text="{loc:Loc 'Прогресс'}" FontSize="26" FontAttributes="Bold" />
-            <Picker x:Name="ProfilePicker" Title="{loc:Loc 'Профиль'}" SelectedIndexChanged="ProfilePicker_OnChanged" />
 
             <Border BackgroundColor="{AppThemeBinding Light=#ECFDF5, Dark=#102F29}">
                 <VerticalStackLayout Spacing="6">

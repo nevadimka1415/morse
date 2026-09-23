@@ -15,6 +15,7 @@ public partial class LearningPage : ContentPage
     private readonly ChantStore _chantStore;
     private readonly TrainingHistoryStore _historyStore;
     private readonly TrainingPage _trainingPage;
+    private readonly IAudioRecorderService _recorder;
     private IReadOnlyList<LearningSymbolItem> _visibleItems = Array.Empty<LearningSymbolItem>();
     private LearningSymbolItem? _quizTarget;
     private int _quizCorrect;
@@ -27,7 +28,8 @@ public partial class LearningPage : ContentPage
         VoicePackService voicePack,
         ChantStore chantStore,
         TrainingHistoryStore historyStore,
-        TrainingPage trainingPage)
+        TrainingPage trainingPage,
+        IAudioRecorderService recorder)
     {
         InitializeComponent();
         _audioPlayback = audioPlayback;
@@ -36,6 +38,7 @@ public partial class LearningPage : ContentPage
         _chantStore = chantStore;
         _historyStore = historyStore;
         _trainingPage = trainingPage;
+        _recorder = recorder;
         AlphabetPicker.ItemsSource = new[] { Texts.T("Русские"), Texts.T("Латинские"), Texts.T("Русские и латинские"), Texts.T("Цифры") };
         AlphabetPicker.SelectedIndex = 0;
         _pageReady = true;
@@ -162,7 +165,18 @@ public partial class LearningPage : ContentPage
         await PlayFileSafelyAsync(path);
     }
 
-    // ---------- Свои напевы и голос ----------
+    // ---------- Свои напевы: текст и голос ----------
+
+    private static readonly string[] VoiceExtensions = { ".m4a", ".mp3", ".wav" };
+
+    /// <summary>Своя запись символа (m4a, mp3 или wav в папке voice) или null.</summary>
+    private static string? CustomRecording(char symbol) => CustomVoice.Find(MobilePaths.VoiceDirectory, symbol, VoiceExtensions);
+
+    /// <summary>Все записи для полного голоса: русские буквы (Ё звучит как Е) и цифры; латиница использует те же коды.</summary>
+    private static IReadOnlyList<char> RecordingOrder() => MorseAlphabet.Russian.Keys
+        .Concat(MorseAlphabet.Digits.Keys)
+        .DistinctBy(symbol => VoiceClipCatalog.GetClipName(symbol))
+        .ToArray();
 
     private async void EditChantButton_OnClicked(object sender, EventArgs e)
     {
@@ -171,9 +185,38 @@ public partial class LearningPage : ContentPage
             return;
         }
 
-        var builtIn = LearningCatalog.BuiltInChant(symbol) ?? string.Empty;
+        var editText = Texts.T("Изменить текст напева");
+        var record = Texts.T("Записать свой голос");
+        var listen = Texts.T("Прослушать мою запись");
+        var delete = Texts.T("Удалить мою запись");
+        var hasRecording = CustomRecording(symbol) is not null;
+        var options = hasRecording ? new[] { record, listen, editText } : new[] { record, editText };
+        var choice = await DisplayActionSheetAsync($"{symbol} — {item.Chant}", Texts.T("Отмена"), hasRecording ? delete : null, options);
+        if (choice == editText)
+        {
+            await EditChantTextAsync(item);
+        }
+        else if (choice == record)
+        {
+            await RecordSymbolAsync(symbol, sequence: false);
+            RefreshItems();
+        }
+        else if (choice == listen && CustomRecording(symbol) is { } path)
+        {
+            await PlayFileSafelyAsync(path);
+        }
+        else if (choice is not null && choice == delete)
+        {
+            DeleteRecordings(symbol);
+            RefreshItems();
+        }
+    }
+
+    private async Task EditChantTextAsync(LearningSymbolItem item)
+    {
+        var builtIn = LearningCatalog.BuiltInChant(item.Symbol) ?? string.Empty;
         var text = await DisplayPromptAsync(
-            Texts.F("Напев для {0}", symbol),
+            Texts.F("Напев для {0}", item.Symbol),
             Texts.F("Код {0}, ритм: {1}. Один слог на каждую точку и тире через дефис. Пустое поле — встроенный напев «{2}».", item.Code, ChantBook.Pattern(item.Code), builtIn),
             Texts.T("Сохранить"), Texts.T("Отмена"), builtIn, ChantBook.MaxLength, Keyboard.Text, item.Chant);
         if (text is null)
@@ -183,7 +226,7 @@ public partial class LearningPage : ContentPage
 
         try
         {
-            LearningCatalog.SetCustomChants(_chantStore.Set(symbol, text));
+            LearningCatalog.SetCustomChants(_chantStore.Set(item.Symbol, text));
             RefreshItems();
         }
         catch (ArgumentException exception)
@@ -192,17 +235,152 @@ public partial class LearningPage : ContentPage
         }
     }
 
+    /// <summary>
+    /// Запись напева символа: пока открыто окно «Идёт запись», микрофон пишет; после «Готово» запись звучит, и её можно
+    /// оставить или переписать. В режиме «по очереди» возвращает false, если пользователь решил закончить.
+    /// </summary>
+    private async Task<bool> RecordSymbolAsync(char symbol, bool sequence, int number = 0, int total = 0)
+    {
+        if (LearningCatalog.Find(symbol) is not { } item || VoiceClipCatalog.GetClipName(symbol) is not { } clipName)
+        {
+            return true;
+        }
+
+        if (!await _recorder.RequestPermissionAsync())
+        {
+            await DisplayAlertAsync(Texts.T("Свой голос"), Texts.T("Нет доступа к микрофону: разрешите его для Morse Trainer в настройках телефона."), Texts.T("Понятно"));
+            return false;
+        }
+
+        var target = Path.Combine(MobilePaths.VoiceDirectory, clipName + ".m4a");
+        var temporary = Path.Combine(FileSystem.CacheDirectory, "recording-" + clipName + ".m4a");
+        var title = sequence ? Texts.F("Запись {0} из {1}: {2}", number, total, symbol) : Texts.F("Запись: {0}", symbol);
+        while (true)
+        {
+            _audioPlayback.Stop();
+            try
+            {
+                _recorder.Start(temporary);
+            }
+            catch (Exception exception)
+            {
+                await DisplayAlertAsync(Texts.T("Свой голос"), exception.Message, Texts.T("Закрыть"));
+                return false;
+            }
+
+            await DisplayAlertAsync(title,
+                Texts.F("Идёт запись. Скажите: «{0}».\nРитм {1}: протяжные слоги (тире) тяните, короткие (точки) — коротко.\nНажмите «Готово», когда закончите.",
+                    item.Chant, ChantBook.Pattern(item.Code)),
+                Texts.T("Готово"));
+            if (!_recorder.Stop() || !File.Exists(temporary) || new FileInfo(temporary).Length < 1000)
+            {
+                var again = await DisplayAlertAsync(title, Texts.T("Запись не получилась: слишком коротко. Попробовать ещё раз?"), Texts.T("Ещё раз"), Texts.T("Пропустить"));
+                if (again)
+                {
+                    continue;
+                }
+
+                return true;
+            }
+
+            await PlayFileSafelyAsync(temporary);
+            var keep = sequence ? Texts.T("Оставить и дальше") : Texts.T("Оставить");
+            var redo = Texts.T("Переписать");
+            var choice = await DisplayActionSheetAsync($"{title}: {item.Chant}", sequence ? Texts.T("Закончить") : Texts.T("Отмена"), null, keep, redo);
+            if (choice == redo)
+            {
+                continue;
+            }
+
+            if (choice == keep)
+            {
+                DeleteRecordings(symbol);
+                Directory.CreateDirectory(MobilePaths.VoiceDirectory);
+                File.Move(temporary, target, overwrite: true);
+                return true;
+            }
+
+            // «Закончить» или «Отмена»: запись не сохраняется
+            File.Delete(temporary);
+            return !sequence;
+        }
+    }
+
+    private static void DeleteRecordings(char symbol)
+    {
+        if (VoiceClipCatalog.GetClipName(symbol) is not { } clipName || !Directory.Exists(MobilePaths.VoiceDirectory))
+        {
+            return;
+        }
+
+        foreach (var extension in VoiceExtensions)
+        {
+            var path = Path.Combine(MobilePaths.VoiceDirectory, clipName + extension);
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+    }
+
+    /// <summary>Все напевы по очереди, начиная с первого без записи: 32 русские буквы и 10 цифр.</summary>
+    private async Task RecordAllAsync()
+    {
+        var order = RecordingOrder();
+        var start = order.ToList().FindIndex(symbol => CustomRecording(symbol) is null);
+        if (start < 0)
+        {
+            var again = await DisplayAlertAsync(Texts.T("Свой голос"), Texts.T("Все напевы уже записаны. Записать заново с начала?"), Texts.T("С начала"), Texts.T("Отмена"));
+            if (!again)
+            {
+                return;
+            }
+
+            start = 0;
+        }
+
+        for (var index = start; index < order.Count; index++)
+        {
+            if (!await RecordSymbolAsync(order[index], sequence: true, index + 1, order.Count))
+            {
+                break;
+            }
+        }
+
+        RefreshItems();
+        var recorded = order.Count(symbol => CustomRecording(symbol) is not null);
+        await DisplayAlertAsync(Texts.T("Свой голос"),
+            Texts.F("Записано {0} из {1}. Чтобы ваши напевы стали голосом приложения для всех, нажмите «Свой голос…» → «Поделиться записями» и отправьте файлы разработчику.", recorded, order.Count),
+            Texts.T("Понятно"));
+    }
+
     private async void CustomVoiceButton_OnClicked(object sender, EventArgs e)
     {
-        var count = CustomVoice.Count(MobilePaths.VoiceDirectory);
+        var order = RecordingOrder();
+        var recorded = order.Count(symbol => CustomRecording(symbol) is not null);
+        var recordAll = Texts.T("Записать все напевы по очереди");
+        var share = Texts.T("Поделиться записями");
         var add = Texts.T("Добавить файлы");
-        var remove = count > 0 ? Texts.T("Удалить свой голос") : null;
-        var hint = CustomVoice.Describe(count) + "\n" +
-                   Texts.F("Имя файла — код символа, точка 0, тире 1: {0} для А.", CustomVoice.ExampleFileName('А', ".m4a"));
-        var choice = await DisplayActionSheetAsync(hint, Texts.T("Отмена"), remove, add);
+        var remove = recorded > 0 ? Texts.T("Удалить свой голос") : null;
+        var title = Texts.F("Свой голос: записано {0} из {1}", recorded, order.Count);
+        var options = recorded > 0 ? new[] { recordAll, share, add } : new[] { recordAll, add };
+        var choice = await DisplayActionSheetAsync(title, Texts.T("Отмена"), remove, options);
         try
         {
-            if (choice == add)
+            if (choice == recordAll)
+            {
+                await RecordAllAsync();
+            }
+            else if (choice == share)
+            {
+                var files = Directory.EnumerateFiles(MobilePaths.VoiceDirectory)
+                    .Where(path => CustomVoice.IsClipFileName(Path.GetFileName(path)))
+                    .OrderBy(path => path, StringComparer.Ordinal)
+                    .Select(path => new ShareFile(path))
+                    .ToList();
+                await Share.Default.RequestAsync(new ShareMultipleFilesRequest { Title = Texts.T("Напевы Morse Trainer"), Files = files });
+            }
+            else if (choice == add)
             {
                 var files = await FilePicker.Default.PickMultipleAsync(new PickOptions { PickerTitle = Texts.T("Файлы голоса code_XXXX (.m4a, .mp3, .wav)") });
                 var added = 0;
@@ -222,12 +400,17 @@ public partial class LearningPage : ContentPage
                     added++;
                 }
 
+                RefreshItems();
                 await DisplayAlertAsync(Texts.T("Свой голос"), Texts.F("Добавлено файлов: {0}, пропущено (имя не code_XXXX): {1}.", added, skipped), Texts.T("Понятно"));
             }
             else if (choice is not null && choice == remove)
             {
-                Directory.Delete(MobilePaths.VoiceDirectory, recursive: true);
-                await DisplayAlertAsync(Texts.T("Свой голос"), CustomVoice.Describe(0), Texts.T("Понятно"));
+                var confirmed = await DisplayAlertAsync(Texts.T("Свой голос"), Texts.F("Удалить все ваши записи ({0})?", recorded), Texts.T("Удалить"), Texts.T("Отмена"));
+                if (confirmed)
+                {
+                    Directory.Delete(MobilePaths.VoiceDirectory, recursive: true);
+                    RefreshItems();
+                }
             }
         }
         catch (Exception exception)

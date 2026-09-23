@@ -7,10 +7,7 @@
     <ScrollView>
         <VerticalStackLayout x:Name="RootLayout" Padding="16" Spacing="14">
             <Grid ColumnDefinitions="*,Auto">
-                <VerticalStackLayout Spacing="2">
-                    <Label Text="{loc:Loc 'Тренировка'}" FontSize="26" FontAttributes="Bold" />
-                    <Label x:Name="ProfileLabel" Text="{loc:Loc 'Профиль: Основной'}" Opacity="0.65" />
-                </VerticalStackLayout>
+                <Label Text="{loc:Loc 'Тренировка'}" FontSize="26" FontAttributes="Bold" VerticalOptions="Center" />
                 <Button Grid.Column="1" Text="{loc:Loc 'Настроить'}" Clicked="SettingsButton_OnClicked" />
             </Grid>
 

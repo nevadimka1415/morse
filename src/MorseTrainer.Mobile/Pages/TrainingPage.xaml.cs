@@ -47,7 +47,6 @@ public partial class TrainingPage : ContentPage
     private void RefreshSettingsSummary()
     {
         var settings = _settingsService.LoadSettings();
-        ProfileLabel.Text = Texts.F("Профиль: {0}", settings.ActiveProfileName);
         var start = settings.PlayStartSignal ? Texts.F(" · Ж Ж Ж + пауза {0}", settings.StartPauseUnits) : Texts.T(" · без сигнала старта");
         if (settings.ContentModeIndex == (int)ContentMode.Koch)
         {

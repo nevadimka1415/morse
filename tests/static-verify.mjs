@@ -33,6 +33,9 @@ const requiredFiles = [
   'src/MorseTrainer/Services/TrayReminder.cs',
   'src/MorseTrainer/Domain/Course.cs',
   'src/MorseTrainer/Domain/KeyerProgress.cs',
+  'src/MorseTrainer.Mobile/Services/IAudioRecorderService.cs',
+  'src/MorseTrainer.Mobile/Platforms/Android/PlatformAudioRecorderService.cs',
+  'src/MorseTrainer.Mobile/Platforms/iOS/PlatformAudioRecorderService.cs',
   'src/MorseTrainer.Mobile/Services/IReminderService.cs',
   'src/MorseTrainer.Mobile/Services/ReminderTexts.cs',
   'src/MorseTrainer.Mobile/Platforms/Android/ReminderService.cs',
@@ -191,8 +194,12 @@ assert(read('src/MorseTrainer/MainWindow.xaml').includes('x:Name="AutoSpeedCheck
   'Both apps must offer the auto speed switch.');
 assert(read('src/MorseTrainer/MainWindow.xaml').includes('x:Name="KeyerAnalyzeButton"') && read('src/MorseTrainer.Mobile/Pages/KeyerPage.xaml').includes('x:Name="AnalyzeButton"'),
   'Both apps must offer the keyer quality analysis.');
-assert(read('src/MorseTrainer/MainWindow.xaml').includes('x:Name="ProgressProfileCombo"') && read('src/MorseTrainer.Mobile/Pages/ProgressPage.xaml').includes('x:Name="ProfilePicker"'),
-  'Both apps must filter progress by profile.');
+assert(read('src/MorseTrainer/MainWindow.xaml').includes('x:Name="ProgressProfileCombo"'), 'Windows must filter progress by profile.');
+assert(!read('src/MorseTrainer.Mobile/Pages/SettingsPage.xaml').includes('ProfilePicker') && !read('src/MorseTrainer.Mobile/Pages/ProgressPage.xaml').includes('ProfilePicker'),
+  'Phone has no profiles: one device, one person.');
+assert(read('src/MorseTrainer.Mobile/Pages/SettingsPage.xaml').indexOf('x:Name="ModeLettersButton"') < read('src/MorseTrainer.Mobile/Pages/SettingsPage.xaml').indexOf('x:Name="GroupCountStepper"')
+  && read('src/MorseTrainer.Mobile/Pages/SettingsPage.xaml').indexOf('x:Name="GroupCountStepper"') < read('src/MorseTrainer.Mobile/Pages/SettingsPage.xaml').indexOf('x:Name="AdvancedLayout"'),
+  'Phone settings order: mode buttons first, then task parameters, then the collapsible advanced settings.');
 assert(read('src/MorseTrainer/MainWindow.xaml').includes('x:Name="ExportCsvButton"') && read('src/MorseTrainer.Mobile/Pages/ProgressPage.xaml').includes('ShareCsvButton_OnClicked'),
   'Both apps must export the history as CSV.');
 assert(read('src/MorseTrainer/MainWindow.xaml').includes('x:Name="DrillButton"') && read('src/MorseTrainer.Mobile/Pages/TrainingPage.xaml').includes('x:Name="DrillButton"'),
@@ -218,6 +225,10 @@ assert(read('src/MorseTrainer/MainWindow.xaml.cs').includes('e.Key == Key.E') &&
 assert(read('src/MorseTrainer/MainWindow.xaml.cs').includes('KeyerProgress.MatchedLength') && read('src/MorseTrainer.Mobile/Pages/KeyerPage.xaml.cs').includes('KeyerProgress.MatchedLength'),
   'Both apps must highlight the sending task as it is received.');
 assert(read('tests/MorseTrainer.UiSmoke/Program.cs').includes('ThemeIndex = 1'), 'UI smoke test must take dark theme screenshots.');
+assert(read('src/MorseTrainer.Mobile/Platforms/Android/AndroidManifest.xml').includes('android.permission.RECORD_AUDIO') && read('src/MorseTrainer.Mobile/Platforms/iOS/Info.plist').includes('NSMicrophoneUsageDescription'),
+  'Recording own chants needs the microphone permission on Android and iOS.');
+assert(read('src/MorseTrainer.Mobile/MauiProgram.cs').includes('IAudioRecorderService') && read('src/MorseTrainer.Mobile/Pages/LearningPage.xaml.cs').includes('RecordAllAsync'),
+  'Phone must record own chants, including all chants in turn.');
 const mobileApp = read('src/MorseTrainer.Mobile/App.xaml.cs');
 assert(!mobileApp.includes('App(AppShell') && mobileApp.includes('GetRequiredService<AppShell>()'),
   'Mobile App must resolve AppShell in CreateWindow: pages created before App.InitializeComponent crash on StaticResource.');

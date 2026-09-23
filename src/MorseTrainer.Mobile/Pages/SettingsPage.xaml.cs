@@ -17,7 +17,6 @@ public partial class SettingsPage : ContentPage
     private readonly IReminderService _reminders;
     private readonly ChantStore _chantStore;
     private AppSettings _settings = new();
-    private IReadOnlyList<TrainingProfile> _profiles = Array.Empty<TrainingProfile>();
     private readonly HashSet<char> _selectedSymbols = new();
     private bool _ready;
 
@@ -162,18 +161,61 @@ public partial class SettingsPage : ContentPage
         SaveStatusLabel.Text = Texts.T("Отчёт о сбое удалён");
     }
 
+    // Одно устройство — один человек: профилей на телефоне нет, настройки одни
     private void LoadAll()
     {
         _ready = false;
         _settings = _settingsService.LoadSettings();
-        _profiles = _settingsService.LoadProfiles();
-        // Picker.ItemsSource требует IList, а сервис отдаёт IReadOnlyList — копируем в список
-        ProfilePicker.ItemsSource = _profiles.ToList();
-        ProfilePicker.SelectedItem = _profiles.FirstOrDefault(profile =>
-            string.Equals(profile.Name, _settings.ActiveProfileName, StringComparison.OrdinalIgnoreCase)) ?? _profiles[0];
-        ProfileNameEntry.Text = ((TrainingProfile)ProfilePicker.SelectedItem).Name;
         ApplySettingsToControls();
         _ready = true;
+    }
+
+    // ---------- что тренировать: четыре основных режима ----------
+
+    private static readonly ContentMode[] MainModes = { ContentMode.Letters, ContentMode.Digits, ContentMode.LettersAndDigits, ContentMode.Custom };
+
+    private void ModeButton_OnClicked(object? sender, EventArgs e)
+    {
+        if (sender is not Button { CommandParameter: string value } || !int.TryParse(value, out var mode))
+        {
+            return;
+        }
+
+        // Пикер «Режим (все варианты)» в дополнительных настройках — единственный источник режима
+        ContentPicker.SelectedIndex = mode;
+    }
+
+    private void UpdateModeButtons()
+    {
+        var mode = ContentModes.Clamp(ContentPicker.SelectedIndex);
+        var buttons = new[] { ModeLettersButton, ModeDigitsButton, ModeBothButton, ModeCustomButton };
+        for (var index = 0; index < buttons.Length; index++)
+        {
+            if (MainModes[index] == mode)
+            {
+                buttons[index].BackgroundColor = (Color)Application.Current!.Resources["Primary"];
+                buttons[index].TextColor = Color.FromArgb("#06231C");
+            }
+            else
+            {
+                buttons[index].ClearValue(Button.BackgroundColorProperty);
+                buttons[index].ClearValue(Button.TextColorProperty);
+            }
+        }
+
+        CustomSymbolsLayout.IsVisible = mode == ContentMode.Custom;
+        var alphabet = (AlphabetMode)Math.Clamp(AlphabetPicker.SelectedIndex, 0, 2);
+        var alphabetName = AlphabetPicker.SelectedItem as string ?? string.Empty;
+        ModeHintLabel.Text = Array.IndexOf(MainModes, mode) < 0
+            ? Texts.F("Сейчас особый режим «{0}» — он выбран в дополнительных настройках.", ContentPicker.SelectedItem as string ?? string.Empty)
+            : Texts.F("Символов в задании: {0} · алфавит: {1} (меняется в дополнительных настройках)",
+                MorseAlphabet.BuildPool(alphabet, mode, new string(_selectedSymbols.ToArray()), (int)KochStepper.Value).Count, alphabetName);
+    }
+
+    private void AdvancedButton_OnClicked(object sender, EventArgs e)
+    {
+        AdvancedLayout.IsVisible = !AdvancedLayout.IsVisible;
+        AdvancedButton.Text = AdvancedLayout.IsVisible ? Texts.T("Дополнительные настройки ▴") : Texts.T("Дополнительные настройки ▾");
     }
 
     private void ApplySettingsToControls()
@@ -333,6 +375,7 @@ public partial class SettingsPage : ContentPage
         QsbValue.Text = $"{Snap(QsbSlider.Value, 5, 0, 100)}%";
         DriftValue.Text = Texts.F("±{0} Гц", Snap(DriftSlider.Value, 5, 0, NoiseProfile.MaxDriftHz));
         SelectedSymbolsLabel.Text = Texts.F("Выбрано: {0}", _selectedSymbols.Count);
+        UpdateModeButtons();
         var kochAlphabet = (AlphabetMode)Math.Clamp(AlphabetPicker.SelectedIndex, 0, 2);
         KochLayout.IsVisible = ContentPicker.SelectedIndex == (int)ContentMode.Koch;
         KochStepper.Maximum = KochMethod.MaxLevel(kochAlphabet);
@@ -351,46 +394,16 @@ public partial class SettingsPage : ContentPage
         }
     }
 
-    private void ProfilePicker_OnChanged(object sender, EventArgs e)
-    {
-        if (!_ready || ProfilePicker.SelectedItem is not TrainingProfile profile)
-        {
-            return;
-        }
-
-        profile.ApplyTo(_settings);
-        ProfileNameEntry.Text = profile.Name;
-        _ready = false;
-        ApplySettingsToControls();
-        _ready = true;
-        _settingsService.SaveSettings(_settings);
-    }
-
-    private async void SaveProfileButton_OnClicked(object sender, EventArgs e)
+    private async void ShareSettingsButton_OnClicked(object sender, EventArgs e)
     {
         try
         {
+            // Настройки уходят одним профилем, вместе со своими напевами
             SaveControlsToSettings();
-            var name = TrainingProfile.NormalizeName(ProfileNameEntry.Text);
-            _profiles = _settingsService.SaveProfile(name, _settings);
-            LoadAll();
-            SaveStatusLabel.Text = Texts.F("Профиль «{0}» сохранён", name);
-        }
-        catch (ArgumentException)
-        {
-            await DisplayAlertAsync(Texts.T("Название профиля"), Texts.T("Введите название профиля."), Texts.T("Понятно"));
-        }
-    }
-
-    private async void ShareProfilesButton_OnClicked(object sender, EventArgs e)
-    {
-        try
-        {
-            // Свои напевы едут вместе с профилями
-            var text = ProfileTransfer.Export(_profiles, LearningCatalog.CustomChants);
+            var text = ProfileTransfer.Export(new[] { TrainingProfile.FromSettings(_settings.ActiveProfileName, _settings) }, LearningCatalog.CustomChants);
             await Clipboard.Default.SetTextAsync(text);
-            await Share.Default.RequestAsync(new ShareTextRequest { Title = Texts.T("Профили Morse Trainer"), Text = text });
-            SaveStatusLabel.Text = Texts.T("Профили скопированы в буфер и отправлены");
+            await Share.Default.RequestAsync(new ShareTextRequest { Title = Texts.T("Настройки Morse Trainer"), Text = text });
+            SaveStatusLabel.Text = Texts.T("Настройки скопированы в буфер и отправлены");
         }
         catch (Exception exception)
         {
@@ -398,15 +411,21 @@ public partial class SettingsPage : ContentPage
         }
     }
 
-    private async void ImportProfilesButton_OnClicked(object sender, EventArgs e)
+    private async void ImportSettingsButton_OnClicked(object sender, EventArgs e)
     {
         try
         {
             var text = await Clipboard.Default.GetTextAsync();
             var package = ProfileTransfer.ImportPackage(text ?? string.Empty);
-            _profiles = _settingsService.ImportProfiles(package.Profiles);
+            // Профилей на телефоне нет: берём одноимённый профиль из текста, иначе первый, и ставим его настройки
+            var profile = package.Profiles.FirstOrDefault(item => string.Equals(item.Name, _settings.ActiveProfileName, StringComparison.OrdinalIgnoreCase))
+                          ?? package.Profiles[0];
+            var name = _settings.ActiveProfileName;
+            profile.ApplyTo(_settings);
+            _settings.ActiveProfileName = name;
+            _settingsService.SaveSettings(_settings);
             LoadAll();
-            SaveStatusLabel.Text = Texts.F("Импортировано профилей: {0}", package.Profiles.Count);
+            SaveStatusLabel.Text = Texts.T("Настройки приняты");
             if (package.Chants.Count > 0)
             {
                 LearningCatalog.SetCustomChants(_chantStore.Merge(package.Chants));
@@ -415,23 +434,9 @@ public partial class SettingsPage : ContentPage
         }
         catch (FormatException exception)
         {
-            await DisplayAlertAsync(Texts.T("Импорт профилей"),
-                Texts.F("{0}\nСкопируйте текст профилей (из «Поделиться» на другом устройстве) и нажмите кнопку снова.", exception.Message), Texts.T("Понятно"));
+            await DisplayAlertAsync(Texts.T("Перенос настроек"),
+                Texts.F("{0}\nСкопируйте текст настроек (из «Поделиться» на другом устройстве) и нажмите кнопку снова.", exception.Message), Texts.T("Понятно"));
         }
-    }
-
-    private void DeleteProfileButton_OnClicked(object sender, EventArgs e)
-    {
-        if (ProfilePicker.SelectedItem is not TrainingProfile profile)
-        {
-            return;
-        }
-
-        _profiles = _settingsService.DeleteProfile(profile.Name);
-        _settings.ActiveProfileName = _profiles[0].Name;
-        _profiles[0].ApplyTo(_settings);
-        _settingsService.SaveSettings(_settings);
-        LoadAll();
     }
 
     private static Version CurrentVersion =>

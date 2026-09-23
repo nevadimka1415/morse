@@ -25,9 +25,11 @@ public static class MauiProgram
 #if ANDROID
         builder.Services.AddSingleton<IAudioPlaybackService, Platforms.Android.PlatformAudioPlaybackService>();
         builder.Services.AddSingleton<IReminderService, Platforms.Android.ReminderService>();
+        builder.Services.AddSingleton<IAudioRecorderService, Platforms.Android.PlatformAudioRecorderService>();
 #elif IOS
         builder.Services.AddSingleton<IAudioPlaybackService, Platforms.iOS.PlatformAudioPlaybackService>();
         builder.Services.AddSingleton<IReminderService, Platforms.iOS.ReminderService>();
+        builder.Services.AddSingleton<IAudioRecorderService, Platforms.iOS.PlatformAudioRecorderService>();
 #endif
         builder.Services.AddSingleton<MobileSettingsService>();
         builder.Services.AddSingleton(new TrainingHistoryStore(MobilePaths.HistoryFile));

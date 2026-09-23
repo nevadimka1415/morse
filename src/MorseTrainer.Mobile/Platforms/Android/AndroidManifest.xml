@@ -7,4 +7,6 @@
     <!-- Напоминание о тренировке: уведомления (Android 13+) и восстановление будильника после перезагрузки -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- Запись своих напевов с микрофона (страница «Обучение») -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
 </manifest>
