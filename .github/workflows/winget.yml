@@ -1,0 +1,48 @@
+name: Publish to winget
+
+# Первая публикация пакета в winget (microsoft/winget-pkgs) — запускается вручную после релиза.
+# Дальше обновления отправляет job winget в release.yml. Подробности: docs/WINGET.md
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Версия релиза, например 2.5.0"
+        required: true
+      submit:
+        description: "Открыть PR в microsoft/winget-pkgs (нужен секрет WINGET_TOKEN)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  manifests:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    env:
+      WINGET_TOKEN: ${{ secrets.WINGET_TOKEN }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Build winget manifests
+        shell: pwsh
+        run: ./scripts/winget-manifests.ps1 -Version "${{ inputs.version }}" -Repository "${{ github.repository }}"
+
+      - name: Upload winget manifests
+        uses: actions/upload-artifact@v7
+        with:
+          name: winget-manifests
+          path: dist/winget/
+          if-no-files-found: error
+
+      - name: Submit new package to winget-pkgs
+        if: ${{ inputs.submit }}
+        shell: pwsh
+        run: |
+          if (-not $env:WINGET_TOKEN) { throw "Секрет WINGET_TOKEN не задан (см. docs/WINGET.md)" }
+          Invoke-WebRequest https://aka.ms/wingetcreate/latest -OutFile wingetcreate.exe
+          $version = "${{ inputs.version }}".TrimStart("v")
+          .\wingetcreate.exe submit --token $env:WINGET_TOKEN --prtitle "New package: Nevadimka1415.MorseTrainer version $version" "dist/winget/manifests/n/Nevadimka1415/MorseTrainer/$version"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

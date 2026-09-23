@@ -80,6 +80,9 @@ const requiredFiles = [
   '.github/workflows/mobile.yml',
   '.github/dependabot.yml',
   'docs/RUSTORE.md',
+  'docs/WINGET.md',
+  'scripts/winget-manifests.ps1',
+  '.github/workflows/winget.yml',
   'tests/android-smoke.py'
 ];
 
@@ -284,10 +287,14 @@ const releaseWorkflow = read('.github/workflows/release.yml');
 assert(releaseWorkflow.includes('gh release create'), 'Release workflow does not create a GitHub release.');
 assert(releaseWorkflow.includes('--notes-file'), 'Release workflow must take release notes from CHANGELOG.md.');
 assert(!releaseWorkflow.includes('8.0.x'), 'Release workflow must use .NET SDK 10.');
-for (const [name, workflow] of [['build', buildWorkflow], ['mobile', mobileWorkflow], ['release', releaseWorkflow]]) {
+for (const [name, workflow] of [['build', buildWorkflow], ['mobile', mobileWorkflow], ['release', releaseWorkflow], ['winget', read('.github/workflows/winget.yml')]]) {
   assert(!/uses: actions\/[a-z-]+@v[1-4]\b/.test(workflow), `The ${name} workflow uses an outdated action version (Node 20).`);
 }
 assert(releaseWorkflow.includes('MorseTrainer-Android.apk'), 'Release workflow does not attach the Android APK.');
+assert(releaseWorkflow.includes('wingetcreate.exe update Nevadimka1415.MorseTrainer') && releaseWorkflow.includes('WINGET_TOKEN'),
+  'Release workflow must update the winget package when the token is set.');
+assert(read('scripts/winget-manifests.ps1').includes('F5BA0D4D-BED2-4C8D-8963-42CE7B70C3AD') && read('installer/MorseTrainer.iss').includes('F5BA0D4D-BED2-4C8D-8963-42CE7B70C3AD'),
+  'winget ProductCode must match the Inno Setup AppId.');
 assert(releaseWorkflow.includes('SHA256SUMS.txt') && releaseWorkflow.includes('sha256sum'), 'Release workflow must attach SHA256SUMS.txt with checksums of all assets.');
 assert(releaseWorkflow.includes('MorseTrainer-iOS-unsigned.ipa') && mobileWorkflow.includes('MorseTrainer-iOS-unsigned.ipa'), 'Workflows must build the unsigned iPhone IPA.');
 assert(mobileWorkflow.includes('EnableCodeSigning=false') && mobileWorkflow.includes('RuntimeIdentifier=ios-arm64'), 'iPhone device build must be unsigned and target ios-arm64.');
