@@ -253,8 +253,10 @@ public partial class TrainingPage : ContentPage
         {
             _currentTaskRecorded = true;
             var settings = _settingsService.LoadSettings();
+            // Задание по настройкам текущего шага курса помечается его номером — так считается зачёт шага
+            var courseStep = _currentDrill is null ? Course.StepForRecord(settings, examResult is not null) : 0;
             var history = _historyStore.Add(TrainingStatistics.CreateRecord(DateTime.Now, settings.ActiveProfileName,
-                settings.CharactersPerMinute, _currentGroupCount, result, examResult is not null, DateTime.Now - _currentTaskStartedAt));
+                settings.CharactersPerMinute, _currentGroupCount, result, examResult is not null, DateTime.Now - _currentTaskStartedAt, courseStep));
             UpdateHistoryLabel();
             // Лестница скорости: новая скорость сохраняется в настройки и попадёт в следующее задание
             if (settings.AutoSpeed)
@@ -320,7 +322,22 @@ public partial class TrainingPage : ContentPage
 
     // ---------- Экзамен ----------
 
-    private async void ExamButton_OnClicked(object sender, EventArgs e)
+    private async void ExamButton_OnClicked(object sender, EventArgs e) => await StartExamAsync();
+
+    /// <summary>Новое задание или экзамен по текущим настройкам (кнопки курса на странице «Обучение»).</summary>
+    public async Task StartTaskAsync(bool exam)
+    {
+        if (exam)
+        {
+            await StartExamAsync();
+        }
+        else
+        {
+            await GenerateTaskAsync();
+        }
+    }
+
+    private async Task StartExamAsync()
     {
         await GenerateTaskAsync();
         if (string.IsNullOrEmpty(_currentTask) || _currentClip is null)

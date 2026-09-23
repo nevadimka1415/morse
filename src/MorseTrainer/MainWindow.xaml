@@ -415,6 +415,8 @@
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="14" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="14" />
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
 
@@ -450,7 +452,31 @@
                         </Grid>
                     </Border>
 
-                    <Grid Grid.Row="2">
+                    <!-- Курс «С нуля до 60 зн/мин»: текущий шаг и кнопки, которые ставят нужные настройки -->
+                    <Border Grid.Row="2" Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource BorderBrush}"
+                            BorderThickness="1" CornerRadius="14" Padding="16,12">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel VerticalAlignment="Center">
+                                <TextBlock x:Name="CourseTitleText" Text="{loc:Loc 'Курс «С нуля до 60 зн/мин»'}" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                <TextBlock x:Name="CourseDetailsText" Text=" " Foreground="{DynamicResource MutedTextBrush}" TextWrapping="Wrap" Margin="0,3,0,0" />
+                                <TextBlock x:Name="CourseStatusText" Text=" " FontSize="11" TextWrapping="Wrap" Margin="0,3,0,0" />
+                            </StackPanel>
+                            <WrapPanel Grid.Column="1" VerticalAlignment="Center" Margin="12,0,0,0" MaxWidth="420">
+                                <Button x:Name="CourseStartButton" Content="{loc:Loc 'Начать курс'}" Click="CourseStartButton_OnClick"
+                                        Style="{StaticResource PrimaryButton}" Padding="12,7" Margin="0,4,8,4" />
+                                <Button x:Name="CourseNextButton" Content="{loc:Loc 'Следующий шаг'}" Click="CourseNextButton_OnClick"
+                                        Padding="12,7" Margin="0,4,8,4" />
+                                <Button x:Name="CourseResetButton" Content="{loc:Loc 'Сбросить курс'}" Click="CourseResetButton_OnClick"
+                                        Padding="12,7" Margin="0,4,0,4" />
+                            </WrapPanel>
+                        </Grid>
+                    </Border>
+
+                    <Grid Grid.Row="4">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="16" />

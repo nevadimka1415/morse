@@ -42,7 +42,8 @@ var tests = new (string Name, Action Run)[]
     ("Daily goal, streak and speed", TestDailyGoalStreakSpeed),
     ("History transfer", TestHistoryTransfer),
     ("Custom chants and voice", TestCustomChantsAndVoice),
-    ("Windows practice nudge", TestPracticeNudge)
+    ("Windows practice nudge", TestPracticeNudge),
+    ("Course from zero to 60 cpm", TestCourse)
 };
 
 var failures = new List<string>();
@@ -1028,6 +1029,54 @@ static void TestPracticeNudge()
     Assert(PracticeNudge.TimeChoices.Count == 48 && PracticeNudge.TimeChoices[38] == 19 * 60, "Time list must go every 30 minutes.");
     Assert(PracticeNudge.NearestChoiceIndex(19 * 60) == 38 && PracticeNudge.NearestChoiceIndex(19 * 60 + 14) == 38 && PracticeNudge.NearestChoiceIndex(23 * 60 + 50) == 0,
         "Saved time must snap to the nearest list item.");
+}
+
+static void TestCourse()
+{
+    Texts.Apply(AppLanguage.Russian);
+    var russian = Course.Steps(AlphabetMode.Russian);
+    var latin = Course.Steps(AlphabetMode.Latin);
+    Assert(Course.AlphabetFor((int)AlphabetMode.RussianAndLatin) == AlphabetMode.Russian && Course.AlphabetFor((int)AlphabetMode.Latin) == AlphabetMode.Latin,
+        "Course runs on the Russian or Latin Koch order.");
+    var kochSteps = russian.Where(step => step.Content == ContentMode.Koch).ToArray();
+    Assert(kochSteps[0].KochLevel == KochMethod.MinLevel && kochSteps[^1].KochLevel == KochMethod.MaxLevel(AlphabetMode.Russian)
+           && kochSteps.Zip(kochSteps.Skip(1)).All(pair => pair.Second.KochLevel - pair.First.KochLevel is > 0 and <= Course.KochStep),
+        "Koch steps go from level 2 to the last level by at most 4 symbols.");
+    Assert(russian.Select(step => step.Number).SequenceEqual(Enumerable.Range(1, russian.Count)), "Steps are numbered 1…N.");
+    Assert(russian[^1].IsExam && russian[^1].CharactersPerMinute == Course.TargetSpeed && russian[^2].Content == ContentMode.Words && russian[^3].CharactersPerMinute == Course.WordsWarmUpSpeed,
+        "Course ends with words at 50 and 60 cpm and the exam.");
+    Assert(kochSteps[0].Details == "Первые символы: К М" && kochSteps[1].Details == "Новые символы: Р С У А", "Step details list the new symbols: " + kochSteps[1].Details);
+    Assert(latin.Count < russian.Count && latin[0].Details == "Первые символы: K M", "Latin course follows the Latin order.");
+    Assert(Course.Find(russian, 0) is null && Course.Find(russian, russian.Count + 1) is null && Course.Find(russian, 1) == russian[0], "Find must return null outside the course.");
+
+    // Настройки шага и пометка записи
+    var settings = new AppSettings { AlphabetIndex = (int)AlphabetMode.RussianAndLatin, NoisePercent = 40, AutoSpeed = true, ExamPlaybacks = 3 };
+    Course.Apply(russian[1], settings);
+    Assert(settings.CourseStep == 2 && settings.AlphabetIndex == (int)AlphabetMode.Russian && settings.ContentModeIndex == (int)ContentMode.Koch && settings.KochLevel == 6
+           && settings.CharactersPerMinute == 60 && settings.NoisePercent == 0 && !settings.AutoSpeed, "Apply must set the step settings.");
+    Assert(Course.StepForRecord(settings, isExam: false) == 2, "A task with the step settings belongs to the step.");
+    settings.CharactersPerMinute = 40;
+    Assert(Course.StepForRecord(settings, isExam: false) == 0, "A slower task does not count.");
+    var exam = new AppSettings();
+    Course.Apply(russian[^1], exam);
+    Assert(exam.ExamPlaybacks == 1 && exam.ExamTimeLimitMinutes == Course.ExamTimeLimitMinutes, "Exam step sets the exam rules.");
+    Assert(Course.StepForRecord(exam, isExam: false) == 0 && Course.StepForRecord(exam, isExam: true) == russian.Count, "The final step counts only as an exam.");
+    Assert(Course.StepForRecord(new AppSettings(), isExam: false) == 0, "Outside the course there is no step.");
+
+    // Зачёт по истории
+    var at = new DateTime(2026, 9, 23, 10, 0, 0);
+    var history = new List<TrainingRecord>
+    {
+        TrainingStatistics.CreateRecord(at, "Основной", 60, 10, TrainingEvaluator.Evaluate("АААААААААА", "ААААААААББ"), courseStep: 1),
+    };
+    Assert(!Course.IsPassed(history, russian[0]) && Course.Status(history, russian[0]).Contains("80 %"), "80 % does not pass: " + Course.Status(history, russian[0]));
+    history.Add(TrainingStatistics.CreateRecord(at.AddMinutes(5), "Основной", 60, 10, TrainingEvaluator.Evaluate("ААААА", "ААААА"), courseStep: 1));
+    Assert(Course.IsPassed(history, russian[0]) && Course.Status(history, russian[0]).StartsWith("Шаг пройден ✓") && Course.PassedCount(history, russian) == 1,
+        "100 % passes the step.");
+    Assert(history[1].Kind == "Курс, шаг 1" && history[1].HasKind && !new TrainingRecord().HasKind, "History marks course records.");
+    var json = System.Text.Json.JsonSerializer.Serialize(history[1]);
+    Assert(json.Contains("\"CourseStep\":1") && !json.Contains("HasKind"), "CourseStep is stored, HasKind is not.");
+    Assert(HistoryTransfer.Import(HistoryTransfer.Export(history))[1].CourseStep == 1, "History transfer keeps the course step.");
 }
 
 static void Assert(bool condition, string message)

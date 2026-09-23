@@ -26,6 +26,8 @@ public sealed class AppSettings
     public int ExamTimeLimitMinutes { get; set; }
     // Цель на день в минутах тренировки (0 — без цели)
     public int DailyGoalMinutes { get; set; } = 10;
+    // Курс «С нуля до 60 зн/мин»: текущий шаг (0 — курс не начат)
+    public int CourseStep { get; set; }
     // Напоминание о тренировке на телефоне: включено и время дня в минутах от полуночи
     public bool ReminderEnabled { get; set; }
     public int ReminderMinutes { get; set; } = 19 * 60;

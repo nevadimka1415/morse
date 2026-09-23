@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using MorseTrainer.Domain;
 using MorseTrainer.Localization;
 using MorseTrainer.Mobile.Services;
+using MorseTrainer.Models;
 using MorseTrainer.Services;
 
 namespace MorseTrainer.Mobile.Pages;
@@ -12,6 +13,8 @@ public partial class LearningPage : ContentPage
     private readonly MobileSettingsService _settingsService;
     private readonly VoicePackService _voicePack;
     private readonly ChantStore _chantStore;
+    private readonly TrainingHistoryStore _historyStore;
+    private readonly TrainingPage _trainingPage;
     private IReadOnlyList<LearningSymbolItem> _visibleItems = Array.Empty<LearningSymbolItem>();
     private LearningSymbolItem? _quizTarget;
     private int _quizCorrect;
@@ -22,13 +25,17 @@ public partial class LearningPage : ContentPage
         IAudioPlaybackService audioPlayback,
         MobileSettingsService settingsService,
         VoicePackService voicePack,
-        ChantStore chantStore)
+        ChantStore chantStore,
+        TrainingHistoryStore historyStore,
+        TrainingPage trainingPage)
     {
         InitializeComponent();
         _audioPlayback = audioPlayback;
         _settingsService = settingsService;
         _voicePack = voicePack;
         _chantStore = chantStore;
+        _historyStore = historyStore;
+        _trainingPage = trainingPage;
         AlphabetPicker.ItemsSource = new[] { Texts.T("Русские"), Texts.T("Латинские"), Texts.T("Русские и латинские"), Texts.T("Цифры") };
         AlphabetPicker.SelectedIndex = 0;
         _pageReady = true;
@@ -37,6 +44,79 @@ public partial class LearningPage : ContentPage
         _quizCorrect = settings.QuizCorrect;
         _quizTotal = settings.QuizTotal;
         UpdateScore();
+    }
+
+    protected override void OnAppearing()
+    {
+        base.OnAppearing();
+        RefreshCourse();
+    }
+
+    // ---------- Курс «С нуля до 60 зн/мин» ----------
+
+    private void RefreshCourse()
+    {
+        var settings = _settingsService.LoadSettings();
+        var steps = Course.Steps(Course.AlphabetFor(settings.AlphabetIndex));
+        var history = _historyStore.Load();
+        var passed = Course.PassedCount(history, steps);
+        var step = Course.Find(steps, settings.CourseStep);
+        if (step is null)
+        {
+            CourseTitleLabel.Text = Texts.T("Курс «С нуля до 60 зн/мин»");
+            CourseDetailsLabel.Text = Texts.F("{0} шагов: метод Коха по 4 символа, слова на 50 и 60 зн/мин, итоговый экзамен. Кнопка ставит нужные настройки и создаёт задание.", steps.Count);
+            CourseStatusLabel.Text = passed > 0 ? Texts.F("Пройдено шагов: {0} из {1}.", passed, steps.Count) : string.Empty;
+            CourseStartButton.Text = Texts.T("Начать курс");
+            CourseNextButton.IsVisible = false;
+            CourseResetButton.IsVisible = false;
+            return;
+        }
+
+        var stepPassed = Course.IsPassed(history, step);
+        CourseTitleLabel.Text = Texts.F("Курс «С нуля до 60 зн/мин» · шаг {0} из {1}: {2}", step.Number, steps.Count, step.Title);
+        CourseDetailsLabel.Text = step.Details;
+        CourseStatusLabel.Text = Course.Status(history, step) + " " + Texts.F("Пройдено шагов: {0} из {1}.", passed, steps.Count);
+        CourseStartButton.Text = step.IsExam ? Texts.T("Начать экзамен") : Texts.T("Начать шаг");
+        CourseNextButton.IsVisible = step.Number < steps.Count;
+        CourseNextButton.IsEnabled = stepPassed;
+        CourseResetButton.IsVisible = true;
+    }
+
+    private async void CourseStartButton_OnClicked(object sender, EventArgs e)
+    {
+        var settings = _settingsService.LoadSettings();
+        settings.CourseStep = Math.Max(1, settings.CourseStep);
+        await StartCourseStepAsync(settings);
+    }
+
+    private async void CourseNextButton_OnClicked(object sender, EventArgs e)
+    {
+        var settings = _settingsService.LoadSettings();
+        settings.CourseStep = Math.Min(Course.Steps(Course.AlphabetFor(settings.AlphabetIndex)).Count, settings.CourseStep + 1);
+        await StartCourseStepAsync(settings);
+    }
+
+    private void CourseResetButton_OnClicked(object sender, EventArgs e)
+    {
+        var settings = _settingsService.LoadSettings();
+        settings.CourseStep = 0;
+        _settingsService.SaveSettings(settings);
+        RefreshCourse();
+    }
+
+    /// <summary>Ставит настройки шага, открывает «Тренировку» и создаёт задание (или экзамен).</summary>
+    private async Task StartCourseStepAsync(AppSettings settings)
+    {
+        if (Course.Find(Course.Steps(Course.AlphabetFor(settings.AlphabetIndex)), settings.CourseStep) is not { } step)
+        {
+            return;
+        }
+
+        Course.Apply(step, settings);
+        _settingsService.SaveSettings(settings);
+        RefreshCourse();
+        await Shell.Current.GoToAsync("//training");
+        await _trainingPage.StartTaskAsync(step.IsExam);
     }
 
     private void Filter_OnChanged(object sender, EventArgs e)

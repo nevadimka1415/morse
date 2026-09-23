@@ -31,6 +31,7 @@ const requiredFiles = [
   'src/MorseTrainer/ChantEditorWindow.cs',
   'src/MorseTrainer/Domain/PracticeNudge.cs',
   'src/MorseTrainer/Services/TrayReminder.cs',
+  'src/MorseTrainer/Domain/Course.cs',
   'src/MorseTrainer.Mobile/Services/IReminderService.cs',
   'src/MorseTrainer.Mobile/Services/ReminderTexts.cs',
   'src/MorseTrainer.Mobile/Platforms/Android/ReminderService.cs',
@@ -147,6 +148,7 @@ for (const relativePath of [
   'src/MorseTrainer/ChantEditorWindow.cs',
   'src/MorseTrainer/Domain/PracticeNudge.cs',
   'src/MorseTrainer/Services/TrayReminder.cs',
+  'src/MorseTrainer/Domain/Course.cs',
   'src/MorseTrainer.Mobile/Platforms/Android/ReminderService.cs',
   'src/MorseTrainer.Mobile/Platforms/iOS/ReminderService.cs',
   'src/MorseTrainer.Mobile/Pages/KeyerPage.xaml.cs',
@@ -205,6 +207,8 @@ assert(wpfProject.includes('<UseWindowsForms>true</UseWindowsForms>') && wpfProj
   'WPF project uses WinForms only for the tray reminder and must not import its namespaces implicitly.');
 assert(read('src/MorseTrainer/MainWindow.xaml').includes('x:Name="NudgeBanner"') && read('src/MorseTrainer/MainWindow.xaml').includes('x:Name="ReminderCheckBox"'),
   'Windows app must show the practice banner and offer the reminder notification.');
+assert(read('src/MorseTrainer/MainWindow.xaml').includes('x:Name="CourseStartButton"') && read('src/MorseTrainer.Mobile/Pages/LearningPage.xaml').includes('x:Name="CourseStartButton"'),
+  'Both apps must offer the course from zero to 60 cpm.');
 const mobileApp = read('src/MorseTrainer.Mobile/App.xaml.cs');
 assert(!mobileApp.includes('App(AppShell') && mobileApp.includes('GetRequiredService<AppShell>()'),
   'Mobile App must resolve AppShell in CreateWindow: pages created before App.InitializeComponent crash on StaticResource.');

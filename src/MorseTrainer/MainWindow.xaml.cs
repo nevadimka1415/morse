@@ -31,6 +31,7 @@ public partial class MainWindow : Window
     private DispatcherTimer? _reminderTimer;
     private TrayReminder? _trayReminder;
     private DateOnly? _reminderShownOn;
+    private int _courseStep;
     private IReadOnlyList<TrainingRecord> _history = Array.Empty<TrainingRecord>();
     private bool _currentTaskRecorded;
     private DateTime _currentTaskStartedAt = DateTime.Now;
@@ -134,10 +135,89 @@ public partial class MainWindow : Window
         RefreshLearningItems();
         _history = _historyStore.Load();
         RefreshProgress();
+        RefreshCourse();
         ShowNudgeBanner();
         StartReminderTimer();
         _windowLoaded = true;
         await GenerateTaskAsync();
+    }
+
+    // ---------- Курс «С нуля до 60 зн/мин» ----------
+
+    private IReadOnlyList<CourseStep> CourseSteps => Course.Steps(Course.AlphabetFor(AlphabetCombo.SelectedIndex));
+
+    private void RefreshCourse()
+    {
+        var steps = CourseSteps;
+        var step = Course.Find(steps, _courseStep);
+        var passed = Course.PassedCount(_history, steps);
+        if (step is null)
+        {
+            CourseTitleText.Text = Texts.T("Курс «С нуля до 60 зн/мин»");
+            CourseDetailsText.Text = Texts.F("{0} шагов: метод Коха по 4 символа, слова на 50 и 60 зн/мин, итоговый экзамен. Кнопка ставит нужные настройки и создаёт задание.", steps.Count);
+            CourseStatusText.Text = passed > 0 ? Texts.F("Пройдено шагов: {0} из {1}.", passed, steps.Count) : " ";
+            CourseStatusText.Foreground = (Brush)FindResource("MutedTextBrush");
+            CourseStartButton.Content = Texts.T("Начать курс");
+            CourseNextButton.Visibility = Visibility.Collapsed;
+            CourseResetButton.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        var stepPassed = Course.IsPassed(_history, step);
+        CourseTitleText.Text = Texts.F("Курс «С нуля до 60 зн/мин» · шаг {0} из {1}: {2}", step.Number, steps.Count, step.Title);
+        CourseDetailsText.Text = step.Details;
+        CourseStatusText.Text = Course.Status(_history, step) + " " + Texts.F("Пройдено шагов: {0} из {1}.", passed, steps.Count);
+        CourseStatusText.Foreground = (Brush)FindResource(stepPassed ? "PrimaryBrush" : "MutedTextBrush");
+        CourseStartButton.Content = step.IsExam ? Texts.T("Начать экзамен") : Texts.T("Начать шаг");
+        CourseNextButton.Visibility = step.Number < steps.Count ? Visibility.Visible : Visibility.Collapsed;
+        CourseNextButton.IsEnabled = stepPassed;
+        CourseNextButton.ToolTip = stepPassed ? null : Texts.F("Откроется, когда в задании этого шага будет точность от {0} %.", Course.PassAccuracy);
+        CourseResetButton.Visibility = Visibility.Visible;
+    }
+
+    private async void CourseStartButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        _courseStep = Math.Max(1, _courseStep);
+        await StartCourseStepAsync();
+    }
+
+    private async void CourseNextButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        _courseStep = Math.Min(CourseSteps.Count, _courseStep + 1);
+        await StartCourseStepAsync();
+    }
+
+    private void CourseResetButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        _courseStep = 0;
+        _settingsService.Save(ReadSettings());
+        RefreshCourse();
+    }
+
+    /// <summary>Ставит настройки текущего шага, переходит на «Тренировку» и создаёт задание (или экзамен).</summary>
+    private async Task StartCourseStepAsync()
+    {
+        if (Course.Find(CourseSteps, _courseStep) is not { } step)
+        {
+            return;
+        }
+
+        var settings = ReadSettings();
+        Course.Apply(step, settings);
+        ApplySettings(settings);
+        UpdateSettingLabels();
+        UpdateCustomSymbolsVisibility();
+        _settingsService.Save(settings);
+        RefreshCourse();
+        MainTabs.SelectedIndex = 0;
+        if (step.IsExam)
+        {
+            await StartExamAsync();
+        }
+        else
+        {
+            await GenerateTaskAsync();
+        }
     }
 
     // ---------- Напоминание на Windows ----------
@@ -485,7 +565,8 @@ public partial class MainWindow : Window
             .Take(50)
             .Select(item => new HistoryRow(
                 item.CompletedAt.ToString("dd.MM.yyyy HH:mm", CultureInfo.CurrentCulture),
-                item.IsExam ? Texts.F("{0} · экзамен", item.ProfileName) : item.ProfileName,
+                (item.IsExam ? Texts.F("{0} · экзамен", item.ProfileName) : item.ProfileName) +
+                (item.CourseStep > 0 ? Texts.F(" · шаг {0}", item.CourseStep) : string.Empty),
                 Texts.F("{0} зн/мин", item.CharactersPerMinute),
                 item.GroupCount.ToString(CultureInfo.InvariantCulture),
                 $"{item.AccuracyPercent:0.#}%",
@@ -597,7 +678,14 @@ public partial class MainWindow : Window
         RefreshProgress();
     }
 
-    private void AlphabetCombo_OnSelectionChanged(object sender, SelectionChangedEventArgs e) => UpdateKochSummary();
+    private void AlphabetCombo_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        UpdateKochSummary();
+        if (_windowLoaded)
+        {
+            RefreshCourse();
+        }
+    }
 
     private void KochLevelSlider_OnValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
@@ -1207,11 +1295,14 @@ public partial class MainWindow : Window
         {
             _currentTaskRecorded = true;
             var taskSettings = _currentSettings ?? ReadSettings();
+            // Задание по настройкам текущего шага курса помечается его номером — так считается зачёт шага
+            var courseStep = _currentDrill is null ? Course.StepForRecord(taskSettings, examResult is not null) : 0;
             var record = TrainingStatistics.CreateRecord(DateTime.Now, taskSettings.ActiveProfileName,
                 taskSettings.CharactersPerMinute, _currentTask.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length, result, examResult is not null,
-                DateTime.Now - _currentTaskStartedAt);
+                DateTime.Now - _currentTaskStartedAt, courseStep);
             _history = _historyStore.Add(record);
             RefreshProgress();
+            RefreshCourse();
             // Лестница скорости: по истории этого профиля
             if (taskSettings.AutoSpeed)
             {
@@ -1294,7 +1385,9 @@ public partial class MainWindow : Window
 
     // ---------- Экзамен ----------
 
-    private async void ExamButton_OnClick(object sender, RoutedEventArgs e)
+    private async void ExamButton_OnClick(object sender, RoutedEventArgs e) => await StartExamAsync();
+
+    private async Task StartExamAsync()
     {
         MainTabs.SelectedIndex = 0;
         await GenerateTaskAsync();
@@ -1919,7 +2012,8 @@ public partial class MainWindow : Window
             WindowHeight = WindowState == WindowState.Normal ? ActualHeight : RestoreBounds.Height,
             WindowMaximized = WindowState == WindowState.Maximized,
             MainTabIndex = Math.Max(0, MainTabs.SelectedIndex),
-            TrainingPanelCollapsed = TrainingPanel.Visibility != Visibility.Visible
+            TrainingPanelCollapsed = TrainingPanel.Visibility != Visibility.Visible,
+            CourseStep = _courseStep
         };
     }
 
@@ -1951,6 +2045,7 @@ public partial class MainWindow : Window
         LanguageCombo.SelectedIndex = Math.Clamp(settings.LanguageIndex, 0, 2);
         LearningAlphabetCombo.SelectedIndex = Math.Clamp(settings.LearningAlphabetIndex, 0, 3);
         LearningAudioModeCombo.SelectedIndex = Math.Clamp(settings.LearningAudioModeIndex, 0, 1);
+        _courseStep = Math.Max(0, settings.CourseStep);
         UpdateKochSummary();
     }
 

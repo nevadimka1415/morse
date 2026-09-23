@@ -96,13 +96,15 @@ public static class TrainingStatistics
         int groupCount,
         EvaluationResult result,
         bool isExam = false,
-        TimeSpan? duration = null)
+        TimeSpan? duration = null,
+        int courseStep = 0)
     {
         ArgumentNullException.ThrowIfNull(result);
         return new TrainingRecord
         {
             CompletedAt = completedAt,
             IsExam = isExam,
+            CourseStep = Math.Max(0, courseStep),
             DurationSeconds = duration is null ? 0 : (int)Math.Round(Math.Clamp(duration.Value.TotalSeconds, 0, MaxTaskMinutes * 60)),
             ProfileName = string.IsNullOrWhiteSpace(profileName) ? "Основной" : profileName.Trim(),
             CharactersPerMinute = charactersPerMinute,

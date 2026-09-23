@@ -200,6 +200,20 @@ public static class Program
                 "custom voice status is shown: " + window.CustomVoiceText.Text);
             SaveScreenshot(window, screenshots, "learning-" + suffix);
 
+            // Курс: «Начать курс» ставит настройки шага 1 и создаёт задание; верный ответ засчитывает шаг
+            Check(window.CourseStartButton.Content as string == Texts.T("Начать курс") && window.CourseNextButton.Visibility == Visibility.Collapsed, "course is not started yet");
+            Click(window.CourseStartButton);
+            WaitUntil(() => window.StatusBadgeText.Text == Texts.T("ГОТОВО") && window.GenerateButton.IsEnabled, "course step task generated");
+            Check(window.MainTabs.SelectedIndex == 0 && window.ContentModeCombo.SelectedIndex == (int)Domain.ContentMode.Koch
+                  && (int)window.KochLevelSlider.Value == 2 && (int)window.SpeedSlider.Value == 60, "course step 1 settings are applied");
+            Click(window.ToggleAnswerButton);
+            window.UserAnswerText.Text = window.AnswerDisplayText.Text;
+            Click(window.CheckAnswerButton);
+            window.MainTabs.SelectedIndex = 1;
+            DoEvents();
+            Check(window.CourseNextButton.Visibility == Visibility.Visible && window.CourseNextButton.IsEnabled && window.CourseStatusText.Text.Contains('✓'),
+                "a correct answer passes course step 1: " + window.CourseStatusText.Text);
+
             // Передача: режим задания, новое задание, стереть, очистить (ключ не нажимаем — без звука)
             window.MainTabs.SelectedIndex = 2;
             DoEvents();
@@ -217,7 +231,7 @@ public static class Program
             window.MainTabs.SelectedIndex = 3;
             DoEvents();
             WaitUntil(() => FindChildren<TextBlock>(window.HistoryListView).Any(block => block.Text == "100%"), "history row bindings render the accuracy");
-            Check(window.ProgressSessionsText.Text == "2" && window.ProgressBestText.Text == "100%", "progress summary shows two sessions, best 100%");
+            Check(window.ProgressSessionsText.Text == "3" && window.ProgressBestText.Text == "100%", "progress summary shows three sessions, best 100%");
             Check(window.DailyBarsPanel.Children.Count == 1, "daily bars show one day");
             Check(window.ExamSeriesText.Text == Texts.T("Экзаменов пока нет"), "exam series is empty: " + window.ExamSeriesText.Text);
             Check(window.StreakText.Text == Texts.F("Дней подряд: {0} · рекорд {1}", 1, 1), "streak counts today: " + window.StreakText.Text);

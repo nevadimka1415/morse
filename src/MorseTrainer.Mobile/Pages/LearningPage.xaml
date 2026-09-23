@@ -11,6 +11,20 @@
             <Label Text="{loc:Loc 'Напевы сохранены в приложении и работают без интернета'}" Opacity="0.65" />
             <Button x:Name="CustomVoiceButton" Text="{loc:Loc 'Свой голос…'}" HorizontalOptions="Start" Padding="12,6" Margin="0,6,0,0"
                     Clicked="CustomVoiceButton_OnClicked" />
+            <!-- Курс «С нуля до 60 зн/мин»: кнопки ставят настройки шага и открывают тренировку -->
+            <Border Margin="0,8,0,0" BackgroundColor="{AppThemeBinding Light=#ECFDF5, Dark=#102F29}">
+                <VerticalStackLayout Spacing="6">
+                    <Label x:Name="CourseTitleLabel" Text="{loc:Loc 'Курс «С нуля до 60 зн/мин»'}" FontAttributes="Bold" LineBreakMode="WordWrap" />
+                    <Label x:Name="CourseDetailsLabel" Text="" FontSize="13" Opacity="0.75" LineBreakMode="WordWrap" />
+                    <Label x:Name="CourseStatusLabel" Text="" FontSize="12" LineBreakMode="WordWrap" />
+                    <Grid ColumnDefinitions="*,6,*,6,Auto">
+                        <Button x:Name="CourseStartButton" Text="{loc:Loc 'Начать курс'}" BackgroundColor="{StaticResource Primary}" TextColor="#06231C"
+                                Padding="8,7" Clicked="CourseStartButton_OnClicked" />
+                        <Button x:Name="CourseNextButton" Grid.Column="2" Text="{loc:Loc 'Следующий шаг'}" Padding="8,7" Clicked="CourseNextButton_OnClicked" />
+                        <Button x:Name="CourseResetButton" Grid.Column="4" Text="✕" Padding="10,7" Clicked="CourseResetButton_OnClicked" />
+                    </Grid>
+                </VerticalStackLayout>
+            </Border>
         </VerticalStackLayout>
 
         <Grid Grid.Row="1" ColumnDefinitions="*,10,*">

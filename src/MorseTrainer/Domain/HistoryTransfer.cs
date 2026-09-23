@@ -147,7 +147,8 @@ public static class HistoryTransfer
             CorrectCount = Math.Clamp(record.CorrectCount, 0, total),
             AccuracyPercent = Math.Clamp(record.AccuracyPercent, 0, 100),
             ProblemSymbols = new string((record.ProblemSymbols ?? string.Empty).Where(symbol => MorseAlphabet.TryGetCode(symbol, out _)).ToArray()),
-            DurationSeconds = Math.Clamp(record.DurationSeconds, 0, TrainingStatistics.MaxTaskMinutes * 60)
+            DurationSeconds = Math.Clamp(record.DurationSeconds, 0, TrainingStatistics.MaxTaskMinutes * 60),
+            CourseStep = Math.Clamp(record.CourseStep, 0, 100)
         };
     }
 }

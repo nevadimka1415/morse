@@ -55,7 +55,7 @@
                                     <VerticalStackLayout>
                                         <Label Text="{Binding CompletedAt, StringFormat='{0:dd.MM.yyyy HH:mm}'}" />
                                         <Label Text="{Binding ProfileName}" Opacity="0.65" FontSize="13" />
-                                        <Label Text="{Binding Kind}" IsVisible="{Binding IsExam}" FontSize="12" FontAttributes="Bold"
+                                        <Label Text="{Binding Kind}" IsVisible="{Binding HasKind}" FontSize="12" FontAttributes="Bold"
                                                TextColor="{StaticResource PrimaryDark}" />
                                     </VerticalStackLayout>
                                     <Label Grid.Column="1" Text="{Binding AccuracyPercent, StringFormat='{0:0.#}%'}"
