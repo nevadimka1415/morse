@@ -41,19 +41,21 @@
                 <DataTemplate x:DataType="domain:LearningSymbolItem">
                     <Border Margin="2" Padding="12">
                         <VerticalStackLayout Spacing="7">
-                            <Grid ColumnDefinitions="*,Auto">
+                            <Grid ColumnDefinitions="*,Auto,Auto">
                                 <Label Text="{Binding Symbol}" FontSize="30" FontAttributes="Bold" />
                                 <Label Grid.Column="1" Text="{Binding Code}" FontSize="20" TextColor="{StaticResource PrimaryDark}" />
+                                <!-- «Изменить напев»: в строке с символом, чтобы кнопки «Голос»/«Сигнал» не обрезались на узкой карточке -->
+                                <Button Grid.Column="2" Text="✎" Padding="8,0" Margin="6,0,0,0" MinimumWidthRequest="36" MinimumHeightRequest="36"
+                                        VerticalOptions="Start" BackgroundColor="Transparent" TextColor="{StaticResource PrimaryDark}"
+                                        CommandParameter="{Binding Symbol}" Clicked="EditChantButton_OnClicked" />
                             </Grid>
                             <Label Text="{Binding Chant}" FontAttributes="Bold" LineBreakMode="WordWrap" />
                             <Label Text="{loc:Loc 'свой напев'}" IsVisible="{Binding IsCustom}" FontSize="11" Opacity="0.65" />
-                            <Grid ColumnDefinitions="*,6,*,6,Auto">
+                            <Grid ColumnDefinitions="*,6,*">
                                 <Button Text="{loc:Loc 'Голос'}" Padding="8,7" CommandParameter="{Binding Symbol}"
                                         Clicked="VoiceButton_OnClicked" />
                                 <Button Grid.Column="2" Text="{loc:Loc 'Сигнал'}" Padding="8,7" CommandParameter="{Binding Symbol}"
                                         Clicked="SignalButton_OnClicked" />
-                                <Button Grid.Column="4" Text="✎" Padding="10,7" CommandParameter="{Binding Symbol}"
-                                        Clicked="EditChantButton_OnClicked" />
                             </Grid>
                         </VerticalStackLayout>
                     </Border>
