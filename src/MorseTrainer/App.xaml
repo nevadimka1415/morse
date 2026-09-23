@@ -169,8 +169,9 @@
             </Setter>
         </Style>
 
+        <!-- Цвет задаётся только заголовку вкладки (TextElement.Foreground в шаблоне): Foreground самой вкладки
+             наследует её содержимое, и весь текст выбранной вкладки стал бы зелёным -->
         <Style TargetType="TabItem">
-            <Setter Property="Foreground" Value="{DynamicResource MutedTextBrush}" />
             <Setter Property="Background" Value="{DynamicResource CardBrush}" />
             <Setter Property="Padding" Value="20,9" />
             <Setter Property="Margin" Value="0,0,8,0" />
@@ -180,12 +181,13 @@
                         <Border x:Name="TabBorder" Background="{TemplateBinding Background}" CornerRadius="9"
                                 BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
                                 Padding="{TemplateBinding Padding}">
-                            <ContentPresenter ContentSource="Header" HorizontalAlignment="Center" />
+                            <ContentPresenter x:Name="HeaderPresenter" ContentSource="Header" HorizontalAlignment="Center"
+                                              TextElement.Foreground="{DynamicResource MutedTextBrush}" />
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsSelected" Value="True">
                                 <Setter TargetName="TabBorder" Property="Background" Value="{DynamicResource PrimaryDarkBrush}" />
-                                <Setter Property="Foreground" Value="{DynamicResource PrimaryBrush}" />
+                                <Setter TargetName="HeaderPresenter" Property="TextElement.Foreground" Value="{DynamicResource PrimaryBrush}" />
                             </Trigger>
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="TabBorder" Property="Opacity" Value="0.82" />
