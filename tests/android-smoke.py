@@ -269,6 +269,23 @@ def open_tab(key, titles):
     return action
 
 
+def activity_creations():
+    log = adb("logcat", "-d", "-b", "events", check=False, timeout=60)
+    return sum(1 for line in log.splitlines() if "wm_on_create_called" in line and "MainActivity" in line)
+
+
+def recreate_activity():
+    """Смена размера шрифта пересоздаёт активность (как смена шрифта или языка у пользователя): MAUI создаёт новое окно."""
+    before = activity_creations()
+    adb("shell", "settings", "put", "system", "font_scale", "1.15")
+    time.sleep(6)
+    ensure_alive()
+    after = activity_creations()
+    if after <= before:
+        return "шрифт изменён, но активность не пересоздалась"
+    return "активность пересоздана"
+
+
 def write_summary():
     lines = ["### Дымовой тест Android (эмулятор)", "", "| Шаг | Результат | Время | Подробности |", "|---|---|---|---|"]
     for name, status, duration, detail in results:
@@ -299,6 +316,11 @@ def main():
         # По всем вкладкам и обратно на «Тренировку» (второй скриншот — под своим именем)
         for key, russian, english in TABS[1:] + [("training-return",) + TABS[0][1:]]:
             step(f"Вкладка «{russian}»", open_tab(key, (russian, english)))
+        # Пересоздание активности: страницы старого окна не должны ронять приложение при переключении вкладок
+        step("Пересоздание активности (шрифт 1.15)", recreate_activity)
+        for key, russian, english in [("learning-after-recreate",) + TABS[1][1:], ("training-after-recreate",) + TABS[0][1:]]:
+            step(f"После пересоздания: «{russian}»", open_tab(key, (russian, english)))
+        adb("shell", "settings", "put", "system", "font_scale", "1.0", check=False)
         step("Итог: процесс жив, падений нет", lambda: f"pid {ensure_alive()}")
     except Exception:
         exit_code = 1

@@ -38,12 +38,13 @@ public static class MauiProgram
         LearningCatalog.SetCustomChants(chantStore.Load());
         builder.Services.AddSingleton(chantStore);
         builder.Services.AddSingleton<VoicePackService>();
-        builder.Services.AddSingleton<TrainingPage>();
-        builder.Services.AddSingleton<LearningPage>();
-        builder.Services.AddSingleton<KeyerPage>();
-        builder.Services.AddSingleton<ProgressPage>();
-        builder.Services.AddSingleton<SettingsPage>();
-        builder.Services.AddSingleton<AppShell>();
+        // Страницы и оболочка живут в области окна (см. App.CreateWindow), сервисы данных — одни на приложение
+        builder.Services.AddScoped<TrainingPage>();
+        builder.Services.AddScoped<LearningPage>();
+        builder.Services.AddScoped<KeyerPage>();
+        builder.Services.AddScoped<ProgressPage>();
+        builder.Services.AddScoped<SettingsPage>();
+        builder.Services.AddScoped<AppShell>();
         return builder.Build();
     }
 

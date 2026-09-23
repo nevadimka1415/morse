@@ -7,11 +7,12 @@ using MorseTrainer.Localization;
 
 namespace MorseTrainer.Mobile.Pages;
 
-public partial class TrainingPage : ContentPage
+public partial class TrainingPage : ContentPage, IDisposable
 {
     private readonly IAudioPlaybackService _audioPlayback;
     private readonly MobileSettingsService _settingsService;
     private readonly TrainingHistoryStore _historyStore;
+    private readonly EventHandler _settingsChanged;
     private bool _currentTaskRecorded;
     private DateTime _currentTaskStartedAt = DateTime.Now;
     private ExamSession? _exam;
@@ -30,7 +31,18 @@ public partial class TrainingPage : ContentPage
         _audioPlayback = audioPlayback;
         _settingsService = settingsService;
         _historyStore = historyStore;
-        _settingsService.SettingsChanged += (_, _) => MainThread.BeginInvokeOnMainThread(RefreshSettingsSummary);
+        _settingsChanged = (_, _) => MainThread.BeginInvokeOnMainThread(RefreshSettingsSummary);
+        _settingsService.SettingsChanged += _settingsChanged;
+    }
+
+    // Окно закрыто (Android пересоздал активность): страница больше не показывается — отписка от настроек,
+    // остановка звука и таймера экзамена, чтобы старая страница не трогала свои элементы
+    public void Dispose()
+    {
+        _settingsService.SettingsChanged -= _settingsChanged;
+        _playbackCancellation?.Cancel();
+        _audioPlayback.Stop();
+        _exam = null;
     }
 
     protected override async void OnAppearing()

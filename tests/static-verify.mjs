@@ -231,6 +231,9 @@ assert(read('src/MorseTrainer.Mobile/Platforms/Android/AndroidManifest.xml').inc
 assert(read('src/MorseTrainer.Mobile/MauiProgram.cs').includes('IAudioRecorderService') && read('src/MorseTrainer.Mobile/Pages/LearningPage.xaml.cs').includes('RecordAllAsync'),
   'Phone must record own chants, including all chants in turn.');
 const mobileApp = read('src/MorseTrainer.Mobile/App.xaml.cs');
+assert(mobileApp.includes('CreateScope()') && read('src/MorseTrainer.Mobile/MauiProgram.cs').includes('AddScoped<AppShell>()')
+  && read('src/MorseTrainer.Mobile/MauiProgram.cs').includes('AddScoped<TrainingPage>()'),
+  'Phone shell and pages must be created per window (scope): Android recreates the activity, old pages crash with ObjectDisposedException.');
 assert(!mobileApp.includes('App(AppShell') && mobileApp.includes('GetRequiredService<AppShell>()'),
   'Mobile App must resolve AppShell in CreateWindow: pages created before App.InitializeComponent crash on StaticResource.');
 const androidManifest = read('src/MorseTrainer.Mobile/Platforms/Android/AndroidManifest.xml');

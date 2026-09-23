@@ -6,7 +6,7 @@ using MorseTrainer.Localization;
 
 namespace MorseTrainer.Mobile.Pages;
 
-public partial class KeyerPage : ContentPage
+public partial class KeyerPage : ContentPage, IDisposable
 {
     private readonly IAudioPlaybackService _audioPlayback;
     private readonly MobileSettingsService _settingsService;
@@ -43,6 +43,14 @@ public partial class KeyerPage : ContentPage
                 return _timerRunning;
             });
         }
+    }
+
+    // Окно закрыто (Android пересоздал активность): таймер и тон ключа останавливаются без обновления элементов
+    public void Dispose()
+    {
+        _timerRunning = false;
+        _keyDown = false;
+        _audioPlayback.Stop();
     }
 
     protected override void OnDisappearing()
