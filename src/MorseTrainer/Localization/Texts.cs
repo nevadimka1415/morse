@@ -521,6 +521,10 @@ public static class Texts
         ["Имя файла — код символа, точка 0, тире 1: {0} для А."] = "File name is the symbol code, dot 0, dash 1: {0} for A.",
         ["Файлы голоса code_XXXX (.m4a, .mp3, .wav)"] = "Voice files code_XXXX (.m4a, .mp3, .wav)",
         ["Добавлено файлов: {0}, пропущено (имя не code_XXXX): {1}."] = "Files added: {0}, skipped (name is not code_XXXX): {1}.",
+        // ---- адаптивное окно ----
+        ["◀ Параметры"] = "◀ Settings",
+        ["Параметры ▶"] = "Settings ▶",
+        ["Скрыть или показать панель параметров: на маленьком экране задание получает всю ширину"] = "Hide or show the settings panel: on a small screen the task gets the full width",
         // ---- повтор сложных символов ----
         ["Повторить сложные символы"] = "Drill problem symbols",
         ["Задание только из символов, в которых вы чаще всего ошибались в последних 100 заданиях, и похожих на них по коду. Сложные звучат втрое чаще."] = "A task made only of the symbols you missed most often in the last 100 tasks and symbols with similar codes. The problem ones play three times as often.",

@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:loc="clr-namespace:MorseTrainer.Localization"
         Title="Morse Trainer"
-        Width="1240" Height="860" MinWidth="1040" MinHeight="720"
+        Width="1240" Height="860" MinWidth="1000" MinHeight="680"
         WindowStartupLocation="CenterScreen"
         Background="{DynamicResource WindowBrush}"
         Foreground="{DynamicResource TextBrush}"
@@ -61,12 +61,12 @@
             <TabItem Header="{loc:Loc 'Тренировка'}">
                 <Grid>
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="380" />
-                        <ColumnDefinition Width="18" />
+                        <ColumnDefinition x:Name="TrainingPanelColumn" Width="380" />
+                        <ColumnDefinition x:Name="TrainingPanelSpacer" Width="18" />
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
 
-                    <Border Grid.Column="0" Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource BorderBrush}"
+                    <Border x:Name="TrainingPanel" Grid.Column="0" Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource BorderBrush}"
                             BorderThickness="1" CornerRadius="16" Padding="22">
                         <ScrollViewer VerticalScrollBarVisibility="Auto">
                             <StackPanel>
@@ -271,16 +271,27 @@
                             </Grid.RowDefinitions>
 
                             <Grid Grid.Row="0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
                                 <StackPanel>
                                     <TextBlock Text="{loc:Loc 'Тренировка'}" FontSize="18" FontWeight="SemiBold" />
-                                    <TextBlock x:Name="TaskMetaText" Text="{loc:Loc 'Подготавливаем задание…'}"
+                                    <TextBlock x:Name="TaskMetaText" Text="{loc:Loc 'Подготавливаем задание…'}" TextWrapping="Wrap"
                                                Foreground="{DynamicResource MutedTextBrush}" FontSize="12" Margin="0,4,0,0" />
                                 </StackPanel>
-                                <Border x:Name="StatusBadge" Background="{DynamicResource CardAltBrush}" CornerRadius="12"
-                                        Padding="12,6" HorizontalAlignment="Right" VerticalAlignment="Top">
-                                    <TextBlock x:Name="StatusBadgeText" Text="{loc:Loc 'НЕ ГОТОВО'}" Foreground="{DynamicResource MutedTextBrush}"
-                                               FontWeight="SemiBold" FontSize="10" />
-                                </Border>
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top" Margin="10,0,0,0">
+                                    <Button x:Name="QuickGenerateButton" Content="{loc:Loc 'Новое задание'}" Click="GenerateButton_OnClick"
+                                            Visibility="Collapsed" Padding="10,5" Margin="0,0,8,0" ToolTip="Ctrl+G" />
+                                    <Button x:Name="TogglePanelButton" Content="{loc:Loc '◀ Параметры'}" Click="TogglePanelButton_OnClick"
+                                            Padding="10,5" Margin="0,0,8,0"
+                                            ToolTip="{loc:Loc 'Скрыть или показать панель параметров: на маленьком экране задание получает всю ширину'}" />
+                                    <Border x:Name="StatusBadge" Background="{DynamicResource CardAltBrush}" CornerRadius="12"
+                                            Padding="12,6" VerticalAlignment="Center">
+                                        <TextBlock x:Name="StatusBadgeText" Text="{loc:Loc 'НЕ ГОТОВО'}" Foreground="{DynamicResource MutedTextBrush}"
+                                                   FontWeight="SemiBold" FontSize="10" />
+                                    </Border>
+                                </StackPanel>
                             </Grid>
 
                             <Border Grid.Row="2" Background="{DynamicResource CardAltBrush}" BorderBrush="{DynamicResource BorderBrush}"
@@ -611,9 +622,9 @@
             <TabItem Header="{loc:Loc 'Прогресс'}">
                 <Grid Margin="0,12,0,0">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="3*" MinWidth="420" />
                         <ColumnDefinition Width="18" />
-                        <ColumnDefinition Width="400" />
+                        <ColumnDefinition Width="2*" MinWidth="300" MaxWidth="420" />
                     </Grid.ColumnDefinitions>
                     <Border Grid.Column="0" Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource BorderBrush}"
                             BorderThickness="1" CornerRadius="16" Padding="22">
@@ -653,7 +664,8 @@
                                 </Border>
                             </UniformGrid>
                             <ListView x:Name="HistoryListView" Grid.Row="4" Background="Transparent" BorderThickness="0"
-                                      Foreground="{DynamicResource TextBrush}">
+                                      Foreground="{DynamicResource TextBrush}" SizeChanged="HistoryListView_OnSizeChanged"
+                                      ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                                 <ListView.View>
                                     <GridView>
                                         <GridViewColumn Header="{loc:Loc 'Когда'}" Width="130" DisplayMemberBinding="{Binding When}" />

@@ -193,6 +193,9 @@ assert(read('src/MorseTrainer/MainWindow.xaml').includes('LearningCardEdit_OnCli
   'Both apps must let the user edit chants.');
 assert(read('src/MorseTrainer/Services/VoicePackService.cs').includes('CustomVoice.Find') && read('src/MorseTrainer.Mobile/Services/VoicePackService.cs').includes('CustomVoice.Find'),
   'Both apps must prefer the custom voice pack.');
+assert(read('src/MorseTrainer/MainWindow.xaml').includes('MinWidth="1000" MinHeight="680"') && read('src/MorseTrainer/MainWindow.xaml.cs').includes('SystemParameters.WorkArea'),
+  'Windows window must fit a 1366×768 screen.');
+assert(read('src/MorseTrainer/MainWindow.xaml').includes('x:Name="TogglePanelButton"'), 'Training settings panel must be collapsible.');
 const mobileApp = read('src/MorseTrainer.Mobile/App.xaml.cs');
 assert(!mobileApp.includes('App(AppShell') && mobileApp.includes('GetRequiredService<AppShell>()'),
   'Mobile App must resolve AppShell in CreateWindow: pages created before App.InitializeComponent crash on StaticResource.');

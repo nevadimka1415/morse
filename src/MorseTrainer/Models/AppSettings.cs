@@ -41,4 +41,5 @@ public sealed class AppSettings
     public double WindowHeight { get; set; }
     public bool WindowMaximized { get; set; }
     public int MainTabIndex { get; set; }
+    public bool TrainingPanelCollapsed { get; set; }
 }

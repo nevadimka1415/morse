@@ -88,11 +88,19 @@ public partial class MainWindow : Window
     /// <summary>Размер окна и вкладка из прошлого запуска; применяется до показа, чтобы окно сразу встало по центру нужного размера.</summary>
     private void ApplyWindowBounds(AppSettings settings)
     {
+        // Маленький экран (1366×768 и меньше): окно и его минимум не выходят за рабочую область
+        var area = SystemParameters.WorkArea;
+        MinWidth = Math.Min(MinWidth, area.Width);
+        MinHeight = Math.Min(MinHeight, area.Height);
         if (settings.WindowWidth >= MinWidth && settings.WindowHeight >= MinHeight)
         {
             Width = settings.WindowWidth;
             Height = settings.WindowHeight;
         }
+
+        Width = Math.Min(Width, area.Width);
+        Height = Math.Min(Height, area.Height);
+        SetTrainingPanelCollapsed(settings.TrainingPanelCollapsed);
 
         if (settings.WindowMaximized)
         {
@@ -807,6 +815,42 @@ public partial class MainWindow : Window
     private async void GenerateButton_OnClick(object sender, RoutedEventArgs e)
     {
         await GenerateTaskAsync();
+    }
+
+    private void TogglePanelButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        SetTrainingPanelCollapsed(TrainingPanel.Visibility == Visibility.Visible);
+        if (_windowLoaded)
+        {
+            _settingsService.Save(ReadSettings());
+        }
+    }
+
+    /// <summary>Свёрнутая панель параметров отдаёт ширину заданию; «Новое задание» переезжает в шапку.</summary>
+    private void SetTrainingPanelCollapsed(bool collapsed)
+    {
+        TrainingPanel.Visibility = collapsed ? Visibility.Collapsed : Visibility.Visible;
+        TrainingPanelColumn.Width = new GridLength(collapsed ? 0 : 380);
+        TrainingPanelSpacer.Width = new GridLength(collapsed ? 0 : 18);
+        QuickGenerateButton.Visibility = collapsed ? Visibility.Visible : Visibility.Collapsed;
+        TogglePanelButton.Content = collapsed ? Texts.T("Параметры ▶") : Texts.T("◀ Параметры");
+    }
+
+    // Колонки истории делят ширину таблицы по долям — без горизонтальной прокрутки на маленьком окне
+    private static readonly double[] HistoryColumnShares = { 0.19, 0.19, 0.14, 0.08, 0.12, 0.28 };
+
+    private void HistoryListView_OnSizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        if (!e.WidthChanged || HistoryListView.View is not GridView view)
+        {
+            return;
+        }
+
+        var available = Math.Max(280, HistoryListView.ActualWidth - SystemParameters.VerticalScrollBarWidth - 14);
+        for (var index = 0; index < view.Columns.Count && index < HistoryColumnShares.Length; index++)
+        {
+            view.Columns[index].Width = Math.Floor(available * HistoryColumnShares[index]);
+        }
     }
 
     /// <summary>Новое задание по параметрам; drill — упражнение «Повторить сложные символы» вместо обычного состава.</summary>
@@ -1783,7 +1827,8 @@ public partial class MainWindow : Window
             WindowWidth = WindowState == WindowState.Normal ? ActualWidth : RestoreBounds.Width,
             WindowHeight = WindowState == WindowState.Normal ? ActualHeight : RestoreBounds.Height,
             WindowMaximized = WindowState == WindowState.Maximized,
-            MainTabIndex = Math.Max(0, MainTabs.SelectedIndex)
+            MainTabIndex = Math.Max(0, MainTabs.SelectedIndex),
+            TrainingPanelCollapsed = TrainingPanel.Visibility != Visibility.Visible
         };
     }
 

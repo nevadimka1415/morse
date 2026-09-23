@@ -124,6 +124,9 @@ public static class Program
             Check(window.TaskMetaText.Text.Contains('×'), "task meta shows the group count: " + window.TaskMetaText.Text);
             Check(window.AnswerDisplayText.Text.Contains('•') && window.AnswerDisplayText.Text.Contains(' '), "answer is hidden as bullets");
             Check(window.PlayButton.IsEnabled && window.CheckAnswerButton.IsEnabled && window.UserAnswerText.IsEnabled, "task controls are enabled");
+            var area = SystemParameters.WorkArea;
+            Check(window.ActualWidth <= area.Width + 1 && window.ActualHeight <= area.Height + 1,
+                $"window fits the work area: {window.ActualWidth:0}×{window.ActualHeight:0} in {area.Width:0}×{area.Height:0}");
             Check(window.ExamPlaybacksCombo.Items.Count == 3 && window.ExamPlaybacksCombo.SelectedIndex == 0, "exam playbacks default to one");
             Check(window.ExamLimitCombo.Items.Count == Domain.ExamSession.TimeLimitChoices.Count && window.ExamLimitCombo.Items[0] as string == Texts.T("без лимита"),
                 "exam time limit choices are translated: " + window.ExamLimitCombo.Items[0]);
@@ -152,6 +155,16 @@ public static class Program
             Check(window.AnswerDisplayText.Text.Contains('•'), "new task is hidden again");
             Check(window.AccuracyText.Text == "—", "accuracy resets for a new task");
             SaveScreenshot(window, screenshots, "training-" + suffix);
+
+            // Свёрнутая панель параметров: задание на всю ширину, «Новое задание» в шапке
+            Click(window.TogglePanelButton);
+            Check(window.TrainingPanel.Visibility == Visibility.Collapsed && window.QuickGenerateButton.Visibility == Visibility.Visible
+                  && window.TogglePanelButton.Content as string == Texts.T("Параметры ▶"), "settings panel collapses");
+            Click(window.QuickGenerateButton);
+            WaitUntil(() => window.StatusBadgeText.Text == Texts.T("ГОТОВО") && window.GenerateButton.IsEnabled, "task generated from the header button");
+            SaveScreenshot(window, screenshots, "training-compact-" + suffix);
+            Click(window.TogglePanelButton);
+            Check(window.TrainingPanel.Visibility == Visibility.Visible && window.QuickGenerateButton.Visibility == Visibility.Collapsed, "settings panel expands back");
 
             // Повтор сложных символов: ошибка в ответе попадает в историю, кнопка строит задание из неё
             Click(window.ToggleAnswerButton);
@@ -209,6 +222,8 @@ public static class Program
                 "daily goal is set by default: " + window.GoalText.Text);
             Check(window.SpeedBarsPanel.Children.Count == 1, "speed bars show one day");
             Check(window.ExportHistoryButton.Content as string == Texts.T("Экспорт истории…") && window.ImportHistoryButton.IsEnabled, "history transfer buttons are translated");
+            var columnsWidth = ((GridView)window.HistoryListView.View).Columns.Sum(column => column.ActualWidth);
+            Check(columnsWidth <= window.HistoryListView.ActualWidth, $"history columns fit without horizontal scroll: {columnsWidth:0} of {window.HistoryListView.ActualWidth:0}");
             SaveScreenshot(window, screenshots, "progress-" + suffix);
 
             window.MainTabs.SelectedIndex = 0;
