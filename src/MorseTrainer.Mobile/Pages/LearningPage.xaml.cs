@@ -197,8 +197,7 @@ public partial class LearningPage : ContentPage
         var count = CustomVoice.Count(MobilePaths.VoiceDirectory);
         var add = Texts.T("Добавить файлы");
         var remove = count > 0 ? Texts.T("Удалить свой голос") : null;
-        var hint = CustomVoice.Describe(count) + "
-" +
+        var hint = CustomVoice.Describe(count) + "\n" +
                    Texts.F("Имя файла — код символа, точка 0, тире 1: {0} для А.", CustomVoice.ExampleFileName('А', ".m4a"));
         var choice = await DisplayActionSheetAsync(hint, Texts.T("Отмена"), remove, add);
         try

@@ -321,6 +321,12 @@ for (const code of new Set(requiredVoiceCodes)) {
   assert(existsSync(resolve(desktopVoiceDirectory, `code_${code}.wav`)), `Desktop voice pack is missing Morse code ${code}.`);
 }
 
+// Незакрытая строка (перевод строки внутри "…") ломает компиляцию только в CI телефона — ловим её здесь
+for (const file of listFiles(resolve(root, 'src'), '.cs').concat(listFiles(resolve(root, 'tests'), '.cs'))) {
+  const line = newlineInsideString(readFileSync(file, 'utf8'));
+  assert(line === 0, `${file.slice(root.length + 1)}:${line} has a line break inside a string literal.`);
+}
+
 console.log(`Static verification passed: ${requiredFiles.length} required files, ${mainWindowVerification.controlCount} named controls, ${mainWindowVerification.eventCount} main-window event handlers.`);
 
 function read(relativePath) {
@@ -410,6 +416,77 @@ function stripStringsAndComments(source) {
     i += 1;
   }
   return out;
+}
+
+function listFiles(directory, extension) {
+  const result = [];
+  for (const entry of readdirSync(directory, { withFileTypes: true })) {
+    const path = resolve(directory, entry.name);
+    if (entry.isDirectory()) {
+      if (!['bin', 'obj', 'node_modules'].includes(entry.name)) result.push(...listFiles(path, extension));
+    } else if (entry.name.endsWith(extension)) {
+      result.push(path);
+    }
+  }
+  return result;
+}
+
+// Номер строки, где обычная (не @ и не """) строка C# доходит до перевода строки; 0 — таких нет
+function newlineInsideString(source) {
+  let line = 1;
+  let i = 0;
+  while (i < source.length) {
+    const c = source[i];
+    const next = source[i + 1];
+    if (c === '\n') { line += 1; i += 1; continue; }
+    if (c === '/' && next === '/') { while (i < source.length && source[i] !== '\n') i += 1; continue; }
+    if (c === '/' && next === '*') {
+      const end = source.indexOf('*/', i + 2);
+      const stop = end < 0 ? source.length : end + 2;
+      line += (source.slice(i, stop).match(/\n/g) || []).length;
+      i = stop;
+      continue;
+    }
+    if (c === '\'') {
+      let j = i + 1;
+      if (source[j] === '\\') j += 2; else j += 1;
+      if (source[j] === '\'') { i = j + 1; continue; }
+      i += 1;
+      continue;
+    }
+    let k = i;
+    while (source[k] === '$' || source[k] === '@') k += 1;
+    if (source[k] === '"') {
+      const verbatim = source.slice(i, k).includes('@');
+      if (!verbatim && source.startsWith('"""', k)) {
+        let quotes = 0;
+        while (source[k + quotes] === '"') quotes += 1;
+        const end = source.indexOf('"'.repeat(quotes), k + quotes);
+        const stop = end < 0 ? source.length : end + quotes;
+        line += (source.slice(i, stop).match(/\n/g) || []).length;
+        i = stop;
+        continue;
+      }
+      let j = k + 1;
+      while (j < source.length) {
+        if (verbatim) {
+          if (source[j] === '"' && source[j + 1] === '"') { j += 2; continue; }
+          if (source[j] === '"') break;
+          if (source[j] === '\n') line += 1;
+          j += 1;
+        } else {
+          if (source[j] === '\\') { j += 2; continue; }
+          if (source[j] === '\n') return line;
+          if (source[j] === '"') break;
+          j += 1;
+        }
+      }
+      i = j + 1;
+      continue;
+    }
+    i += 1;
+  }
+  return 0;
 }
 
 function assert(condition, message) {
