@@ -84,9 +84,9 @@
 
 Телефон (Android, снимки дымового теста на эмуляторе, язык системы — английский):
 
-| Тренировка | Обучение и курс | Прогресс |
+| Тренировка | Настройки | Обучение и курс |
 |---|---|---|
-| ![Phone training](docs/screenshots/phone-training.png) | ![Phone learning](docs/screenshots/phone-learning.png) | ![Phone progress](docs/screenshots/phone-progress.png) |
+| ![Phone training](docs/screenshots/phone-training.png) | ![Phone settings](docs/screenshots/phone-settings.png) | ![Phone learning](docs/screenshots/phone-learning.png) |
 
 ## Скачать готовую программу
 
