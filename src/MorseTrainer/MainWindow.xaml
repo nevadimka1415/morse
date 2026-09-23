@@ -655,8 +655,14 @@
                         <StackPanel Margin="0,0,12,0">
                             <TextBlock Text="{loc:Loc 'Профиль'}" Foreground="{DynamicResource MutedTextBrush}" />
                             <ComboBox x:Name="ProgressProfileCombo" SelectionChanged="ProgressProfileCombo_OnSelectionChanged" Margin="0,4,0,10" />
-                            <Button x:Name="ExportCsvButton" Content="{loc:Loc 'Экспорт CSV'}" Click="ExportCsvButton_OnClick" HorizontalAlignment="Left" Margin="0,0,0,16"
-                                    ToolTip="{loc:Loc 'Сохранить видимую историю в CSV для Excel'}" />
+                            <WrapPanel Margin="0,0,0,16">
+                                <Button x:Name="ExportCsvButton" Content="{loc:Loc 'Экспорт CSV'}" Click="ExportCsvButton_OnClick" Margin="0,0,8,8"
+                                        ToolTip="{loc:Loc 'Сохранить видимую историю в CSV для Excel'}" />
+                                <Button x:Name="ExportHistoryButton" Content="{loc:Loc 'Экспорт истории…'}" Click="ExportHistoryButton_OnClick" Margin="0,0,8,8"
+                                        ToolTip="{loc:Loc 'Вся история (все профили) в файл JSON — чтобы перенести на другой компьютер или телефон'}" />
+                                <Button x:Name="ImportHistoryButton" Content="{loc:Loc 'Импорт истории…'}" Click="ImportHistoryButton_OnClick" Margin="0,0,0,8"
+                                        ToolTip="{loc:Loc 'Добавить историю из файла JSON с другого устройства; повторы пропускаются'}" />
+                            </WrapPanel>
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />

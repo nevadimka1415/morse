@@ -204,6 +204,7 @@ public static class Program
             Check(window.DailyGoalCombo.SelectedIndex > 0 && window.GoalText.Text.Length > 0 && window.GoalProgress.Visibility == Visibility.Visible,
                 "daily goal is set by default: " + window.GoalText.Text);
             Check(window.SpeedBarsPanel.Children.Count == 1, "speed bars show one day");
+            Check(window.ExportHistoryButton.Content as string == Texts.T("Экспорт истории…") && window.ImportHistoryButton.IsEnabled, "history transfer buttons are translated");
             SaveScreenshot(window, screenshots, "progress-" + suffix);
 
             window.MainTabs.SelectedIndex = 0;

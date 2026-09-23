@@ -39,7 +39,8 @@ var tests = new (string Name, Action Run)[]
     ("Reminder schedule", TestReminderSchedule),
     ("Problem symbol drill", TestProblemDrill),
     ("Exam rules and series", TestExamRulesAndSeries),
-    ("Daily goal, streak and speed", TestDailyGoalStreakSpeed)
+    ("Daily goal, streak and speed", TestDailyGoalStreakSpeed),
+    ("History transfer", TestHistoryTransfer)
 };
 
 var failures = new List<string>();
@@ -856,6 +857,73 @@ static void TestDailyGoalStreakSpeed()
     var broken = TrainingStatistics.Streak(longAgo, today);
     Assert(broken.Current == 1 && broken.Best == 5 && broken.Describe() == "Дней подряд: 1 · рекорд 5", "Best streak must be kept: " + broken.Describe());
     Assert(TrainingStatistics.Streak(Array.Empty<TrainingRecord>(), today) == new PracticeStreak(0, 0, false), "Empty history has no streak.");
+}
+
+static void TestHistoryTransfer()
+{
+    Texts.Apply(AppLanguage.Russian);
+    var at = new DateTime(2026, 9, 23, 10, 0, 0, 123);
+    var records = new[]
+    {
+        new TrainingRecord { CompletedAt = at, ProfileName = "Основной", CharactersPerMinute = 60, GroupCount = 2, TotalCount = 10, CorrectCount = 9, AccuracyPercent = 90, ProblemSymbols = "Ж", DurationSeconds = 95 },
+        new TrainingRecord { CompletedAt = at.AddMinutes(5), ProfileName = "Быстрый", IsExam = true, CharactersPerMinute = 90, GroupCount = 1, TotalCount = 5, CorrectCount = 5, AccuracyPercent = 100 }
+    };
+    var json = HistoryTransfer.Export(records);
+    Assert(json.Contains("\"Kind\":\"history\"") && json.Contains("Основной") && !json.Contains("\\u04"), "Export must be a readable history envelope: " + json[..Math.Min(200, json.Length)]);
+    Assert(!json.Contains("Profiles"), "History export must not carry an empty Profiles field.");
+    var imported = HistoryTransfer.Import(json);
+    Assert(imported.Count == 2 && imported[0].ProblemSymbols == "Ж" && imported[0].DurationSeconds == 95 && imported[1].IsExam && imported[1].ProfileName == "Быстрый",
+        "Round trip must keep all fields.");
+    Assert(HistoryTransfer.Import(System.Text.Json.JsonSerializer.Serialize(records)).Count == 2, "A bare array of records must be accepted.");
+
+    // Слияние: повторы узнаются по времени до секунды (миллисекунды на другом устройстве могут потеряться)
+    var copy = new TrainingRecord { CompletedAt = at.AddMilliseconds(-100), ProfileName = "основной", CharactersPerMinute = 60, TotalCount = 10, CorrectCount = 9, AccuracyPercent = 90 };
+    var fresh = new TrainingRecord { CompletedAt = at.AddDays(-1), ProfileName = "Основной", TotalCount = 5, CorrectCount = 4, AccuracyPercent = 80 };
+    var merged = HistoryTransfer.Merge(records, new[] { copy, fresh });
+    Assert(merged.Added == 1 && merged.Duplicates == 1 && merged.Trimmed == 0 && merged.History.Count == 3 && merged.History[0] == fresh,
+        $"Merge must skip duplicates and sort by time: +{merged.Added} dup {merged.Duplicates}.");
+    Assert(merged.Describe() == "Добавлено записей: 1, пропущено повторов: 1.", "Merge text is wrong: " + merged.Describe());
+    var many = Enumerable.Range(0, TrainingStatistics.MaxRecords).Select(index => new TrainingRecord { CompletedAt = at.AddMinutes(index), TotalCount = 1, CorrectCount = 1 }).ToArray();
+    var older = Enumerable.Range(1, 10).Select(index => new TrainingRecord { CompletedAt = at.AddDays(-index), TotalCount = 1, CorrectCount = 1 }).ToArray();
+    var full = HistoryTransfer.Merge(many, older);
+    Assert(full.History.Count == TrainingStatistics.MaxRecords && full.Trimmed == 10 && full.History[0].CompletedAt == at && full.Describe().Contains("удалены: 10"),
+        "Merge must keep the newest MaxRecords records.");
+
+    // Ошибки и чистка значений
+    foreach (var bad in new[] { "", "не json", "{\"Records\":[]}", "[{\"Name\":\"Основной\"}]" })
+    {
+        var failed = false;
+        try { HistoryTransfer.Import(bad); } catch (FormatException) { failed = true; }
+        Assert(failed, "Import must reject: " + bad);
+    }
+
+    var profilesText = ProfileTransfer.Export(new[] { new TrainingProfile { Name = "Основной" } });
+    try
+    {
+        HistoryTransfer.Import(profilesText);
+        Assert(false, "Profiles must not be imported as history.");
+    }
+    catch (FormatException exception)
+    {
+        Assert(exception.Message.Contains("профили"), "Profiles file must get a clear message: " + exception.Message);
+    }
+
+    var dirty = HistoryTransfer.Import("[{\"CompletedAt\":\"2026-09-23T10:00:00\",\"ProfileName\":\" \",\"TotalCount\":5,\"CorrectCount\":9,\"AccuracyPercent\":250,\"CharactersPerMinute\":9999,\"ProblemSymbols\":\"Ж#\",\"DurationSeconds\":99999}]")[0];
+    Assert(dirty.ProfileName == "Основной" && dirty.CorrectCount == 5 && dirty.AccuracyPercent == 100 && dirty.CharactersPerMinute == 300
+           && dirty.ProblemSymbols == "Ж" && dirty.DurationSeconds == TrainingStatistics.MaxTaskMinutes * 60, "Imported values must be clamped.");
+
+    var directory = Path.Combine(Path.GetTempPath(), "morse-transfer-" + Guid.NewGuid().ToString("N"));
+    try
+    {
+        var store = new TrainingHistoryStore(Path.Combine(directory, "history.json"));
+        store.Add(records[0]);
+        var result = store.Merge(imported);
+        Assert(result.Added == 1 && result.Duplicates == 1 && store.Load().Count == 2, "Store merge must save the merged history.");
+    }
+    finally
+    {
+        try { Directory.Delete(directory, recursive: true); } catch { }
+    }
 }
 
 static void Assert(bool condition, string message)

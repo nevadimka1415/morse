@@ -71,6 +71,12 @@
                 <Button Text="{loc:Loc 'Поделиться CSV'}" Clicked="ShareCsvButton_OnClicked" />
                 <Button Grid.Column="2" Text="{loc:Loc 'Очистить историю'}" Clicked="ClearButton_OnClicked" />
             </Grid>
+            <Grid ColumnDefinitions="*,8,*">
+                <Button x:Name="ShareHistoryButton" Text="{loc:Loc 'Поделиться историей'}" Clicked="ShareHistoryButton_OnClicked" />
+                <Button x:Name="ImportHistoryButton" Grid.Column="2" Text="{loc:Loc 'Импорт истории'}" Clicked="ImportHistoryButton_OnClicked" />
+            </Grid>
+            <Label Text="{loc:Loc '«Поделиться историей» отправляет файл JSON со всеми тренировками (например, себе в мессенджер); «Импорт истории» добавляет записи из такого файла или из буфера обмена, повторы пропускаются.'}"
+                   Opacity="0.65" FontSize="13" LineBreakMode="WordWrap" />
             <Label Text="{loc:Loc 'История хранится только на этом устройстве.'}" HorizontalTextAlignment="Center" Opacity="0.65" />
         </VerticalStackLayout>
     </ScrollView>

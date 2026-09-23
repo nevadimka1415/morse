@@ -317,6 +317,55 @@ public partial class MainWindow : Window
         }
     }
 
+    private void ExportHistoryButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        var dialog = new SaveFileDialog
+        {
+            Title = Texts.T("Экспорт истории"),
+            Filter = Texts.T("История Morse Trainer (*.json)|*.json"),
+            FileName = $"morse-history-{DateTime.Now:yyyy-MM-dd}.json",
+            AddExtension = true
+        };
+        if (dialog.ShowDialog(this) != true)
+        {
+            return;
+        }
+
+        try
+        {
+            File.WriteAllText(dialog.FileName, HistoryTransfer.Export(_history), new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            MessageBox.Show(this, exception.Message, Texts.T("Экспорт истории"), MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    private void ImportHistoryButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        var dialog = new OpenFileDialog
+        {
+            Title = Texts.T("Импорт истории"),
+            Filter = Texts.T("История Morse Trainer (*.json)|*.json|Все файлы (*.*)|*.*")
+        };
+        if (dialog.ShowDialog(this) != true)
+        {
+            return;
+        }
+
+        try
+        {
+            var result = _historyStore.Merge(HistoryTransfer.Import(File.ReadAllText(dialog.FileName)));
+            _history = result.History;
+            RefreshProgress();
+            MessageBox.Show(this, result.Describe(), Texts.T("Импорт истории"), MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception exception) when (exception is FormatException or IOException or UnauthorizedAccessException)
+        {
+            MessageBox.Show(this, exception.Message, Texts.T("Импорт истории"), MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
     private void RefreshProgress()
     {
         RefreshProfileFilter();

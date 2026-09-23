@@ -170,6 +170,63 @@ public partial class ProgressPage : ContentPage
         HistoryView.ItemsSource = records.OrderByDescending(item => item.CompletedAt).Take(30).ToList();
     }
 
+    private async void ShareHistoryButton_OnClicked(object sender, EventArgs e)
+    {
+        try
+        {
+            var path = Path.Combine(FileSystem.CacheDirectory, $"morse-history-{DateTime.Now:yyyy-MM-dd}.json");
+            await File.WriteAllTextAsync(path, HistoryTransfer.Export(_historyStore.Load()), new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+            await Share.Default.RequestAsync(new ShareFileRequest
+            {
+                Title = Texts.T("История Morse Trainer"),
+                File = new ShareFile(path, "application/json")
+            });
+        }
+        catch (Exception exception)
+        {
+            await DisplayAlertAsync(Texts.T("Не удалось поделиться"), exception.Message, Texts.T("Закрыть"));
+        }
+    }
+
+    /// <summary>Импорт из файла (например, скачанного из мессенджера) или из текста в буфере обмена.</summary>
+    private async void ImportHistoryButton_OnClicked(object sender, EventArgs e)
+    {
+        var fromFile = Texts.T("Из файла");
+        var fromClipboard = Texts.T("Из буфера обмена");
+        var choice = await DisplayActionSheetAsync(Texts.T("Импорт истории"), Texts.T("Отмена"), null, fromFile, fromClipboard);
+        try
+        {
+            string? text = null;
+            if (choice == fromFile)
+            {
+                var picked = await FilePicker.Default.PickAsync(new PickOptions { PickerTitle = Texts.T("Файл истории Morse Trainer (.json)") });
+                if (picked is not null)
+                {
+                    await using var stream = await picked.OpenReadAsync();
+                    using var reader = new StreamReader(stream, Encoding.UTF8);
+                    text = await reader.ReadToEndAsync();
+                }
+            }
+            else if (choice == fromClipboard)
+            {
+                text = await Clipboard.Default.GetTextAsync();
+            }
+
+            if (text is null)
+            {
+                return;
+            }
+
+            var result = _historyStore.Merge(HistoryTransfer.Import(text));
+            Refresh();
+            await DisplayAlertAsync(Texts.T("Импорт истории"), result.Describe(), Texts.T("Понятно"));
+        }
+        catch (Exception exception)
+        {
+            await DisplayAlertAsync(Texts.T("Импорт истории"), exception.Message, Texts.T("Закрыть"));
+        }
+    }
+
     /// <summary>Текстовая полоса из десяти клеток для доли 0…1.</summary>
     private static string TextBar(double fraction)
     {

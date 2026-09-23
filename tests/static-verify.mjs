@@ -24,6 +24,7 @@ const requiredFiles = [
   'src/MorseTrainer/Domain/KeyerAnalysis.cs',
   'src/MorseTrainer/Domain/ReminderSchedule.cs',
   'src/MorseTrainer/Domain/ProblemDrill.cs',
+  'src/MorseTrainer/Domain/HistoryTransfer.cs',
   'src/MorseTrainer.Mobile/Services/IReminderService.cs',
   'src/MorseTrainer.Mobile/Services/ReminderTexts.cs',
   'src/MorseTrainer.Mobile/Platforms/Android/ReminderService.cs',
@@ -133,6 +134,7 @@ for (const relativePath of [
   'src/MorseTrainer/Domain/KeyerAnalysis.cs',
   'src/MorseTrainer/Domain/ReminderSchedule.cs',
   'src/MorseTrainer/Domain/ProblemDrill.cs',
+  'src/MorseTrainer/Domain/HistoryTransfer.cs',
   'src/MorseTrainer.Mobile/Platforms/Android/ReminderService.cs',
   'src/MorseTrainer.Mobile/Platforms/iOS/ReminderService.cs',
   'src/MorseTrainer.Mobile/Pages/KeyerPage.xaml.cs',
@@ -177,6 +179,8 @@ assert(read('src/MorseTrainer/MainWindow.xaml').includes('x:Name="ExportCsvButto
   'Both apps must export the history as CSV.');
 assert(read('src/MorseTrainer/MainWindow.xaml').includes('x:Name="DrillButton"') && read('src/MorseTrainer.Mobile/Pages/TrainingPage.xaml').includes('x:Name="DrillButton"'),
   'Both apps must offer the problem symbol drill.');
+assert(read('src/MorseTrainer/MainWindow.xaml').includes('x:Name="ImportHistoryButton"') && read('src/MorseTrainer.Mobile/Pages/ProgressPage.xaml').includes('x:Name="ImportHistoryButton"'),
+  'Both apps must export and import the history.');
 const mobileApp = read('src/MorseTrainer.Mobile/App.xaml.cs');
 assert(!mobileApp.includes('App(AppShell') && mobileApp.includes('GetRequiredService<AppShell>()'),
   'Mobile App must resolve AppShell in CreateWindow: pages created before App.InitializeComponent crash on StaticResource.');

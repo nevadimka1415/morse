@@ -42,6 +42,14 @@ public sealed class TrainingHistoryStore
         return history;
     }
 
+    /// <summary>Сливает импортированную историю с текущей (без повторов) и сохраняет результат.</summary>
+    public HistoryMergeResult Merge(IEnumerable<TrainingRecord> imported)
+    {
+        var result = HistoryTransfer.Merge(Load(), imported);
+        Save(result.History);
+        return result;
+    }
+
     public void Clear()
     {
         try
