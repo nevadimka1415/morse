@@ -28,6 +28,9 @@ public partial class MainWindow : Window
     private readonly SettingsService _settingsService = new();
     private readonly TrainingHistoryStore _historyStore = new(AppPaths.HistoryFile);
     private readonly ChantStore _chantStore = new(AppPaths.ChantsFile);
+    private DispatcherTimer? _reminderTimer;
+    private TrayReminder? _trayReminder;
+    private DateOnly? _reminderShownOn;
     private IReadOnlyList<TrainingRecord> _history = Array.Empty<TrainingRecord>();
     private bool _currentTaskRecorded;
     private DateTime _currentTaskStartedAt = DateTime.Now;
@@ -79,6 +82,9 @@ public partial class MainWindow : Window
         ExamLimitCombo.ItemsSource = ExamSession.TimeLimitChoices
             .Select(minutes => minutes == 0 ? Texts.T("без лимита") : Texts.F("{0} мин", minutes))
             .ToArray();
+        ReminderTimeCombo.ItemsSource = PracticeNudge.TimeChoices
+            .Select(minutes => ReminderSchedule.ToTime(minutes).ToString(@"hh\:mm", CultureInfo.InvariantCulture))
+            .ToArray();
         DailyGoalCombo.ItemsSource = TrainingStatistics.DailyGoalChoices
             .Select(minutes => minutes == 0 ? Texts.T("без цели") : Texts.F("{0} мин", minutes))
             .ToArray();
@@ -128,13 +134,96 @@ public partial class MainWindow : Window
         RefreshLearningItems();
         _history = _historyStore.Load();
         RefreshProgress();
+        ShowNudgeBanner();
+        StartReminderTimer();
         _windowLoaded = true;
         await GenerateTaskAsync();
+    }
+
+    // ---------- Напоминание на Windows ----------
+
+    private void ShowNudgeBanner()
+    {
+        var text = PracticeNudge.Banner(_history, DateOnly.FromDateTime(DateTime.Now));
+        NudgeText.Text = text ?? " ";
+        NudgeBanner.Visibility = text is null ? Visibility.Collapsed : Visibility.Visible;
+    }
+
+    private void NudgeStartButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        NudgeBanner.Visibility = Visibility.Collapsed;
+        MainTabs.SelectedIndex = 0;
+        PlayButton.Focus();
+    }
+
+    private void NudgeCloseButton_OnClick(object sender, RoutedEventArgs e) => NudgeBanner.Visibility = Visibility.Collapsed;
+
+    private void ReminderOption_OnChanged(object sender, RoutedEventArgs e)
+    {
+        if (_windowLoaded)
+        {
+            _settingsService.Save(ReadSettings());
+            CheckReminder();
+        }
+    }
+
+    /// <summary>Раз в минуту: пора ли показать уведомление о тренировке (только пока программа открыта).</summary>
+    private void StartReminderTimer()
+    {
+        _reminderTimer ??= new DispatcherTimer { Interval = TimeSpan.FromMinutes(1) };
+        _reminderTimer.Tick -= ReminderTimer_OnTick;
+        _reminderTimer.Tick += ReminderTimer_OnTick;
+        _reminderTimer.Start();
+    }
+
+    private void ReminderTimer_OnTick(object? sender, EventArgs e) => CheckReminder();
+
+    private void CheckReminder()
+    {
+        if (ReminderCheckBox.IsChecked != true)
+        {
+            return;
+        }
+
+        var now = DateTime.Now;
+        var today = DateOnly.FromDateTime(now);
+        var trainedToday = _history.Any(item => DateOnly.FromDateTime(item.CompletedAt) == today);
+        if (!PracticeNudge.IsReminderDue(now, SelectedReminderMinutes, _reminderShownOn, trainedToday))
+        {
+            return;
+        }
+
+        _reminderShownOn = today;
+        try
+        {
+            _trayReminder ??= new TrayReminder(ActivateFromReminder);
+            _trayReminder.Show("Morse Trainer", Texts.T("Пора потренироваться: пять минут азбуки Морзе."));
+        }
+        catch (Exception exception) when (exception is InvalidOperationException or System.Runtime.InteropServices.ExternalException)
+        {
+            // Уведомления недоступны (например, нет оболочки Windows) — остаётся плашка при следующем запуске
+        }
+    }
+
+    private int SelectedReminderMinutes => PracticeNudge.TimeChoices[Math.Clamp(ReminderTimeCombo.SelectedIndex, 0, PracticeNudge.TimeChoices.Count - 1)];
+
+    private void ActivateFromReminder()
+    {
+        if (WindowState == WindowState.Minimized)
+        {
+            WindowState = WindowState.Normal;
+        }
+
+        Activate();
+        MainTabs.SelectedIndex = 0;
     }
 
     private void Window_OnClosing(object? sender, CancelEventArgs e)
     {
         _examTimer?.Stop();
+        _reminderTimer?.Stop();
+        _trayReminder?.Dispose();
+        _trayReminder = null;
         StopPlayback(resetProgress: false);
         StopLearningPlayback();
         StopKeyerTone();
@@ -1805,6 +1894,8 @@ public partial class MainWindow : Window
             ExamPlaybacks = ExamSession.ClampPlaybacks(ExamPlaybacksCombo.SelectedIndex + 1),
             ExamTimeLimitMinutes = ExamSession.TimeLimitChoices[Math.Clamp(ExamLimitCombo.SelectedIndex, 0, ExamSession.TimeLimitChoices.Count - 1)],
             DailyGoalMinutes = SelectedDailyGoal,
+            ReminderEnabled = ReminderCheckBox.IsChecked == true,
+            ReminderMinutes = SelectedReminderMinutes,
             GroupCount = groupCount,
             CharactersPerMinute = (int)SpeedSlider.Value,
             FrequencyHz = (int)FrequencySlider.Value,
@@ -1842,6 +1933,8 @@ public partial class MainWindow : Window
         ExamPlaybacksCombo.SelectedIndex = ExamSession.ClampPlaybacks(settings.ExamPlaybacks) - 1;
         ExamLimitCombo.SelectedIndex = Math.Max(0, ExamSession.TimeLimitChoices.ToList().IndexOf(ExamSession.ClampTimeLimit(settings.ExamTimeLimitMinutes)));
         DailyGoalCombo.SelectedIndex = Math.Max(0, TrainingStatistics.DailyGoalChoices.ToList().IndexOf(TrainingStatistics.ClampGoal(settings.DailyGoalMinutes)));
+        ReminderCheckBox.IsChecked = settings.ReminderEnabled;
+        ReminderTimeCombo.SelectedIndex = PracticeNudge.NearestChoiceIndex(settings.ReminderMinutes);
         GroupCountText.Text = Math.Clamp(settings.GroupCount, 1, 100).ToString(CultureInfo.InvariantCulture);
         SpeedSlider.Value = Math.Clamp(settings.CharactersPerMinute, 20, 300);
         FrequencySlider.Value = Math.Clamp(settings.FrequencyHz, 300, 1_200);

@@ -29,6 +29,8 @@ const requiredFiles = [
   'src/MorseTrainer/Services/ChantStore.cs',
   'src/MorseTrainer/Services/CustomVoice.cs',
   'src/MorseTrainer/ChantEditorWindow.cs',
+  'src/MorseTrainer/Domain/PracticeNudge.cs',
+  'src/MorseTrainer/Services/TrayReminder.cs',
   'src/MorseTrainer.Mobile/Services/IReminderService.cs',
   'src/MorseTrainer.Mobile/Services/ReminderTexts.cs',
   'src/MorseTrainer.Mobile/Platforms/Android/ReminderService.cs',
@@ -143,6 +145,8 @@ for (const relativePath of [
   'src/MorseTrainer/Services/ChantStore.cs',
   'src/MorseTrainer/Services/CustomVoice.cs',
   'src/MorseTrainer/ChantEditorWindow.cs',
+  'src/MorseTrainer/Domain/PracticeNudge.cs',
+  'src/MorseTrainer/Services/TrayReminder.cs',
   'src/MorseTrainer.Mobile/Platforms/Android/ReminderService.cs',
   'src/MorseTrainer.Mobile/Platforms/iOS/ReminderService.cs',
   'src/MorseTrainer.Mobile/Pages/KeyerPage.xaml.cs',
@@ -196,6 +200,11 @@ assert(read('src/MorseTrainer/Services/VoicePackService.cs').includes('CustomVoi
 assert(read('src/MorseTrainer/MainWindow.xaml').includes('MinWidth="1000" MinHeight="680"') && read('src/MorseTrainer/MainWindow.xaml.cs').includes('SystemParameters.WorkArea'),
   'Windows window must fit a 1366×768 screen.');
 assert(read('src/MorseTrainer/MainWindow.xaml').includes('x:Name="TogglePanelButton"'), 'Training settings panel must be collapsible.');
+const wpfProject = read('src/MorseTrainer/MorseTrainer.csproj');
+assert(wpfProject.includes('<UseWindowsForms>true</UseWindowsForms>') && wpfProject.includes('<Using Remove="System.Windows.Forms" />'),
+  'WPF project uses WinForms only for the tray reminder and must not import its namespaces implicitly.');
+assert(read('src/MorseTrainer/MainWindow.xaml').includes('x:Name="NudgeBanner"') && read('src/MorseTrainer/MainWindow.xaml').includes('x:Name="ReminderCheckBox"'),
+  'Windows app must show the practice banner and offer the reminder notification.');
 const mobileApp = read('src/MorseTrainer.Mobile/App.xaml.cs');
 assert(!mobileApp.includes('App(AppShell') && mobileApp.includes('GetRequiredService<AppShell>()'),
   'Mobile App must resolve AppShell in CreateWindow: pages created before App.InitializeComponent crash on StaticResource.');

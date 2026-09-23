@@ -128,6 +128,9 @@ public static class Program
             Check(window.ActualWidth <= area.Width + 1 && window.ActualHeight <= area.Height + 1,
                 $"window fits the work area: {window.ActualWidth:0}×{window.ActualHeight:0} in {area.Width:0}×{area.Height:0}");
             Check(window.ExamPlaybacksCombo.Items.Count == 3 && window.ExamPlaybacksCombo.SelectedIndex == 0, "exam playbacks default to one");
+            Check(window.NudgeBanner.Visibility == Visibility.Collapsed, "no 'you have not practiced' banner for an empty history");
+            Check(window.ReminderCheckBox.IsChecked == false && window.ReminderTimeCombo.Items.Count == 48 && window.ReminderTimeCombo.SelectedItem as string == "19:00",
+                "Windows reminder is off by default at 19:00");
             Check(window.ExamLimitCombo.Items.Count == Domain.ExamSession.TimeLimitChoices.Count && window.ExamLimitCombo.Items[0] as string == Texts.T("без лимита"),
                 "exam time limit choices are translated: " + window.ExamLimitCombo.Items[0]);
 

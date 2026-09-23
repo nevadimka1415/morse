@@ -525,6 +525,11 @@ public static class Texts
         ["◀ Параметры"] = "◀ Settings",
         ["Параметры ▶"] = "Settings ▶",
         ["Скрыть или показать панель параметров: на маленьком экране задание получает всю ширину"] = "Hide or show the settings panel: on a small screen the task gets the full width",
+        // ---- напоминание на Windows ----
+        ["Начать тренировку"] = "Start practice",
+        ["Вы не тренировались {0} дн. Пять минут сегодня сохранят навык."] = "You have not practiced for {0} days. Five minutes today keep the skill.",
+        ["Напоминать уведомлением Windows"] = "Remind me with a Windows notification",
+        ["Каждый день в выбранное время, если вы ещё не занимались. Уведомление приходит, пока программа открыта (можно свернуть)."] = "Every day at the chosen time if you have not practiced yet. The notification arrives while the program is open (it can be minimized).",
         // ---- повтор сложных символов ----
         ["Повторить сложные символы"] = "Drill problem symbols",
         ["Задание только из символов, в которых вы чаще всего ошибались в последних 100 заданиях, и похожих на них по коду. Сложные звучат втрое чаще."] = "A task made only of the symbols you missed most often in the last 100 tasks and symbols with similar codes. The problem ones play three times as often.",

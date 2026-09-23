@@ -41,7 +41,8 @@ var tests = new (string Name, Action Run)[]
     ("Exam rules and series", TestExamRulesAndSeries),
     ("Daily goal, streak and speed", TestDailyGoalStreakSpeed),
     ("History transfer", TestHistoryTransfer),
-    ("Custom chants and voice", TestCustomChantsAndVoice)
+    ("Custom chants and voice", TestCustomChantsAndVoice),
+    ("Windows practice nudge", TestPracticeNudge)
 };
 
 var failures = new List<string>();
@@ -1002,6 +1003,31 @@ static void TestCustomChantsAndVoice()
     Assert(package.Profiles.Count == 1 && package.Chants.Count == 1 && package.Chants['А'] == "ать-даа", "Profiles export must carry the chants.");
     var withoutChants = ProfileTransfer.Export(new[] { new TrainingProfile { Name = "Основной" } });
     Assert(!withoutChants.Contains("Chants") && ProfileTransfer.ImportPackage(withoutChants).Chants.Count == 0, "No chants — no field.");
+}
+
+static void TestPracticeNudge()
+{
+    Texts.Apply(AppLanguage.Russian);
+    var today = new DateOnly(2026, 9, 23);
+    var noon = today.ToDateTime(new TimeOnly(12, 0));
+    Assert(PracticeNudge.DaysSinceLastPractice(Array.Empty<TrainingRecord>(), today) is null && PracticeNudge.Banner(Array.Empty<TrainingRecord>(), today) is null,
+        "A new user gets no banner.");
+    var yesterday = new[] { new TrainingRecord { CompletedAt = noon.AddDays(-1) } };
+    Assert(PracticeNudge.DaysSinceLastPractice(yesterday, today) == 1 && PracticeNudge.Banner(yesterday, today) is null, "One missed day is not nagged about.");
+    var longAgo = new[] { new TrainingRecord { CompletedAt = noon.AddDays(-9) }, new TrainingRecord { CompletedAt = noon.AddDays(-5).AddHours(10) } };
+    Assert(PracticeNudge.DaysSinceLastPractice(longAgo, today) == 5 && PracticeNudge.Banner(longAgo, today) == "Вы не тренировались 5 дн. Пять минут сегодня сохранят навык.",
+        "Banner must count days since the last practice: " + PracticeNudge.Banner(longAgo, today));
+
+    var evening = today.ToDateTime(new TimeOnly(19, 0));
+    Assert(!PracticeNudge.IsReminderDue(evening.AddMinutes(-1), 19 * 60, null, false), "Not before the reminder time.");
+    Assert(PracticeNudge.IsReminderDue(evening, 19 * 60, null, false) && PracticeNudge.IsReminderDue(evening.AddHours(3), 19 * 60, today.AddDays(-1), false),
+        "Due at and after the time when not shown today.");
+    Assert(!PracticeNudge.IsReminderDue(evening.AddHours(1), 19 * 60, today, false), "Only once a day.");
+    Assert(!PracticeNudge.IsReminderDue(evening.AddHours(1), 19 * 60, null, true), "No reminder after practice today.");
+
+    Assert(PracticeNudge.TimeChoices.Count == 48 && PracticeNudge.TimeChoices[38] == 19 * 60, "Time list must go every 30 minutes.");
+    Assert(PracticeNudge.NearestChoiceIndex(19 * 60) == 38 && PracticeNudge.NearestChoiceIndex(19 * 60 + 14) == 38 && PracticeNudge.NearestChoiceIndex(23 * 60 + 50) == 0,
+        "Saved time must snap to the nearest list item.");
 }
 
 static void Assert(bool condition, string message)

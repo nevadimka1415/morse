@@ -3,6 +3,8 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
+    <!-- Только для значка в области уведомлений (уведомление Windows о тренировке) -->
+    <UseWindowsForms>true</UseWindowsForms>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>MorseTrainer</AssemblyName>
@@ -16,6 +18,11 @@
   </PropertyGroup>
   <ItemGroup>
     <EmbeddedResource Include="Assets\Voice\*.wav" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Пространства имён WinForms не подключаются неявно: иначе Application, MessageBox, Button двусмысленны с WPF -->
+    <Using Remove="System.Windows.Forms" />
+    <Using Remove="System.Drawing" />
   </ItemGroup>
   <ItemGroup>
     <!-- Дымовой UI-тест обращается к элементам окна по x:Name (в WPF они internal) -->
