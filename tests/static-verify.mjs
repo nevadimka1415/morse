@@ -177,6 +177,9 @@ assert(read('src/MorseTrainer/MainWindow.xaml').includes('x:Name="ExportCsvButto
   'Both apps must export the history as CSV.');
 assert(read('src/MorseTrainer/MainWindow.xaml').includes('x:Name="DrillButton"') && read('src/MorseTrainer.Mobile/Pages/TrainingPage.xaml').includes('x:Name="DrillButton"'),
   'Both apps must offer the problem symbol drill.');
+const mobileApp = read('src/MorseTrainer.Mobile/App.xaml.cs');
+assert(!mobileApp.includes('App(AppShell') && mobileApp.includes('GetRequiredService<AppShell>()'),
+  'Mobile App must resolve AppShell in CreateWindow: pages created before App.InitializeComponent crash on StaticResource.');
 const androidManifest = read('src/MorseTrainer.Mobile/Platforms/Android/AndroidManifest.xml');
 assert(androidManifest.includes('android.permission.POST_NOTIFICATIONS') && androidManifest.includes('android.permission.RECEIVE_BOOT_COMPLETED'),
   'Android manifest must allow reminder notifications and rescheduling after reboot.');
