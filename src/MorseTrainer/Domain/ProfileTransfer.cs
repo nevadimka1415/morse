@@ -1,8 +1,12 @@
 using System.Text.Encodings.Web;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using MorseTrainer.Models;
 
 namespace MorseTrainer.Domain;
+
+/// <summary>Содержимое файла профилей: сами профили и свои напевы (если их передавали).</summary>
+public sealed record ProfilePackage(IReadOnlyList<TrainingProfile> Profiles, IReadOnlyDictionary<char, string> Chants);
 
 /// <summary>Перенос профилей между устройствами: текст JSON, одинаковый для Windows и телефона.</summary>
 public static class ProfileTransfer
@@ -23,16 +27,29 @@ public static class ProfileTransfer
         public int Version { get; set; } = FormatVersion;
         public DateTime ExportedAt { get; set; }
         public List<TrainingProfile> Profiles { get; set; } = new();
+
+        // Свои напевы едут вместе с профилями; в старых файлах поля нет
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public Dictionary<string, string>? Chants { get; set; }
     }
 
-    public static string Export(IEnumerable<TrainingProfile> profiles)
+    public static string Export(IEnumerable<TrainingProfile> profiles, IReadOnlyDictionary<char, string>? chants = null)
     {
         ArgumentNullException.ThrowIfNull(profiles);
-        return JsonSerializer.Serialize(new Envelope { ExportedAt = DateTime.Now, Profiles = profiles.ToList() }, JsonOptions);
+        var envelope = new Envelope
+        {
+            ExportedAt = DateTime.Now,
+            Profiles = profiles.ToList(),
+            Chants = chants is { Count: > 0 } ? chants.OrderBy(pair => pair.Key).ToDictionary(pair => pair.Key.ToString(), pair => pair.Value) : null
+        };
+        return JsonSerializer.Serialize(envelope, JsonOptions);
     }
 
-    /// <summary>Принимает конверт Export или просто массив профилей; значения приводятся к допустимым диапазонам.</summary>
-    public static IReadOnlyList<TrainingProfile> Import(string text)
+    /// <summary>Профили из текста (свои напевы, если есть, отбрасываются — см. ImportPackage).</summary>
+    public static IReadOnlyList<TrainingProfile> Import(string text) => ImportPackage(text).Profiles;
+
+    /// <summary>Принимает конверт Export или просто массив профилей; значения приводятся к допустимым диапазонам, напевы проверяются.</summary>
+    public static ProfilePackage ImportPackage(string text)
     {
         if (string.IsNullOrWhiteSpace(text))
         {
@@ -41,11 +58,19 @@ public static class ProfileTransfer
 
         var trimmed = text.Trim();
         List<TrainingProfile>? profiles;
+        Dictionary<string, string>? chants = null;
         try
         {
-            profiles = trimmed.StartsWith('[')
-                ? JsonSerializer.Deserialize<List<TrainingProfile>>(trimmed, JsonOptions)
-                : JsonSerializer.Deserialize<Envelope>(trimmed, JsonOptions)?.Profiles;
+            if (trimmed.StartsWith('['))
+            {
+                profiles = JsonSerializer.Deserialize<List<TrainingProfile>>(trimmed, JsonOptions);
+            }
+            else
+            {
+                var envelope = JsonSerializer.Deserialize<Envelope>(trimmed, JsonOptions);
+                profiles = envelope?.Profiles;
+                chants = envelope?.Chants;
+            }
         }
         catch (JsonException exception)
         {
@@ -75,7 +100,7 @@ public static class ProfileTransfer
             throw new FormatException("У профилей нет названий.");
         }
 
-        return result;
+        return new ProfilePackage(result, ChantBook.Clean(chants));
     }
 
     /// <summary>Импортированные профили заменяют существующие с тем же именем (без учёта регистра), остальные остаются.</summary>

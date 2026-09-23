@@ -25,6 +25,10 @@ const requiredFiles = [
   'src/MorseTrainer/Domain/ReminderSchedule.cs',
   'src/MorseTrainer/Domain/ProblemDrill.cs',
   'src/MorseTrainer/Domain/HistoryTransfer.cs',
+  'src/MorseTrainer/Domain/ChantBook.cs',
+  'src/MorseTrainer/Services/ChantStore.cs',
+  'src/MorseTrainer/Services/CustomVoice.cs',
+  'src/MorseTrainer/ChantEditorWindow.cs',
   'src/MorseTrainer.Mobile/Services/IReminderService.cs',
   'src/MorseTrainer.Mobile/Services/ReminderTexts.cs',
   'src/MorseTrainer.Mobile/Platforms/Android/ReminderService.cs',
@@ -135,6 +139,10 @@ for (const relativePath of [
   'src/MorseTrainer/Domain/ReminderSchedule.cs',
   'src/MorseTrainer/Domain/ProblemDrill.cs',
   'src/MorseTrainer/Domain/HistoryTransfer.cs',
+  'src/MorseTrainer/Domain/ChantBook.cs',
+  'src/MorseTrainer/Services/ChantStore.cs',
+  'src/MorseTrainer/Services/CustomVoice.cs',
+  'src/MorseTrainer/ChantEditorWindow.cs',
   'src/MorseTrainer.Mobile/Platforms/Android/ReminderService.cs',
   'src/MorseTrainer.Mobile/Platforms/iOS/ReminderService.cs',
   'src/MorseTrainer.Mobile/Pages/KeyerPage.xaml.cs',
@@ -181,6 +189,10 @@ assert(read('src/MorseTrainer/MainWindow.xaml').includes('x:Name="DrillButton"')
   'Both apps must offer the problem symbol drill.');
 assert(read('src/MorseTrainer/MainWindow.xaml').includes('x:Name="ImportHistoryButton"') && read('src/MorseTrainer.Mobile/Pages/ProgressPage.xaml').includes('x:Name="ImportHistoryButton"'),
   'Both apps must export and import the history.');
+assert(read('src/MorseTrainer/MainWindow.xaml').includes('LearningCardEdit_OnClick') && read('src/MorseTrainer.Mobile/Pages/LearningPage.xaml').includes('EditChantButton_OnClicked'),
+  'Both apps must let the user edit chants.');
+assert(read('src/MorseTrainer/Services/VoicePackService.cs').includes('CustomVoice.Find') && read('src/MorseTrainer.Mobile/Services/VoicePackService.cs').includes('CustomVoice.Find'),
+  'Both apps must prefer the custom voice pack.');
 const mobileApp = read('src/MorseTrainer.Mobile/App.xaml.cs');
 assert(!mobileApp.includes('App(AppShell') && mobileApp.includes('GetRequiredService<AppShell>()'),
   'Mobile App must resolve AppShell in CreateWindow: pages created before App.InitializeComponent crash on StaticResource.');
@@ -225,7 +237,7 @@ assert(!buildWorkflow.includes('8.0.x'), 'Build workflow must use .NET SDK 10.')
 assert(existsSync(resolve(root, 'global.json')), 'global.json must pin the .NET SDK major version.');
 
 const coreProject = read('src/MorseTrainer.Core/MorseTrainer.Core.csproj');
-for (const file of ['UpdateService.cs', 'TrainingHistoryStore.cs', 'TrainingRecord.cs', 'CrashReport.cs']) {
+for (const file of ['UpdateService.cs', 'TrainingHistoryStore.cs', 'TrainingRecord.cs', 'CrashReport.cs', 'ChantStore.cs', 'CustomVoice.cs']) {
   assert(coreProject.includes(file), `Core project must compile ${file}.`);
 }
 assert(read('src/MorseTrainer.Mobile/Platforms/Android/AndroidManifest.xml').includes('android.permission.INTERNET'), 'Android manifest must allow the update check to reach GitHub.');

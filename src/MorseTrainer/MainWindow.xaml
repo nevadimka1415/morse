@@ -455,10 +455,19 @@
                                                     </Grid>
                                                     <TextBlock Grid.Row="1" Text="{Binding Chant}" FontWeight="SemiBold"
                                                                TextWrapping="Wrap" Margin="0,8,0,5" />
-                                                    <TextBlock Grid.Row="2" Text="{Binding Category}" Foreground="{DynamicResource MutedTextBrush}"
-                                                               FontSize="10" />
-                                                    <Button Grid.Row="3" Content="{loc:Loc '▶  Слушать'}" Tag="{Binding Symbol}"
-                                                            Click="LearningCardPlay_OnClick" Padding="10,7" Margin="0,9,0,0" />
+                                                    <TextBlock Grid.Row="2" Text="{Binding CategoryLabel}" Foreground="{DynamicResource MutedTextBrush}"
+                                                               FontSize="10" TextWrapping="Wrap" />
+                                                    <Grid Grid.Row="3" Margin="0,9,0,0">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*" />
+                                                            <ColumnDefinition Width="6" />
+                                                            <ColumnDefinition Width="Auto" />
+                                                        </Grid.ColumnDefinitions>
+                                                        <Button Content="{loc:Loc '▶  Слушать'}" Tag="{Binding Symbol}"
+                                                                Click="LearningCardPlay_OnClick" Padding="10,7" />
+                                                        <Button Grid.Column="2" Content="✎" Tag="{Binding Symbol}" Click="LearningCardEdit_OnClick"
+                                                                Padding="10,7" ToolTip="{loc:Loc 'Изменить напев'}" />
+                                                    </Grid>
                                                 </Grid>
                                             </Border>
                                         </DataTemplate>
@@ -487,6 +496,15 @@
                                                TextWrapping="Wrap" Margin="0,4,0,8" />
                                     <TextBlock x:Name="LearningPlaybackStatusText" Text="{loc:Loc 'Выберите карточку'}"
                                                Foreground="{DynamicResource MutedTextBrush}" FontSize="11" />
+                                    <TextBlock x:Name="CustomVoiceText" Text=" " Foreground="{DynamicResource MutedTextBrush}" FontSize="11"
+                                               TextWrapping="Wrap" Margin="0,10,0,6" />
+                                    <WrapPanel>
+                                        <Button x:Name="OpenVoiceFolderButton" Content="{loc:Loc 'Папка своего голоса'}" Click="OpenVoiceFolderButton_OnClick"
+                                                Padding="10,6" Margin="0,0,8,0"
+                                                ToolTip="{loc:Loc 'Положите сюда свои записи напевов: code_01.wav для А (точка — 0, тире — 1). Они заменят встроенный голос.'}" />
+                                        <Button x:Name="ResetChantsButton" Content="{loc:Loc 'Вернуть встроенные напевы'}" Click="ResetChantsButton_OnClick"
+                                                Padding="10,6" />
+                                    </WrapPanel>
                                 </StackPanel>
                             </Border>
 

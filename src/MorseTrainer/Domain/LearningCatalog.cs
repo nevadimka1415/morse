@@ -1,6 +1,13 @@
+using MorseTrainer.Localization;
+
 namespace MorseTrainer.Domain;
 
-public sealed record LearningSymbolItem(char Symbol, string Code, string Chant, string Category);
+/// <summary>Карточка обучения; IsCustom — напев задан пользователем вместо встроенного.</summary>
+public sealed record LearningSymbolItem(char Symbol, string Code, string Chant, string Category, bool IsCustom = false)
+{
+    /// <summary>Подпись под напевом: раздел и пометка своего напева.</summary>
+    public string CategoryLabel => IsCustom ? Category + " · " + Texts.T("свой напев") : Category;
+}
 
 public static class LearningCatalog
 {
@@ -57,6 +64,17 @@ public static class LearningCatalog
 
     private static readonly IReadOnlyDictionary<string, string> ChantByCode = BuildChantByCode();
 
+    // Свои напевы пользователя поверх встроенных; платформа загружает их из файла при старте
+    private static IReadOnlyDictionary<char, string> _customChants = new Dictionary<char, string>();
+
+    public static IReadOnlyDictionary<char, string> CustomChants => _customChants;
+
+    public static void SetCustomChants(IReadOnlyDictionary<char, string> chants)
+    {
+        ArgumentNullException.ThrowIfNull(chants);
+        _customChants = new Dictionary<char, string>(chants);
+    }
+
     public static IReadOnlyList<LearningSymbolItem> Russian { get; } = RussianChants
         .Select(item => new LearningSymbolItem(item.Key, MorseAlphabet.Russian[item.Key], item.Value, "Русские буквы"))
         .ToArray();
@@ -71,20 +89,33 @@ public static class LearningCatalog
 
     public static IReadOnlyList<LearningSymbolItem> GetItems(int index)
     {
-        return index switch
+        IEnumerable<LearningSymbolItem> items = index switch
         {
             1 => Latin,
-            2 => Russian.Concat(Latin).ToArray(),
+            2 => Russian.Concat(Latin),
             3 => Digits,
             _ => Russian
         };
+        return items.Select(WithCustomChant).ToArray();
     }
 
     public static LearningSymbolItem? Find(char symbol)
     {
+        var item = FindBuiltIn(symbol);
+        return item is null ? null : WithCustomChant(item);
+    }
+
+    /// <summary>Встроенный напев символа (без учёта своих).</summary>
+    public static string? BuiltInChant(char symbol) => FindBuiltIn(symbol)?.Chant;
+
+    private static LearningSymbolItem? FindBuiltIn(char symbol)
+    {
         symbol = char.ToUpperInvariant(symbol);
         return Russian.Concat(Latin).Concat(Digits).FirstOrDefault(item => item.Symbol == symbol);
     }
+
+    private static LearningSymbolItem WithCustomChant(LearningSymbolItem item) =>
+        _customChants.TryGetValue(item.Symbol, out var chant) ? item with { Chant = chant, IsCustom = true } : item;
 
     private static IReadOnlyDictionary<string, string> BuildChantByCode()
     {

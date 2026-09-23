@@ -3,6 +3,7 @@ using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Devices;
 using MorseTrainer.Mobile.Pages;
 using MorseTrainer.Mobile.Services;
+using MorseTrainer.Domain;
 using MorseTrainer.Localization;
 using MorseTrainer.Services;
 
@@ -30,6 +31,10 @@ public static class MauiProgram
 #endif
         builder.Services.AddSingleton<MobileSettingsService>();
         builder.Services.AddSingleton(new TrainingHistoryStore(MobilePaths.HistoryFile));
+        // Свои напевы пользователя подставляются в карточки обучения поверх встроенных
+        var chantStore = new ChantStore(MobilePaths.ChantsFile);
+        LearningCatalog.SetCustomChants(chantStore.Load());
+        builder.Services.AddSingleton(chantStore);
         builder.Services.AddSingleton<VoicePackService>();
         builder.Services.AddSingleton<TrainingPage>();
         builder.Services.AddSingleton<LearningPage>();

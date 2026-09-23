@@ -78,6 +78,7 @@ public static class Program
                 ExerciseMainWindow(new MainWindow(), screenshots, "en");
             });
             Run("Symbol selection window", ExerciseSymbolSelection);
+            Run("Chant editor window", ExerciseChantEditor);
         }
         catch (Exception exception)
         {
@@ -178,6 +179,9 @@ public static class Program
             Check(window.LearningItemsControl.Items.Count == 10, "digits section has 10 cards");
             window.LearningAlphabetCombo.SelectedIndex = 0;
             DoEvents();
+            Check(FindChildren<Button>(window.LearningItemsControl).Count(button => button.Content as string == "✎") == 33, "every learning card has the chant edit button");
+            Check(window.CustomVoiceText.Text.StartsWith(Texts.T("Свой голос не добавлен: звучат встроенные напевы."), StringComparison.Ordinal),
+                "custom voice status is shown: " + window.CustomVoiceText.Text);
             SaveScreenshot(window, screenshots, "learning-" + suffix);
 
             // Передача: режим задания, новое задание, стереть, очистить (ключ не нажимаем — без звука)
@@ -233,6 +237,32 @@ public static class Program
             first.IsChecked = false;
             DoEvents();
             Check(window.SelectionCountText.Text == Texts.F("Выбрано: {0}", 2), "unchecking updates the counter: " + window.SelectionCountText.Text);
+        }
+        finally
+        {
+            window.Close();
+            DoEvents();
+        }
+    }
+
+    /// <summary>Окно «Изменить напев» собирается кодом: проверяем разметку, ресурсы темы и проверку числа слогов.</summary>
+    private static void ExerciseChantEditor()
+    {
+        Texts.Apply(AppLanguage.Russian);
+        var window = new ChantEditorWindow(Domain.LearningCatalog.Find('А')!);
+        try
+        {
+            window.Show();
+            DoEvents();
+            var box = FindChildren<TextBox>(window).Single();
+            var save = FindChildren<Button>(window).Single(button => button.Content as string == Texts.T("Сохранить"));
+            Check(box.Text == "ай-даа" && save.IsEnabled, "editor starts with the current chant: " + box.Text);
+            box.Text = "раз-два-три";
+            DoEvents();
+            Check(!save.IsEnabled, "wrong syllable count disables Save");
+            box.Text = "Ать — Даа";
+            DoEvents();
+            Check(save.IsEnabled, "a valid chant enables Save");
         }
         finally
         {

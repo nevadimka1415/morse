@@ -11,6 +11,7 @@ public partial class LearningPage : ContentPage
     private readonly IAudioPlaybackService _audioPlayback;
     private readonly MobileSettingsService _settingsService;
     private readonly VoicePackService _voicePack;
+    private readonly ChantStore _chantStore;
     private IReadOnlyList<LearningSymbolItem> _visibleItems = Array.Empty<LearningSymbolItem>();
     private LearningSymbolItem? _quizTarget;
     private int _quizCorrect;
@@ -20,12 +21,14 @@ public partial class LearningPage : ContentPage
     public LearningPage(
         IAudioPlaybackService audioPlayback,
         MobileSettingsService settingsService,
-        VoicePackService voicePack)
+        VoicePackService voicePack,
+        ChantStore chantStore)
     {
         InitializeComponent();
         _audioPlayback = audioPlayback;
         _settingsService = settingsService;
         _voicePack = voicePack;
+        _chantStore = chantStore;
         AlphabetPicker.ItemsSource = new[] { Texts.T("Русские"), Texts.T("Латинские"), Texts.T("Русские и латинские"), Texts.T("Цифры") };
         AlphabetPicker.SelectedIndex = 0;
         _pageReady = true;
@@ -77,6 +80,81 @@ public partial class LearningPage : ContentPage
 
         QuizStatusLabel.Text = $"{item?.Symbol}: {item?.Chant}";
         await PlayFileSafelyAsync(path);
+    }
+
+    // ---------- Свои напевы и голос ----------
+
+    private async void EditChantButton_OnClicked(object sender, EventArgs e)
+    {
+        if (sender is not Button { CommandParameter: char symbol } || LearningCatalog.Find(symbol) is not { } item)
+        {
+            return;
+        }
+
+        var builtIn = LearningCatalog.BuiltInChant(symbol) ?? string.Empty;
+        var text = await DisplayPromptAsync(
+            Texts.F("Напев для {0}", symbol),
+            Texts.F("Код {0}, ритм: {1}. Один слог на каждую точку и тире через дефис. Пустое поле — встроенный напев «{2}».", item.Code, ChantBook.Pattern(item.Code), builtIn),
+            Texts.T("Сохранить"), Texts.T("Отмена"), builtIn, ChantBook.MaxLength, Keyboard.Text, item.Chant);
+        if (text is null)
+        {
+            return;
+        }
+
+        try
+        {
+            LearningCatalog.SetCustomChants(_chantStore.Set(symbol, text));
+            RefreshItems();
+        }
+        catch (ArgumentException exception)
+        {
+            await DisplayAlertAsync(Texts.T("Изменить напев"), exception.Message, Texts.T("Понятно"));
+        }
+    }
+
+    private async void CustomVoiceButton_OnClicked(object sender, EventArgs e)
+    {
+        var count = CustomVoice.Count(MobilePaths.VoiceDirectory);
+        var add = Texts.T("Добавить файлы");
+        var remove = count > 0 ? Texts.T("Удалить свой голос") : null;
+        var hint = CustomVoice.Describe(count) + "
+" +
+                   Texts.F("Имя файла — код символа, точка 0, тире 1: {0} для А.", CustomVoice.ExampleFileName('А', ".m4a"));
+        var choice = await DisplayActionSheetAsync(hint, Texts.T("Отмена"), remove, add);
+        try
+        {
+            if (choice == add)
+            {
+                var files = await FilePicker.Default.PickMultipleAsync(new PickOptions { PickerTitle = Texts.T("Файлы голоса code_XXXX (.m4a, .mp3, .wav)") });
+                var added = 0;
+                var skipped = 0;
+                Directory.CreateDirectory(MobilePaths.VoiceDirectory);
+                foreach (var file in files ?? Enumerable.Empty<FileResult?>())
+                {
+                    if (file is null || !CustomVoice.IsClipFileName(file.FileName))
+                    {
+                        skipped++;
+                        continue;
+                    }
+
+                    await using var source = await file.OpenReadAsync();
+                    await using var target = File.Create(Path.Combine(MobilePaths.VoiceDirectory, file.FileName.ToLowerInvariant()));
+                    await source.CopyToAsync(target);
+                    added++;
+                }
+
+                await DisplayAlertAsync(Texts.T("Свой голос"), Texts.F("Добавлено файлов: {0}, пропущено (имя не code_XXXX): {1}.", added, skipped), Texts.T("Понятно"));
+            }
+            else if (choice is not null && choice == remove)
+            {
+                Directory.Delete(MobilePaths.VoiceDirectory, recursive: true);
+                await DisplayAlertAsync(Texts.T("Свой голос"), CustomVoice.Describe(0), Texts.T("Понятно"));
+            }
+        }
+        catch (Exception exception)
+        {
+            await DisplayAlertAsync(Texts.T("Свой голос"), exception.Message, Texts.T("Закрыть"));
+        }
     }
 
     private async void SignalButton_OnClicked(object sender, EventArgs e)

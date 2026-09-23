@@ -14,6 +14,8 @@
     <Compile Include="../MorseTrainer/Services/UpdateService.cs" Link="Services/UpdateService.cs" />
     <Compile Include="../MorseTrainer/Services/CrashReport.cs" Link="Services/CrashReport.cs" />
     <Compile Include="../MorseTrainer/Services/TrainingHistoryStore.cs" Link="Services/TrainingHistoryStore.cs" />
+    <Compile Include="../MorseTrainer/Services/ChantStore.cs" Link="Services/ChantStore.cs" />
+    <Compile Include="../MorseTrainer/Services/CustomVoice.cs" Link="Services/CustomVoice.cs" />
     <Compile Include="../MorseTrainer/Localization/Texts.cs" Link="Localization/Texts.cs" />
   </ItemGroup>
 </Project>

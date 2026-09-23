@@ -20,6 +20,10 @@ public static class AppPaths
 
     public static string CrashLogFile => Path.Combine(DataDirectory, "crash.log");
 
+    public static string ChantsFile => Path.Combine(DataDirectory, "chants.json");
+
+    public static string VoiceDirectory => Path.Combine(DataDirectory, CustomVoice.FolderName);
+
     private static string Resolve()
     {
         var custom = Environment.GetEnvironmentVariable(DataDirectoryVariable);

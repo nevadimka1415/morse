@@ -40,7 +40,8 @@ var tests = new (string Name, Action Run)[]
     ("Problem symbol drill", TestProblemDrill),
     ("Exam rules and series", TestExamRulesAndSeries),
     ("Daily goal, streak and speed", TestDailyGoalStreakSpeed),
-    ("History transfer", TestHistoryTransfer)
+    ("History transfer", TestHistoryTransfer),
+    ("Custom chants and voice", TestCustomChantsAndVoice)
 };
 
 var failures = new List<string>();
@@ -924,6 +925,83 @@ static void TestHistoryTransfer()
     {
         try { Directory.Delete(directory, recursive: true); } catch { }
     }
+}
+
+static void TestCustomChantsAndVoice()
+{
+    Texts.Apply(AppLanguage.Russian);
+    Assert(ChantBook.Normalize("  Ай — ДАА ") == "ай-даа" && ChantBook.Normalize("ба ки_те-кут") == "ба-ки-те-кут" && ChantBook.Normalize(null) == "",
+        "Chant must be normalized to syllables joined by hyphens.");
+    Assert(ChantBook.Validate('А', "ай-даа") is null, "Two syllables fit А (.-).");
+    Assert(ChantBook.Validate('А', "ай-даа-даа") is { } error && error.Contains("слогов: 3") && error.Contains(".-"), "Wrong syllable count must be explained.");
+    Assert(ChantBook.Validate('А', "   ") is not null && ChantBook.Validate('#', "а") is not null, "Empty chant and unknown symbol are rejected.");
+    Assert(ChantBook.Validate('Е', new string('а', ChantBook.MaxLength + 1)) is not null, "Too long chant is rejected.");
+    Assert(ChantBook.Pattern(".-") == "ти-таа", "Pattern must show short and long syllables.");
+
+    var json = ChantBook.Serialize(new Dictionary<char, string> { ['Б'] = "бааа-ки-те-кут", ['А'] = "ать-даа" });
+    Assert(json.Contains("\"А\": \"ать-даа\"") && json.IndexOf("\"А\"", StringComparison.Ordinal) < json.IndexOf("\"Б\"", StringComparison.Ordinal),
+        "Chants JSON must be readable and sorted: " + json);
+    var read = ChantBook.Deserialize("{\"а\":\"ать-даа\",\"Б\":\"не-то\",\"#\":\"x\",\"АБ\":\"x-y\"}");
+    Assert(read.Count == 1 && read['А'] == "ать-даа", "Deserialize must keep only valid chants and upper-case keys.");
+    Assert(ChantBook.Deserialize("не json").Count == 0 && ChantBook.Deserialize(null).Count == 0, "Broken JSON gives no chants.");
+    var merged = ChantBook.Merge(new Dictionary<char, string> { ['А'] = "ать-даа", ['Т'] = "таак" }, new Dictionary<char, string> { ['А'] = "ай-даа" });
+    Assert(merged.Count == 2 && merged['А'] == "ай-даа", "Imported chants win.");
+
+    // Каталог: свой напев подставляется в карточку, встроенный остаётся доступен
+    try
+    {
+        LearningCatalog.SetCustomChants(new Dictionary<char, string> { ['А'] = "ать-даа" });
+        var card = LearningCatalog.Find('а')!;
+        Assert(card.Chant == "ать-даа" && card.IsCustom && card.CategoryLabel.EndsWith("свой напев", StringComparison.Ordinal), "Custom chant must replace the card chant.");
+        Assert(LearningCatalog.GetItems(0).First(item => item.Symbol == 'А').IsCustom && !LearningCatalog.GetItems(0).First(item => item.Symbol == 'Б').IsCustom,
+            "Only the edited card is custom.");
+        Assert(LearningCatalog.BuiltInChant('А') == "ай-даа", "Built-in chant must stay available.");
+    }
+    finally
+    {
+        LearningCatalog.SetCustomChants(new Dictionary<char, string>());
+    }
+
+    Assert(LearningCatalog.Find('А')!.Chant == "ай-даа", "Reset must bring the built-in chant back.");
+
+    var directory = Path.Combine(Path.GetTempPath(), "morse-chants-" + Guid.NewGuid().ToString("N"));
+    try
+    {
+        var store = new ChantStore(Path.Combine(directory, "chants.json"));
+        Assert(store.Load().Count == 0, "No file — no chants.");
+        Assert(store.Set('а', "Ать — Даа")['А'] == "ать-даа" && new ChantStore(Path.Combine(directory, "chants.json")).Load()['А'] == "ать-даа", "Set must normalize and persist.");
+        var rejected = false;
+        try { store.Set('А', "раз-два-три"); } catch (ArgumentException) { rejected = true; }
+        Assert(rejected && store.Load()['А'] == "ать-даа", "Invalid chant must be rejected without changing the file.");
+        Assert(store.Merge(new Dictionary<char, string> { ['Т'] = "таак" }).Count == 2, "Merge must add chants.");
+        Assert(store.Set('А', "").Count == 1 && !store.Load().ContainsKey('А'), "Empty chant must restore the built-in one.");
+        store.Set('Т', null);
+        Assert(!File.Exists(Path.Combine(directory, "chants.json")), "The file is removed when no chants are left.");
+
+        // Свой голос: имена code_XXXX, поиск по расширениям
+        var voice = Path.Combine(directory, CustomVoice.FolderName);
+        Directory.CreateDirectory(voice);
+        File.WriteAllBytes(Path.Combine(voice, "code_01.m4a"), new byte[] { 1 });
+        File.WriteAllBytes(Path.Combine(voice, "readme.txt"), new byte[] { 1 });
+        Assert(CustomVoice.IsClipFileName("code_01.wav") && CustomVoice.IsClipFileName("CODE_1110.M4A") && !CustomVoice.IsClipFileName("code_2.wav") && !CustomVoice.IsClipFileName("a.wav"),
+            "Clip file names must look like code_XXXX with 0 and 1.");
+        Assert(CustomVoice.Count(voice) == 1, "Only clip files are counted.");
+        Assert(CustomVoice.Find(voice, 'А', new[] { ".wav" }) is null && CustomVoice.Find(voice, 'А', new[] { ".m4a", ".wav" })!.EndsWith("code_01.m4a", StringComparison.Ordinal),
+            "Find must respect the platform extensions.");
+        Assert(CustomVoice.Find(voice, 'Б', new[] { ".m4a" }) is null && CustomVoice.Find(Path.Combine(directory, "none"), 'А', new[] { ".m4a" }) is null, "Missing clips are null.");
+        Assert(CustomVoice.ExampleFileName('А') == "code_01.wav" && CustomVoice.Describe(0).Contains("не добавлен") && CustomVoice.Describe(3).Contains("3"), "Voice hints are wrong.");
+    }
+    finally
+    {
+        try { Directory.Delete(directory, recursive: true); } catch { }
+    }
+
+    // Профили переносят свои напевы; старый файл без напевов читается
+    var withChants = ProfileTransfer.Export(new[] { new TrainingProfile { Name = "Основной" } }, new Dictionary<char, string> { ['А'] = "ать-даа" });
+    var package = ProfileTransfer.ImportPackage(withChants);
+    Assert(package.Profiles.Count == 1 && package.Chants.Count == 1 && package.Chants['А'] == "ать-даа", "Profiles export must carry the chants.");
+    var withoutChants = ProfileTransfer.Export(new[] { new TrainingProfile { Name = "Основной" } });
+    Assert(!withoutChants.Contains("Chants") && ProfileTransfer.ImportPackage(withoutChants).Chants.Count == 0, "No chants — no field.");
 }
 
 static void Assert(bool condition, string message)

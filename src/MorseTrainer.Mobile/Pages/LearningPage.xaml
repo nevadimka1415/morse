@@ -9,6 +9,8 @@
         <VerticalStackLayout>
             <Label Text="{loc:Loc 'Обучение'}" FontSize="26" FontAttributes="Bold" />
             <Label Text="{loc:Loc 'Напевы сохранены в приложении и работают без интернета'}" Opacity="0.65" />
+            <Button x:Name="CustomVoiceButton" Text="{loc:Loc 'Свой голос…'}" HorizontalOptions="Start" Padding="12,6" Margin="0,6,0,0"
+                    Clicked="CustomVoiceButton_OnClicked" />
         </VerticalStackLayout>
 
         <Grid Grid.Row="1" ColumnDefinitions="*,10,*">
@@ -30,11 +32,14 @@
                                 <Label Grid.Column="1" Text="{Binding Code}" FontSize="20" TextColor="{StaticResource PrimaryDark}" />
                             </Grid>
                             <Label Text="{Binding Chant}" FontAttributes="Bold" LineBreakMode="WordWrap" />
-                            <Grid ColumnDefinitions="*,6,*">
+                            <Label Text="{loc:Loc 'свой напев'}" IsVisible="{Binding IsCustom}" FontSize="11" Opacity="0.65" />
+                            <Grid ColumnDefinitions="*,6,*,6,Auto">
                                 <Button Text="{loc:Loc 'Голос'}" Padding="8,7" CommandParameter="{Binding Symbol}"
                                         Clicked="VoiceButton_OnClicked" />
                                 <Button Grid.Column="2" Text="{loc:Loc 'Сигнал'}" Padding="8,7" CommandParameter="{Binding Symbol}"
                                         Clicked="SignalButton_OnClicked" />
+                                <Button Grid.Column="4" Text="✎" Padding="10,7" CommandParameter="{Binding Symbol}"
+                                        Clicked="EditChantButton_OnClicked" />
                             </Grid>
                         </VerticalStackLayout>
                     </Border>

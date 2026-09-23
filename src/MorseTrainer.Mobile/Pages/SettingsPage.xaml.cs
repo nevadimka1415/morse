@@ -15,16 +15,18 @@ public partial class SettingsPage : ContentPage
     private static readonly HttpClient UpdateClient = new() { Timeout = TimeSpan.FromSeconds(15) };
     private readonly MobileSettingsService _settingsService;
     private readonly IReminderService _reminders;
+    private readonly ChantStore _chantStore;
     private AppSettings _settings = new();
     private IReadOnlyList<TrainingProfile> _profiles = Array.Empty<TrainingProfile>();
     private readonly HashSet<char> _selectedSymbols = new();
     private bool _ready;
 
-    public SettingsPage(MobileSettingsService settingsService, IReminderService reminders)
+    public SettingsPage(MobileSettingsService settingsService, IReminderService reminders, ChantStore chantStore)
     {
         InitializeComponent();
         _settingsService = settingsService;
         _reminders = reminders;
+        _chantStore = chantStore;
         // Списки пикеров задаются кодом, чтобы переводиться вместе с интерфейсом
         ThemePicker.ItemsSource = new[] { Texts.T("Системная"), Texts.T("Тёмная"), Texts.T("Светлая") };
         LanguagePicker.ItemsSource = new[] { Texts.T("Системный"), Texts.T("Русский (Russian)"), Texts.T("English") };
@@ -384,7 +386,8 @@ public partial class SettingsPage : ContentPage
     {
         try
         {
-            var text = ProfileTransfer.Export(_profiles);
+            // Свои напевы едут вместе с профилями
+            var text = ProfileTransfer.Export(_profiles, LearningCatalog.CustomChants);
             await Clipboard.Default.SetTextAsync(text);
             await Share.Default.RequestAsync(new ShareTextRequest { Title = Texts.T("Профили Morse Trainer"), Text = text });
             SaveStatusLabel.Text = Texts.T("Профили скопированы в буфер и отправлены");
@@ -400,10 +403,15 @@ public partial class SettingsPage : ContentPage
         try
         {
             var text = await Clipboard.Default.GetTextAsync();
-            var imported = ProfileTransfer.Import(text ?? string.Empty);
-            _profiles = _settingsService.ImportProfiles(imported);
+            var package = ProfileTransfer.ImportPackage(text ?? string.Empty);
+            _profiles = _settingsService.ImportProfiles(package.Profiles);
             LoadAll();
-            SaveStatusLabel.Text = Texts.F("Импортировано профилей: {0}", imported.Count);
+            SaveStatusLabel.Text = Texts.F("Импортировано профилей: {0}", package.Profiles.Count);
+            if (package.Chants.Count > 0)
+            {
+                LearningCatalog.SetCustomChants(_chantStore.Merge(package.Chants));
+                SaveStatusLabel.Text += " · " + Texts.F("Своих напевов: {0}.", package.Chants.Count);
+            }
         }
         catch (FormatException exception)
         {

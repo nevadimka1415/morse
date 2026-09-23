@@ -27,6 +27,7 @@ public partial class MainWindow : Window
     private static readonly HttpClient DownloadClient = new() { Timeout = TimeSpan.FromMinutes(10) };
     private readonly SettingsService _settingsService = new();
     private readonly TrainingHistoryStore _historyStore = new(AppPaths.HistoryFile);
+    private readonly ChantStore _chantStore = new(AppPaths.ChantsFile);
     private IReadOnlyList<TrainingRecord> _history = Array.Empty<TrainingRecord>();
     private bool _currentTaskRecorded;
     private DateTime _currentTaskStartedAt = DateTime.Now;
@@ -114,6 +115,8 @@ public partial class MainWindow : Window
         UpdateSettingLabels();
         UpdateCustomSymbolsVisibility();
         UpdateSelectedSymbolsSummary();
+        LearningCatalog.SetCustomChants(_chantStore.Load());
+        UpdateCustomVoiceText();
         RefreshLearningItems();
         _history = _historyStore.Load();
         RefreshProgress();
@@ -1343,6 +1346,84 @@ public partial class MainWindow : Window
         LearningItemsControl.ItemsSource = _visibleLearningItems;
     }
 
+    // ---------- Свои напевы и голос ----------
+
+    private void LearningCardEdit_OnClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: char symbol } || LearningCatalog.Find(symbol) is not { } item)
+        {
+            return;
+        }
+
+        var dialog = new ChantEditorWindow(item) { Owner = this };
+        if (dialog.ShowDialog() != true)
+        {
+            return;
+        }
+
+        try
+        {
+            LearningCatalog.SetCustomChants(_chantStore.Set(symbol, dialog.Result));
+        }
+        catch (ArgumentException exception)
+        {
+            MessageBox.Show(this, exception.Message, Texts.T("Изменить напев"), MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        RefreshLearningItems();
+        UpdateCustomVoiceText();
+        if (LearningNowSymbolText.Text == symbol.ToString() && LearningCatalog.Find(symbol) is { } updated)
+        {
+            ShowHighlightedChant(updated.Chant, -1);
+        }
+    }
+
+    private void OpenVoiceFolderButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            Directory.CreateDirectory(AppPaths.VoiceDirectory);
+            Process.Start(new ProcessStartInfo(AppPaths.VoiceDirectory) { UseShellExecute = true });
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or System.ComponentModel.Win32Exception)
+        {
+            MessageBox.Show(this, exception.Message, Texts.T("Папка своего голоса"), MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+
+        UpdateCustomVoiceText();
+    }
+
+    private void ResetChantsButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        var count = LearningCatalog.CustomChants.Count;
+        if (count == 0)
+        {
+            LearningPlaybackStatusText.Text = Texts.T("Своих напевов нет — звучат встроенные.");
+            return;
+        }
+
+        var answer = MessageBox.Show(this, Texts.F("Удалить свои напевы ({0}) и вернуть встроенные?", count), Texts.T("Вернуть встроенные напевы"),
+            MessageBoxButton.YesNo, MessageBoxImage.Question);
+        if (answer != MessageBoxResult.Yes)
+        {
+            return;
+        }
+
+        var empty = new Dictionary<char, string>();
+        _chantStore.Save(empty);
+        LearningCatalog.SetCustomChants(empty);
+        RefreshLearningItems();
+        UpdateCustomVoiceText();
+    }
+
+    private void UpdateCustomVoiceText()
+    {
+        var chants = LearningCatalog.CustomChants.Count;
+        CustomVoiceText.Text = CustomVoice.Describe(CustomVoice.Count(AppPaths.VoiceDirectory)) +
+                               (chants > 0 ? " " + Texts.F("Своих напевов: {0}.", chants) : string.Empty);
+    }
+
     private async void LearningCardPlay_OnClick(object sender, RoutedEventArgs e)
     {
         if (sender is Button { Tag: char symbol })
@@ -1803,7 +1884,8 @@ public partial class MainWindow : Window
 
         try
         {
-            File.WriteAllText(dialog.FileName, ProfileTransfer.Export(_profiles), new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+            // Свои напевы едут вместе с профилями
+            File.WriteAllText(dialog.FileName, ProfileTransfer.Export(_profiles, LearningCatalog.CustomChants), new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
             SetStatus(Texts.T("ПРОФИЛИ ЭКСПОРТИРОВАНЫ"), isActive: true);
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
@@ -1826,10 +1908,19 @@ public partial class MainWindow : Window
 
         try
         {
-            var imported = ProfileTransfer.Import(File.ReadAllText(dialog.FileName));
-            _profiles = _profileService.Import(imported);
+            var package = ProfileTransfer.ImportPackage(File.ReadAllText(dialog.FileName));
+            _profiles = _profileService.Import(package.Profiles);
             LoadProfiles(ReadSettings());
-            MessageBox.Show(this, Texts.F("Импортировано профилей: {0}.", imported.Count), Texts.T("Профили"), MessageBoxButton.OK, MessageBoxImage.Information);
+            var message = Texts.F("Импортировано профилей: {0}.", package.Profiles.Count);
+            if (package.Chants.Count > 0)
+            {
+                LearningCatalog.SetCustomChants(_chantStore.Merge(package.Chants));
+                RefreshLearningItems();
+                UpdateCustomVoiceText();
+                message += " " + Texts.F("Своих напевов: {0}.", package.Chants.Count);
+            }
+
+            MessageBox.Show(this, message, Texts.T("Профили"), MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (Exception exception) when (exception is FormatException or IOException or UnauthorizedAccessException)
         {
