@@ -15,6 +15,7 @@
                     <Label x:Name="SummaryLabel" Text="{loc:Loc 'Тренировок пока нет'}" FontSize="18" FontAttributes="Bold" />
                     <Label x:Name="DetailsLabel" Text="{loc:Loc 'Проверьте ответ в тренировке, и результат появится здесь.'}" LineBreakMode="WordWrap" />
                     <Label x:Name="ProblemSymbolsLabel" Text="" LineBreakMode="WordWrap" />
+                    <Label x:Name="ExamSeriesLabel" Text="" LineBreakMode="WordWrap" Opacity="0.8" />
                 </VerticalStackLayout>
             </Border>
 

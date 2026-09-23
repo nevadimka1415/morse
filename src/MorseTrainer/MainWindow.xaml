@@ -227,8 +227,28 @@
                                         Click="GenerateButton_OnClick" Padding="16,13" />
                                 <TextBlock Text="{loc:Loc 'Ctrl+G — создать новое задание'}" Foreground="{DynamicResource MutedTextBrush}"
                                            FontSize="11" HorizontalAlignment="Center" Margin="0,8,0,0" />
-                                <Button x:Name="ExamButton" Content="{loc:Loc 'Экзамен'}" Click="ExamButton_OnClick" Padding="12,9" Margin="0,14,0,0"
-                                        ToolTip="{loc:Loc 'Экзамен: задание с текущими параметрами, одно прослушивание, ответ скрыт, идёт время. После проверки — протокол и запись в истории с пометкой.'}" />
+                                <Grid Margin="0,14,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="8" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel>
+                                        <TextBlock Text="{loc:Loc 'Экзамен: прослушиваний'}" Foreground="{DynamicResource MutedTextBrush}" FontSize="11" Margin="0,0,0,3" />
+                                        <ComboBox x:Name="ExamPlaybacksCombo" SelectedIndex="0">
+                                            <ComboBoxItem Content="1" />
+                                            <ComboBoxItem Content="2" />
+                                            <ComboBoxItem Content="3" />
+                                        </ComboBox>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2">
+                                        <TextBlock Text="{loc:Loc 'Лимит времени'}" Foreground="{DynamicResource MutedTextBrush}" FontSize="11" Margin="0,0,0,3" />
+                                        <ComboBox x:Name="ExamLimitCombo" SelectedIndex="0"
+                                                  ToolTip="{loc:Loc 'Когда время выйдет, ответ проверится автоматически'}" />
+                                    </StackPanel>
+                                </Grid>
+                                <Button x:Name="ExamButton" Content="{loc:Loc 'Экзамен'}" Click="ExamButton_OnClick" Padding="12,9" Margin="0,8,0,0"
+                                        ToolTip="{loc:Loc 'Экзамен: задание с текущими параметрами, ограниченное число прослушиваний и лимит времени (выбираются выше), ответ скрыт, идёт время. После проверки — протокол и запись в истории с пометкой.'}" />
                                 <Button x:Name="DrillButton" Content="{loc:Loc 'Повторить сложные символы'}" Click="DrillButton_OnClick" Padding="12,9" Margin="0,8,0,0"
                                         ToolTip="{loc:Loc 'Задание только из символов, в которых вы чаще всего ошибались в последних 100 заданиях, и похожих на них по коду. Сложные звучат втрое чаще.'}" />
                             </StackPanel>
@@ -640,6 +660,8 @@
                             <StackPanel x:Name="DailyBarsPanel" Margin="0,12,0,0" />
                             <TextBlock Text="{loc:Loc 'СЛОЖНЫЕ СИМВОЛЫ ЗА ВСЁ ВРЕМЯ'}" Foreground="{DynamicResource MutedTextBrush}" FontSize="10" Margin="0,18,0,4" />
                             <TextBlock x:Name="HistoryProblemSymbolsText" Text="—" FontSize="16" FontWeight="SemiBold" TextWrapping="Wrap" />
+                            <TextBlock Text="{loc:Loc 'ЭКЗАМЕНЫ'}" Foreground="{DynamicResource MutedTextBrush}" FontSize="10" Margin="0,18,0,4" />
+                            <TextBlock x:Name="ExamSeriesText" Text="—" TextWrapping="Wrap" />
                             <TextBlock Text="{loc:Loc 'Результат записывается при первой проверке ответа по каждому заданию. История хранится только на этом компьютере.'}"
                                        Foreground="{DynamicResource MutedTextBrush}" FontSize="11" TextWrapping="Wrap" Margin="0,18,0,0" />
                             <Button x:Name="ClearHistoryButton" Content="{loc:Loc 'Очистить историю'}" Click="ClearHistoryButton_OnClick"

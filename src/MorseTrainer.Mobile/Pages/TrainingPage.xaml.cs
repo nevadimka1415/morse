@@ -168,8 +168,9 @@ public partial class TrainingPage : ContentPage
             return;
         }
 
-        // Экзамен: прослушивание одно
+        // Экзамен: прослушиваний не больше, чем разрешено правилами
         _exam?.RegisterPlayback();
+        UpdateExamLabel();
         StopPlayback();
         _playbackCancellation = new CancellationTokenSource();
         PlayButton.IsEnabled = false;
@@ -281,7 +282,8 @@ public partial class TrainingPage : ContentPage
         var checkedSettings = _settingsService.LoadSettings();
         if (examResult is not null)
         {
-            ResultLabel.Text = ExamReport.Summary(examResult);
+            ResultLabel.Text = ExamReport.Summary(examResult) + "\n" +
+                               TrainingStatistics.Exams(TrainingStatistics.ForProfile(_historyStore.Load(), examResult.ProfileName)).Describe();
         }
         else if (_currentDrill is null && checkedSettings.ContentModeIndex == (int)ContentMode.Koch)
         {
@@ -325,9 +327,10 @@ public partial class TrainingPage : ContentPage
         }
 
         var settings = _settingsService.LoadSettings();
-        _exam = new ExamSession(_currentTask, Math.Clamp(settings.CharactersPerMinute, 20, 300), _currentGroupCount, settings.ActiveProfileName, DateTime.Now);
+        _exam = new ExamSession(_currentTask, Math.Clamp(settings.CharactersPerMinute, 20, 300), _currentGroupCount, settings.ActiveProfileName, DateTime.Now,
+            settings.ExamPlaybacks, settings.ExamTimeLimitMinutes);
         _examReport = null;
-        // Ответ скрыт до проверки, повтор запрещён: прослушивание одно
+        // Ответ скрыт до проверки; повтор доступен, пока не кончились прослушивания
         _answerVisible = false;
         UpdateTaskLabel();
         ToggleAnswerButton.IsEnabled = false;
@@ -335,12 +338,20 @@ public partial class TrainingPage : ContentPage
         ExamShareButton.IsVisible = false;
         ExamLabel.IsVisible = true;
         UpdateExamLabel();
+        ResultLabel.Text = Texts.F("Правила экзамена: {0}", ExamReport.Rules(_exam.MaxPlaybacks, _exam.TimeLimit));
         if (!_examTimerRunning)
         {
             _examTimerRunning = true;
             Dispatcher.StartTimer(TimeSpan.FromSeconds(1), () =>
             {
                 UpdateExamLabel();
+                // Лимит времени вышел — ответ проверяется сам, как по кнопке
+                if (_exam is { IsFinished: false } && _exam.IsTimeUp(DateTime.Now))
+                {
+                    StopPlayback();
+                    CheckButton_OnClicked(CheckButton, EventArgs.Empty);
+                }
+
                 _examTimerRunning = _exam is not null && !_exam.IsFinished;
                 return _examTimerRunning;
             });
@@ -356,7 +367,7 @@ public partial class TrainingPage : ContentPage
             return;
         }
 
-        ExamLabel.Text = Texts.F("Экзамен · одно прослушивание · {0}", ExamReport.FormatDuration(_exam.Elapsed(DateTime.Now)));
+        ExamLabel.Text = _exam.Status(DateTime.Now);
     }
 
     /// <summary>Новое задание отменяет экзамен.</summary>

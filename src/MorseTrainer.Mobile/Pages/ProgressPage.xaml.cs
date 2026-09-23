@@ -90,6 +90,10 @@ public partial class ProgressPage : ContentPage
                 : Texts.T("Чаще всего ошибки: ") + string.Join("  ", problems.Select(item => $"{item.Symbol} ×{item.Count}"));
         }
 
+        var exams = TrainingStatistics.Exams(records);
+        ExamSeriesLabel.IsVisible = !exams.IsEmpty;
+        ExamSeriesLabel.Text = exams.Describe();
+
         while (DailyLayout.Children.Count > 1)
         {
             DailyLayout.Children.RemoveAt(DailyLayout.Children.Count - 1);

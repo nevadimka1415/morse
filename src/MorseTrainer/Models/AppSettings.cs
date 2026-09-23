@@ -21,6 +21,9 @@ public sealed class AppSettings
     public bool EmphasizeProblemSymbols { get; set; } = true;
     // Лестница скорости: +5 после двух заданий от 90 %, −5 при точности ниже 70 %
     public bool AutoSpeed { get; set; }
+    // Экзамен: разрешённые прослушивания (1–3) и лимит времени в минутах (0 — без лимита)
+    public int ExamPlaybacks { get; set; } = 1;
+    public int ExamTimeLimitMinutes { get; set; }
     // Напоминание о тренировке на телефоне: включено и время дня в минутах от полуночи
     public bool ReminderEnabled { get; set; }
     public int ReminderMinutes { get; set; } = 19 * 60;

@@ -37,7 +37,8 @@ var tests = new (string Name, Action Run)[]
     ("Keyer analysis", TestKeyerAnalysis),
     ("Progress filter and CSV", TestProgressCsv),
     ("Reminder schedule", TestReminderSchedule),
-    ("Problem symbol drill", TestProblemDrill)
+    ("Problem symbol drill", TestProblemDrill),
+    ("Exam rules and series", TestExamRulesAndSeries)
 };
 
 var failures = new List<string>();
@@ -750,6 +751,58 @@ static void TestProblemDrill()
     var old = Enumerable.Range(0, 50).Select(index => new TrainingRecord { CompletedAt = at.AddMinutes(index), ProblemSymbols = "Ж" });
     var fresh = Enumerable.Range(0, ProblemDrill.RecentRecords).Select(index => new TrainingRecord { CompletedAt = at.AddHours(2).AddMinutes(index) });
     Assert(ProblemDrill.Build(old.Concat(fresh).ToArray()).IsEmpty, "Old mistakes outside the recent window must be ignored.");
+}
+
+static void TestExamRulesAndSeries()
+{
+    Texts.Apply(AppLanguage.Russian);
+    Assert(ExamSession.ClampPlaybacks(0) == 1 && ExamSession.ClampPlaybacks(7) == 3 && ExamSession.ClampTimeLimit(99) == 30 && ExamSession.ClampTimeLimit(-5) == 0,
+        "Exam rules must be clamped to 1–3 playbacks and 0–30 minutes.");
+
+    var started = new DateTime(2026, 9, 23, 12, 0, 0);
+    var free = new ExamSession("АБВГД", 60, 1, "Основной", started);
+    Assert(free.MaxPlaybacks == 1 && free.TimeLimit is null && free.Remaining(started) is null && !free.IsTimeUp(started.AddHours(1)),
+        "Default exam has one playback and no time limit.");
+    Assert(free.Status(started.AddSeconds(5)) == "Экзамен · прослушано 0 из 1 · 0:05", "Status without a limit shows the elapsed time: " + free.Status(started.AddSeconds(5)));
+
+    var exam = new ExamSession("АБВГД ЕЖЗИК", 60, 2, "Основной", started, maxPlaybacks: 2, timeLimitMinutes: 1);
+    exam.RegisterPlayback();
+    Assert(exam.CanPlay, "The second playback must be allowed with two playbacks.");
+    exam.RegisterPlayback();
+    Assert(!exam.CanPlay, "The third playback must be blocked.");
+    Assert(exam.Status(started.AddSeconds(15)) == "Экзамен · прослушано 2 из 2 · осталось 0:45", "Status with a limit shows the remaining time: " + exam.Status(started.AddSeconds(15)));
+    Assert(!exam.IsTimeUp(started.AddSeconds(59)) && exam.IsTimeUp(started.AddSeconds(60)), "Time is up exactly at the limit.");
+    Assert(exam.Remaining(started.AddMinutes(5)) == TimeSpan.Zero, "Remaining time must not go below zero.");
+
+    // Проверка позже лимита (приложение было свёрнуто): время в протоколе — ровно лимит
+    var result = exam.Finish("АБВГД", started.AddSeconds(90));
+    Assert(result.TimedOut && result.Duration == TimeSpan.FromMinutes(1) && result.PlaybacksUsed == 2 && result.MaxPlaybacks == 2,
+        "Late finish must be marked as timed out and capped at the limit.");
+    var report = ExamReport.Format(result);
+    Assert(report.Contains("Прослушиваний: 2 из 2") && report.Contains("Лимит времени: 1 мин") && report.Contains("Время вышло"),
+        "Report must list the rules and the timeout: " + report);
+    Assert(ExamReport.Summary(result).Contains("Время вышло"), "Summary must mention the timeout.");
+    Assert(ExamReport.Rules(2, TimeSpan.FromMinutes(5)) == "прослушиваний: 2 · лимит 5 мин" && ExamReport.Rules(1, null) == "прослушиваний: 1 · без лимита времени",
+        "Rules line is wrong.");
+    var inTime = new ExamSession("АБВГД", 60, 1, "Основной", started, timeLimitMinutes: 2).Finish("АБВГД", started.AddSeconds(30));
+    Assert(!inTime.TimedOut && inTime.Duration == TimeSpan.FromSeconds(30) && !ExamReport.Format(inTime).Contains("Время вышло"), "An answer in time is not a timeout.");
+
+    // Серия экзаменов: последние пять, тренд — наклон прямой
+    Assert(TrainingStatistics.Exams(Array.Empty<TrainingRecord>()).Describe() == "Экзаменов пока нет", "Empty series text is wrong.");
+    var accuracies = new[] { 50.0, 80, 85, 90, 95, 100 };
+    var history = accuracies.Select((accuracy, index) => new TrainingRecord { CompletedAt = started.AddDays(index), IsExam = true, AccuracyPercent = accuracy })
+        .Append(new TrainingRecord { CompletedAt = started.AddDays(10), AccuracyPercent = 10 })
+        .ToArray();
+    var series = TrainingStatistics.Exams(history);
+    Assert(series.Exams.Count == 5 && series.Exams[0].AccuracyPercent == 80 && Math.Abs(series.TrendPerExam - 5) < 0.01,
+        $"Series must take the last five exams with trend +5: {series.Exams.Count}, {series.TrendPerExam}.");
+    Assert(series.Describe().Contains("80% · 85% · 90% · 95% · 100%") && series.Describe().Contains("↑ +5"), "Series text is wrong: " + series.Describe());
+    var falling = TrainingStatistics.Exams(new[] { 90.0, 70 }.Select((accuracy, index) => new TrainingRecord { CompletedAt = started.AddDays(index), IsExam = true, AccuracyPercent = accuracy }).ToArray());
+    Assert(falling.Describe().Contains("↓ −20"), "Falling series must show a negative trend: " + falling.Describe());
+    var flat = TrainingStatistics.Exams(new[] { 90.0, 90.2 }.Select((accuracy, index) => new TrainingRecord { CompletedAt = started.AddDays(index), IsExam = true, AccuracyPercent = accuracy }).ToArray());
+    Assert(flat.Describe().Contains("ровно"), "A tiny change must be shown as flat: " + flat.Describe());
+    var single = TrainingStatistics.Exams(history.Take(1).ToArray());
+    Assert(single.Exams.Count == 1 && !single.Describe().Contains("тренд"), "One exam has no trend.");
 }
 
 static void Assert(bool condition, string message)

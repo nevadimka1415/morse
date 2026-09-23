@@ -152,6 +152,17 @@
 
             <Border>
                 <VerticalStackLayout Spacing="10">
+                    <Label Text="{loc:Loc 'Экзамен'}" FontSize="18" FontAttributes="Bold" />
+                    <Label Text="{loc:Loc 'Экзамен: прослушиваний'}" Opacity="0.65" />
+                    <Picker x:Name="ExamPlaybacksPicker" SelectedIndexChanged="SettingsControl_OnChanged" />
+                    <Label Text="{loc:Loc 'Лимит времени'}" Opacity="0.65" />
+                    <Picker x:Name="ExamLimitPicker" SelectedIndexChanged="SettingsControl_OnChanged" />
+                    <Label Text="{loc:Loc 'Когда время выйдет, ответ проверится автоматически'}" Opacity="0.65" FontSize="13" LineBreakMode="WordWrap" />
+                </VerticalStackLayout>
+            </Border>
+
+            <Border>
+                <VerticalStackLayout Spacing="10">
                     <Label Text="{loc:Loc 'Напоминание'}" FontSize="18" FontAttributes="Bold" />
                     <Grid ColumnDefinitions="*,Auto">
                         <Label Text="{loc:Loc 'Напоминать о тренировке'}" VerticalOptions="Center" />

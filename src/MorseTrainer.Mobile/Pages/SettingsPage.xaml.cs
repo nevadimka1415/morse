@@ -35,6 +35,10 @@ public partial class SettingsPage : ContentPage
             Texts.T("Все символы"), Texts.T("Выбранные символы"), Texts.T("Метод Коха"),
             Texts.T("Слова"), Texts.T("Позывные"), Texts.T("Q-код и сокращения")
         };
+        ExamPlaybacksPicker.ItemsSource = Enumerable.Range(ExamSession.MinPlaybacks, ExamSession.MaxAllowedPlaybacks)
+            .Select(count => count.ToString()).ToList();
+        ExamLimitPicker.ItemsSource = ExamSession.TimeLimitChoices
+            .Select(minutes => minutes == 0 ? Texts.T("без лимита") : Texts.F("{0} мин", minutes)).ToList();
         VersionLabel.Text = $"Morse Trainer {CurrentVersion}";
         BuildSymbolButtons();
         LoadAll();
@@ -179,6 +183,8 @@ public partial class SettingsPage : ContentPage
         KochStepper.Value = KochMethod.ClampLevel((AlphabetMode)Math.Clamp(_settings.AlphabetIndex, 0, 2), _settings.KochLevel);
         EmphasizeSwitch.IsToggled = _settings.EmphasizeProblemSymbols;
         AutoSpeedSwitch.IsToggled = _settings.AutoSpeed;
+        ExamPlaybacksPicker.SelectedIndex = ExamSession.ClampPlaybacks(_settings.ExamPlaybacks) - 1;
+        ExamLimitPicker.SelectedIndex = Math.Max(0, ExamSession.TimeLimitChoices.ToList().IndexOf(ExamSession.ClampTimeLimit(_settings.ExamTimeLimitMinutes)));
         GroupCountStepper.Value = Math.Clamp(_settings.GroupCount, 1, 100);
         SpeedSlider.Value = Math.Clamp(_settings.CharactersPerMinute, 20, 300);
         FrequencySlider.Value = Math.Clamp(_settings.FrequencyHz, 300, 1200);
@@ -292,6 +298,8 @@ public partial class SettingsPage : ContentPage
         _settings.KochLevel = (int)KochStepper.Value;
         _settings.EmphasizeProblemSymbols = EmphasizeSwitch.IsToggled;
         _settings.AutoSpeed = AutoSpeedSwitch.IsToggled;
+        _settings.ExamPlaybacks = ExamSession.ClampPlaybacks(ExamPlaybacksPicker.SelectedIndex + 1);
+        _settings.ExamTimeLimitMinutes = ExamSession.TimeLimitChoices[Math.Clamp(ExamLimitPicker.SelectedIndex, 0, ExamSession.TimeLimitChoices.Count - 1)];
         _settings.GroupCount = (int)Math.Round(GroupCountStepper.Value);
         _settings.CharactersPerMinute = Snap(SpeedSlider.Value, 5, 20, 300);
         _settings.FrequencyHz = Snap(FrequencySlider.Value, 50, 300, 1200);

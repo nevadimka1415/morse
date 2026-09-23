@@ -73,6 +73,10 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        // Варианты лимита экзамена переводятся кодом: до ApplySettings, который выбирает сохранённый
+        ExamLimitCombo.ItemsSource = ExamSession.TimeLimitChoices
+            .Select(minutes => minutes == 0 ? Texts.T("без лимита") : Texts.F("{0} мин", minutes))
+            .ToArray();
         ApplyWindowBounds(_settingsService.Load());
     }
 
@@ -322,6 +326,7 @@ public partial class MainWindow : Window
         HistoryProblemSymbolsText.Text = problems.Count == 0
             ? "—"
             : string.Join("  ", problems.Select(item => $"{item.Symbol} ×{item.Count}"));
+        ExamSeriesText.Text = TrainingStatistics.Exams(history).Describe();
         HistoryListView.ItemsSource = history
             .OrderByDescending(item => item.CompletedAt)
             .Take(50)
@@ -829,6 +834,7 @@ public partial class MainWindow : Window
         }
 
         _exam?.RegisterPlayback();
+        UpdateExamStatus();
         StopLearningPlayback();
         StopPlayback();
         var cancellation = new CancellationTokenSource();
@@ -938,7 +944,9 @@ public partial class MainWindow : Window
         ToggleAnswerButton.Content = _answerVisible ? Texts.T("Скрыть") : Texts.T("Показать");
     }
 
-    private void CheckAnswerButton_OnClick(object sender, RoutedEventArgs e)
+    private void CheckAnswerButton_OnClick(object sender, RoutedEventArgs e) => CheckAnswer();
+
+    private void CheckAnswer()
     {
         if (string.IsNullOrEmpty(_currentTask))
         {
@@ -1012,7 +1020,8 @@ public partial class MainWindow : Window
 
         if (examResult is not null)
         {
-            ResultDetailsText.Text = ExamReport.Summary(examResult);
+            ResultDetailsText.Text = ExamReport.Summary(examResult) + "\n" +
+                                     TrainingStatistics.Exams(TrainingStatistics.ForProfile(_history, examResult.ProfileName)).Describe();
             SetStatus(result.IsPerfect ? Texts.T("ЭКЗАМЕН СДАН") : Texts.T("ЕСТЬ ОШИБКИ"), result.IsPerfect);
         }
         else if (_currentDrill is null && _currentSettings?.ContentModeIndex == (int)ContentMode.Koch)
@@ -1060,11 +1069,12 @@ public partial class MainWindow : Window
         }
 
         var groupCount = _currentTask.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length;
-        _exam = new ExamSession(_currentTask, _currentSettings.CharactersPerMinute, groupCount, _currentSettings.ActiveProfileName, DateTime.Now);
+        _exam = new ExamSession(_currentTask, _currentSettings.CharactersPerMinute, groupCount, _currentSettings.ActiveProfileName, DateTime.Now,
+            _currentSettings.ExamPlaybacks, _currentSettings.ExamTimeLimitMinutes);
         _examReport = null;
         _answerVisible = false;
         UpdateAnswerDisplay();
-        // Ответ скрыт до проверки, повтор запрещён: прослушивание одно
+        // Ответ скрыт до проверки; повтор доступен, пока не кончились прослушивания
         ToggleAnswerButton.IsEnabled = false;
         RepeatButton.IsEnabled = false;
         if (_examTimer is null)
@@ -1075,11 +1085,22 @@ public partial class MainWindow : Window
 
         _examTimer.Start();
         UpdateExamStatus();
+        ResultDetailsText.Text = Texts.F("Правила экзамена: {0}", ExamReport.Rules(_exam.MaxPlaybacks, _exam.TimeLimit));
+        ResultDetailsText.Foreground = (Brush)FindResource("MutedTextBrush");
         SetStatus(Texts.T("ЭКЗАМЕН"), isActive: true);
         await PlayCurrentAsync();
     }
 
-    private void ExamTimer_OnTick(object? sender, EventArgs e) => UpdateExamStatus();
+    private void ExamTimer_OnTick(object? sender, EventArgs e)
+    {
+        UpdateExamStatus();
+        // Лимит времени вышел — ответ проверяется сам, как по кнопке
+        if (_exam is { IsFinished: false } && _exam.IsTimeUp(DateTime.Now))
+        {
+            StopPlayback();
+            CheckAnswer();
+        }
+    }
 
     private void UpdateExamStatus()
     {
@@ -1088,7 +1109,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        TaskMetaText.Text = Texts.F("Экзамен · одно прослушивание · {0}", ExamReport.FormatDuration(_exam.Elapsed(DateTime.Now)));
+        TaskMetaText.Text = _exam.Status(DateTime.Now);
     }
 
     /// <summary>Новое задание отменяет экзамен: таймер останавливается, кнопки возвращаются в обычный режим.</summary>
@@ -1557,6 +1578,8 @@ public partial class MainWindow : Window
             KochLevel = (int)KochLevelSlider.Value,
             EmphasizeProblemSymbols = EmphasizeProblemsCheckBox.IsChecked == true,
             AutoSpeed = AutoSpeedCheckBox.IsChecked == true,
+            ExamPlaybacks = ExamSession.ClampPlaybacks(ExamPlaybacksCombo.SelectedIndex + 1),
+            ExamTimeLimitMinutes = ExamSession.TimeLimitChoices[Math.Clamp(ExamLimitCombo.SelectedIndex, 0, ExamSession.TimeLimitChoices.Count - 1)],
             GroupCount = groupCount,
             CharactersPerMinute = (int)SpeedSlider.Value,
             FrequencyHz = (int)FrequencySlider.Value,
@@ -1590,6 +1613,8 @@ public partial class MainWindow : Window
         KochLevelSlider.Value = KochMethod.ClampLevel((AlphabetMode)Math.Clamp(settings.AlphabetIndex, 0, 2), settings.KochLevel);
         EmphasizeProblemsCheckBox.IsChecked = settings.EmphasizeProblemSymbols;
         AutoSpeedCheckBox.IsChecked = settings.AutoSpeed;
+        ExamPlaybacksCombo.SelectedIndex = ExamSession.ClampPlaybacks(settings.ExamPlaybacks) - 1;
+        ExamLimitCombo.SelectedIndex = Math.Max(0, ExamSession.TimeLimitChoices.ToList().IndexOf(ExamSession.ClampTimeLimit(settings.ExamTimeLimitMinutes)));
         GroupCountText.Text = Math.Clamp(settings.GroupCount, 1, 100).ToString(CultureInfo.InvariantCulture);
         SpeedSlider.Value = Math.Clamp(settings.CharactersPerMinute, 20, 300);
         FrequencySlider.Value = Math.Clamp(settings.FrequencyHz, 300, 1_200);

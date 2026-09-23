@@ -123,6 +123,9 @@ public static class Program
             Check(window.TaskMetaText.Text.Contains('×'), "task meta shows the group count: " + window.TaskMetaText.Text);
             Check(window.AnswerDisplayText.Text.Contains('•') && window.AnswerDisplayText.Text.Contains(' '), "answer is hidden as bullets");
             Check(window.PlayButton.IsEnabled && window.CheckAnswerButton.IsEnabled && window.UserAnswerText.IsEnabled, "task controls are enabled");
+            Check(window.ExamPlaybacksCombo.Items.Count == 3 && window.ExamPlaybacksCombo.SelectedIndex == 0, "exam playbacks default to one");
+            Check(window.ExamLimitCombo.Items.Count == Domain.ExamSession.TimeLimitChoices.Count && window.ExamLimitCombo.Items[0] as string == Texts.T("без лимита"),
+                "exam time limit choices are translated: " + window.ExamLimitCombo.Items[0]);
 
             // Показать ответ, ввести его и проверить: точность 100% и запись в истории
             Click(window.ToggleAnswerButton);
@@ -196,6 +199,7 @@ public static class Program
             WaitUntil(() => FindChildren<TextBlock>(window.HistoryListView).Any(block => block.Text == "100%"), "history row bindings render the accuracy");
             Check(window.ProgressSessionsText.Text == "2" && window.ProgressBestText.Text == "100%", "progress summary shows two sessions, best 100%");
             Check(window.DailyBarsPanel.Children.Count == 1, "daily bars show one day");
+            Check(window.ExamSeriesText.Text == Texts.T("Экзаменов пока нет"), "exam series is empty: " + window.ExamSeriesText.Text);
             SaveScreenshot(window, screenshots, "progress-" + suffix);
 
             window.MainTabs.SelectedIndex = 0;
