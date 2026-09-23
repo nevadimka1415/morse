@@ -53,6 +53,21 @@ def find_apk(path):
 
 
 def dump_ui():
+    """Дерево элементов экрана без системных окон «не отвечает» (их закрываем кнопкой Wait)."""
+    for _ in range(4):
+        root, parents = raw_dump()
+        texts = " ".join(node.get("text", "") for node in root.iter("node"))
+        waits = nodes_with_text(root, ("Wait",))
+        if "isn't responding" in texts and waits and "Morse" not in texts:
+            print("Закрываю системное окно «не отвечает» (Wait): " + texts[:120])
+            tap(waits[0])
+            time.sleep(3)
+            continue
+        return root, parents
+    return root, parents
+
+
+def raw_dump():
     """Дерево элементов экрана через uiautomator; повторяет, пока экран не успокоится."""
     last_error = ""
     for _ in range(6):
@@ -100,25 +115,12 @@ def wait_for(texts, timeout, prefix=False):
     deadline = time.time() + timeout
     while time.time() < deadline:
         ensure_alive()
-        dismiss_system_dialogs()
         root, _ = dump_ui()
         found = nodes_with_text(root, texts, prefix)
         if found:
             return found
         time.sleep(2)
     raise RuntimeError(f"За {timeout} с на экране не появилось: {', '.join(texts)}")
-
-
-def dismiss_system_dialogs():
-    """Медленный эмулятор иногда показывает «System UI isn't responding» — это не наше приложение."""
-    root, _ = dump_ui()
-    texts = " ".join(node.get("text", "") for node in root.iter("node"))
-    if "isn't responding" in texts and "Morse" not in texts:
-        for node in nodes_with_text(root, ("Wait",)):
-            print("Закрываю системный диалог «не отвечает» (Wait)")
-            tap(node)
-            time.sleep(2)
-            return
 
 
 def crash_lines():
@@ -281,6 +283,8 @@ def main():
     exit_code = 0
     try:
         adb("wait-for-device", timeout=300)
+        # Сразу после загрузки лаунчер эмулятора нередко «не отвечает» — даём системе успокоиться
+        time.sleep(20)
         step("Установка APK", lambda: (adb("install", "-r", "-g", str(apk), timeout=300), f"{apk.name}, {apk.stat().st_size // 1024} КБ")[1])
         adb("logcat", "-b", "all", "-c", check=False)
         step("Запуск MainActivity", launch)
