@@ -66,8 +66,8 @@ PackageName: Morse Trainer
 PackageUrl: https://github.com/$Repository
 License: MIT
 LicenseUrl: https://github.com/$Repository/blob/main/LICENSE
-ShortDescription: Offline Morse code trainer with Koch method, exams, keyer practice and progress history.
-Description: Morse Trainer is an offline Morse code (CW) trainer for Russian and Latin alphabets, digits and punctuation. It generates random groups, words, callsigns and Q-codes, supports the Koch and Farnsworth methods, exams with a timer, on-air noise, a straight key practice with timing analysis, a course from zero to 60 characters per minute and a progress history.
+ShortDescription: 'Offline Morse code trainer with Koch method, exams, keyer practice and progress history.'
+Description: 'Morse Trainer is an offline Morse code (CW) trainer for Russian and Latin alphabets, digits and punctuation. It generates random groups, words, callsigns and Q-codes, supports the Koch and Farnsworth methods, exams with a timer, on-air noise, a straight key practice with timing analysis, a course from zero to 60 characters per minute and a progress history.'
 Moniker: morse-trainer
 Tags:
 - morse
@@ -89,8 +89,8 @@ PackageLocale: ru-RU
 Publisher: nevadimka1415
 PackageName: Morse Trainer
 License: MIT
-ShortDescription: Автономный тренажёр азбуки Морзе: метод Коха, экзамен, передача ключом и история прогресса.
-Description: Morse Trainer — тренажёр азбуки Морзе без интернета для русского и латинского алфавитов, цифр и знаков. Случайные группы, слова, позывные и Q-код, методы Коха и Фарнсворта, экзамен с таймером, помехи эфира, передача ключом с разбором ритма, курс с нуля до 60 знаков в минуту и история тренировок.
+ShortDescription: 'Автономный тренажёр азбуки Морзе: метод Коха, экзамен, передача ключом и история прогресса.'
+Description: 'Morse Trainer — тренажёр азбуки Морзе без интернета для русского и латинского алфавитов, цифр и знаков. Случайные группы, слова, позывные и Q-код, методы Коха и Фарнсворта, экзамен с таймером, помехи эфира, передача ключом с разбором ритма, курс с нуля до 60 знаков в минуту и история тренировок.'
 ManifestType: locale
 ManifestVersion: 1.9.0
 "@
