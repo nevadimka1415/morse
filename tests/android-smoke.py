@@ -30,6 +30,7 @@ STOP_TEXTS = ("■ Стоп", "■ Stop")
 
 out_dir = Path(sys.argv[2] if len(sys.argv) > 2 else "android-smoke")
 results = []
+last_dump = ""
 
 
 def adb(*args, timeout=120, check=True, binary=False):
@@ -57,7 +58,9 @@ def dump_ui():
     for _ in range(6):
         output = adb("shell", "uiautomator", "dump", "/sdcard/ui.xml", check=False, timeout=60)
         if "dumped to" in output:
+            global last_dump
             xml = adb("exec-out", "cat", "/sdcard/ui.xml")
+            last_dump = xml
             root = ET.fromstring(xml)
             parents = {child: parent for parent in root.iter() for child in parent}
             return root, parents
@@ -71,12 +74,18 @@ def bounds(node):
     return x1, y1, x2, y2
 
 
+def normalize(value):
+    """Только буквы и цифры без регистра: значки ▶/■, пробелы и заглавные буквы кнопок не мешают поиску."""
+    return "".join(symbol for symbol in value.casefold() if symbol.isalnum())
+
+
 def nodes_with_text(root, texts, prefix=False):
+    targets = [normalize(text) for text in texts]
     found = []
     for node in root.iter("node"):
         for value in (node.get("text", ""), node.get("content-desc", "")):
-            value = value.strip()
-            if value and any(value.startswith(t) if prefix else value == t for t in texts):
+            value = normalize(value)
+            if value and any(value.startswith(t) if prefix else value == t for t in targets):
                 found.append(node)
                 break
     return found
@@ -172,6 +181,14 @@ def step(name, action):
     except Exception as error:
         results.append((name, "FAIL", f"{time.time() - started:.1f} с", str(error).splitlines()[0]))
         print(f"[FAIL] {name}: {error}")
+        # Последний дамп экрана и видимые тексты — чтобы понять, что было на экране
+        if last_dump:
+            (out_dir / "ui-failed.xml").write_text(last_dump, encoding="utf-8")
+            try:
+                texts = [node.get("text") or node.get("content-desc") for node in ET.fromstring(last_dump).iter("node")]
+                print("Тексты на экране: " + " | ".join(text for text in texts if text))
+            except ET.ParseError:
+                pass
         raise
 
 
