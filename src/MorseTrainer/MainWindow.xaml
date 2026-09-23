@@ -755,9 +755,11 @@
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="90" />
                                 </Grid.ColumnDefinitions>
-                                <CheckBox x:Name="ReminderCheckBox" Content="{loc:Loc 'Напоминать уведомлением Windows'}" VerticalAlignment="Center"
+                                <CheckBox x:Name="ReminderCheckBox" VerticalAlignment="Center" Margin="0,0,8,0"
                                           Checked="ReminderOption_OnChanged" Unchecked="ReminderOption_OnChanged"
-                                          ToolTip="{loc:Loc 'Каждый день в выбранное время, если вы ещё не занимались. Уведомление приходит, пока программа открыта (можно свернуть).'}" />
+                                          ToolTip="{loc:Loc 'Каждый день в выбранное время, если вы ещё не занимались. Уведомление приходит, пока программа открыта (можно свернуть).'}">
+                                    <TextBlock Text="{loc:Loc 'Напоминать уведомлением Windows'}" TextWrapping="Wrap" />
+                                </CheckBox>
                                 <ComboBox x:Name="ReminderTimeCombo" Grid.Column="1" SelectionChanged="ReminderOption_OnChanged" />
                             </Grid>
                             <TextBlock Text="{loc:Loc 'По дням'}" FontSize="18" FontWeight="SemiBold" />

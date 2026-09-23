@@ -574,7 +574,7 @@ public partial class MainWindow : Window
             .OrderByDescending(item => item.CompletedAt)
             .Take(50)
             .Select(item => new HistoryRow(
-                item.CompletedAt.ToString("dd.MM.yyyy HH:mm", CultureInfo.CurrentCulture),
+                item.CompletedAt.ToString("dd.MM.yy HH:mm", CultureInfo.CurrentCulture),
                 (item.IsExam ? Texts.F("{0} · экзамен", item.ProfileName) : item.ProfileName) +
                 (item.CourseStep > 0 ? Texts.F(" · шаг {0}", item.CourseStep) : string.Empty),
                 Texts.F("{0} зн/мин", item.CharactersPerMinute),
@@ -1048,7 +1048,7 @@ public partial class MainWindow : Window
     }
 
     // Колонки истории делят ширину таблицы по долям — без горизонтальной прокрутки на маленьком окне
-    private static readonly double[] HistoryColumnShares = { 0.19, 0.19, 0.14, 0.08, 0.12, 0.28 };
+    private static readonly double[] HistoryColumnShares = { 0.21, 0.22, 0.13, 0.09, 0.14, 0.21 };
 
     private void HistoryListView_OnSizeChanged(object sender, SizeChangedEventArgs e)
     {

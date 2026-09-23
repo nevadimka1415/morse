@@ -13,9 +13,8 @@
         <SolidColorBrush x:Key="BorderBrush" Color="#303548" />
         <SolidColorBrush x:Key="DangerBrush" Color="#FF7B8A" />
 
-        <Style TargetType="TextBlock">
-            <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
-        </Style>
+        <!-- Неявного стиля для TextBlock нет намеренно: он перебивал цвет текста внутри кнопок, списков и подсказок
+             (в тёмной теме белый текст на мятной кнопке и на светлом списке). Цвет наследуется от окна и элемента -->
 
         <Style TargetType="Label">
             <Setter Property="Foreground" Value="{DynamicResource MutedTextBrush}" />
