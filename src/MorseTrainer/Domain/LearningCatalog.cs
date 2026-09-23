@@ -6,7 +6,7 @@ namespace MorseTrainer.Domain;
 public sealed record LearningSymbolItem(char Symbol, string Code, string Chant, string Category, bool IsCustom = false)
 {
     /// <summary>Подпись под напевом: раздел и пометка своего напева.</summary>
-    public string CategoryLabel => IsCustom ? Category + " · " + Texts.T("свой напев") : Category;
+    public string CategoryLabel => IsCustom ? Texts.T(Category) + " · " + Texts.T("свой напев") : Texts.T(Category);
 }
 
 public static class LearningCatalog

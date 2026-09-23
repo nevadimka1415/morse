@@ -959,6 +959,9 @@ static void TestCustomChantsAndVoice()
         Assert(LearningCatalog.GetItems(0).First(item => item.Symbol == 'А').IsCustom && !LearningCatalog.GetItems(0).First(item => item.Symbol == 'Б').IsCustom,
             "Only the edited card is custom.");
         Assert(LearningCatalog.BuiltInChant('А') == "ай-даа", "Built-in chant must stay available.");
+        Texts.Apply(AppLanguage.English);
+        Assert(card.CategoryLabel == "Russian letters · custom chant", "Card category must follow the language: " + card.CategoryLabel);
+        Texts.Apply(AppLanguage.Russian);
     }
     finally
     {

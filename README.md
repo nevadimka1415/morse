@@ -64,7 +64,7 @@
 
 ## Скриншоты
 
-Снимки окна Windows делает дымовой UI-тест в CI (`docs/screenshots`, обновляются вручную из артефакта `MorseTrainer-Screenshots`).
+Снимки окна Windows делает дымовой UI-тест в CI (артефакт `MorseTrainer-Screenshots`), снимки телефона — дымовой тест на Android-эмуляторе (`MorseTrainer-Screenshots-Android`); в `docs/screenshots` они обновляются вручную.
 
 | Тренировка | Обучение |
 |---|---|
@@ -74,7 +74,17 @@
 |---|---|
 | ![Передача](docs/screenshots/keyer.png) | ![Прогресс](docs/screenshots/progress.png) |
 
-Английский интерфейс: [training-en.png](docs/screenshots/training-en.png).
+| Английский интерфейс, тёмная тема | Свёрнутая панель параметров |
+|---|---|
+| ![Training, dark](docs/screenshots/training-en.png) | ![Компактный вид](docs/screenshots/training-compact.png) |
+
+Ещё: [обучение на английском в тёмной теме](docs/screenshots/learning-en.png).
+
+Телефон (Android, снимки дымового теста на эмуляторе, язык системы — английский):
+
+| Тренировка | Обучение и курс | Прогресс |
+|---|---|---|
+| ![Phone training](docs/screenshots/phone-training.png) | ![Phone learning](docs/screenshots/phone-learning.png) | ![Phone progress](docs/screenshots/phone-progress.png) |
 
 ## Скачать готовую программу
 
@@ -96,8 +106,11 @@
 | Клавиша | Действие |
 |---|---|
 | `Ctrl+G` | Создать новое задание |
+| `Ctrl+E` | Экзамен |
+| `Ctrl+K` | Вкладка «Передача» |
 | `F5` | Воспроизвести или повторить |
 | `Esc` | Остановить воспроизведение |
+| `Пробел` | Ключ на вкладке «Передача» |
 
 ## Сборка на Windows
 
