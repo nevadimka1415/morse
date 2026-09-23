@@ -85,7 +85,7 @@ const requiredFiles = [
   '.github/dependabot.yml',
   'docs/RUSTORE.md',
   'docs/WINGET.md',
-  'scripts/import-voice.sh',
+  'scripts/import-voice.py',
   'scripts/winget-manifests.ps1',
   '.github/workflows/winget.yml',
   'tests/android-smoke.py'
