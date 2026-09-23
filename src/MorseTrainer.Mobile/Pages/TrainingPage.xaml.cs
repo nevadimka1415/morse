@@ -176,6 +176,12 @@ public partial class TrainingPage : ContentPage
         {
             PlaybackStatusLabel.Text = Texts.T("Воспроизведение остановлено");
         }
+        catch (Exception exception)
+        {
+            // Сбой звука (MediaPlayer, запись файла) не должен ронять приложение из async void
+            PlaybackStatusLabel.Text = Texts.T("Не удалось воспроизвести");
+            await DisplayAlertAsync(Texts.T("Не удалось воспроизвести"), exception.Message, Texts.T("Закрыть"));
+        }
         finally
         {
             _playbackCancellation?.Dispose();

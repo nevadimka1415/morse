@@ -137,7 +137,7 @@ dotnet run --project .\tests\MorseTrainer.Tests\MorseTrainer.Tests.csproj -c Rel
 - `src/MorseTrainer.Core` — общая логика Морзе, используемая мобильным приложением;
 - `Domain` — алфавиты, напевы, генерация задания и проверка ответа;
 - `Services` — синтез WAV, встроенный голос, темы, профили и хранение локальных настроек;
-- `tests` — автономные проверки основной логики (`MorseTrainer.Tests`) и дымовой UI-тест Windows (`MorseTrainer.UiSmoke`);
+- `tests` — автономные проверки основной логики (`MorseTrainer.Tests`), дымовой UI-тест Windows (`MorseTrainer.UiSmoke`) и дымовой тест APK на Android-эмуляторе (`android-smoke.py`, скриншоты — в артефакте `MorseTrainer-Screenshots-Android`);
 - `installer` — сценарий установщика Inno Setup;
 - `.github/workflows` — сборка EXE и публикация Releases.
 
