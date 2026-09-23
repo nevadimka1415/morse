@@ -229,8 +229,8 @@ assert(read('src/MorseTrainer.Mobile/Pages/SettingsPage.xaml').includes('x:Name=
 assert(read('src/MorseTrainer/App.xaml').includes('TargetType="GridViewColumnHeader"'), 'History table header must follow the theme.');
 assert(!read('src/MorseTrainer/App.xaml').includes('<Style TargetType="TextBlock">'),
   'No implicit TextBlock style: it overrides text colour inside buttons, combo boxes and tooltips (unreadable in the dark theme).');
-assert(!/<Style TargetType="TabItem">\s*<Setter Property="Foreground"/.test(read('src/MorseTrainer/App.xaml')),
-  'TabItem must not set Foreground: tab content inherits it (all text of the selected tab turns green).');
+assert(/<Style TargetType="TabItem">\s*<Setter Property="Foreground" Value="\{DynamicResource TextBrush\}" \/>/.test(read('src/MorseTrainer/App.xaml')),
+  'TabItem Foreground must stay TextBrush: tab content inherits it (black from the system theme, green when selected).');
 assert(read('src/MorseTrainer/MainWindow.xaml.cs').includes('DownloadAndRunInstallerAsync'), 'Windows update must download and run the installer.');
 assert(read('src/MorseTrainer.Mobile/MorseTrainer.Mobile.csproj').includes('<AndroidLinkTool>r8</AndroidLinkTool>'), 'Android release build must use R8.');
 assert(read('README.md').includes('actions/workflows/build.yml/badge.svg'), 'README must show the build status badges.');

@@ -169,9 +169,10 @@
             </Setter>
         </Style>
 
-        <!-- Цвет задаётся только заголовку вкладки (TextElement.Foreground в шаблоне): Foreground самой вкладки
-             наследует её содержимое, и весь текст выбранной вкладки стал бы зелёным -->
+        <!-- Foreground вкладки наследует её содержимое, поэтому он всегда основной цвет текста (иначе системная тема
+             даёт чёрный, а зелёный выбранной вкладки перекрасил бы весь текст); цвет заголовка — TextElement.Foreground в шаблоне -->
         <Style TargetType="TabItem">
+            <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
             <Setter Property="Background" Value="{DynamicResource CardBrush}" />
             <Setter Property="Padding" Value="20,9" />
             <Setter Property="Margin" Value="0,0,8,0" />
