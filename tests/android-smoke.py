@@ -250,18 +250,22 @@ def play_and_stop():
 
 def open_tab(key, titles):
     def action():
-        root, parents = dump_ui()
-        node = tab_node(root, parents, titles)
-        if node is None:
-            raise RuntimeError(f"Не найдена вкладка {titles}")
-        tap(node)
-        time.sleep(3)
-        ensure_alive()
-        root, parents = dump_ui()
-        node = tab_node(root, parents, titles)
-        selected = node is not None and is_selected(node, parents)
+        # Нажатие может съесть системное окно «не отвечает» — пробуем до трёх раз, пока вкладка не станет выбранной
+        for attempt in range(1, 4):
+            root, parents = dump_ui()
+            node = tab_node(root, parents, titles)
+            if node is None:
+                raise RuntimeError(f"Не найдена вкладка {titles}")
+            tap(node)
+            time.sleep(3)
+            ensure_alive()
+            root, parents = dump_ui()
+            node = tab_node(root, parents, titles)
+            if node is not None and is_selected(node, parents):
+                screenshot(key)
+                return "вкладка выбрана" + (f" с попытки {attempt}" if attempt > 1 else "")
         screenshot(key)
-        return "вкладка выбрана" if selected else "вкладка открыта (признак selected не найден)"
+        raise RuntimeError(f"Вкладка {titles[0]} не выбралась за три нажатия")
     return action
 
 
@@ -283,8 +287,10 @@ def main():
     exit_code = 0
     try:
         adb("wait-for-device", timeout=300)
-        # Сразу после загрузки лаунчер эмулятора нередко «не отвечает» — даём системе успокоиться
+        # Сразу после загрузки лаунчер эмулятора нередко «не отвечает» — даём системе успокоиться и прячем
+        # системные окна ошибок: они перекрывают экран, а падения приложения тест ловит по logcat
         time.sleep(20)
+        adb("shell", "settings", "put", "global", "hide_error_dialogs", "1", check=False)
         step("Установка APK", lambda: (adb("install", "-r", "-g", str(apk), timeout=300), f"{apk.name}, {apk.stat().st_size // 1024} КБ")[1])
         adb("logcat", "-b", "all", "-c", check=False)
         step("Запуск MainActivity", launch)
