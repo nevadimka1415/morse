@@ -12,12 +12,30 @@ namespace MorseTrainer.Mobile.Pages;
 public partial class ProgressPage : ContentPage
 {
     private readonly TrainingHistoryStore _historyStore;
+    private readonly MobileSettingsService _settingsService;
     private bool _refreshingFilter;
+    private bool _loadingGoal;
 
-    public ProgressPage(TrainingHistoryStore historyStore)
+    public ProgressPage(TrainingHistoryStore historyStore, MobileSettingsService settingsService)
     {
         InitializeComponent();
         _historyStore = historyStore;
+        _settingsService = settingsService;
+        GoalPicker.ItemsSource = TrainingStatistics.DailyGoalChoices
+            .Select(minutes => minutes == 0 ? Texts.T("без цели") : Texts.F("{0} мин", minutes)).ToList();
+    }
+
+    private void GoalPicker_OnChanged(object sender, EventArgs e)
+    {
+        if (_loadingGoal || GoalPicker.SelectedIndex < 0)
+        {
+            return;
+        }
+
+        var settings = _settingsService.LoadSettings();
+        settings.DailyGoalMinutes = TrainingStatistics.DailyGoalChoices[GoalPicker.SelectedIndex];
+        _settingsService.SaveSettings(settings);
+        Refresh();
     }
 
     protected override void OnAppearing()
@@ -94,7 +112,19 @@ public partial class ProgressPage : ContentPage
         ExamSeriesLabel.IsVisible = !exams.IsEmpty;
         ExamSeriesLabel.Text = exams.Describe();
 
-        while (DailyLayout.Children.Count > 1)
+        var goalMinutes = TrainingStatistics.ClampGoal(_settingsService.LoadSettings().DailyGoalMinutes);
+        _loadingGoal = true;
+        GoalPicker.SelectedIndex = Math.Max(0, TrainingStatistics.DailyGoalChoices.ToList().IndexOf(goalMinutes));
+        _loadingGoal = false;
+        var today = DateOnly.FromDateTime(DateTime.Now);
+        var goal = TrainingStatistics.Goal(records, goalMinutes, today);
+        GoalLabel.Text = goal.Describe();
+        GoalBar.IsVisible = goal.IsEnabled;
+        GoalBar.Progress = goal.Progress;
+        StreakLabel.Text = TrainingStatistics.Streak(records, today).Describe();
+
+        // Первые две строки раздела — заголовок и подсказка
+        while (DailyLayout.Children.Count > 2)
         {
             DailyLayout.Children.RemoveAt(DailyLayout.Children.Count - 1);
         }
@@ -107,16 +137,44 @@ public partial class ProgressPage : ContentPage
 
         foreach (var day in days)
         {
-            var filled = (int)Math.Round(day.AverageAccuracy / 10);
-            var bar = new string('█', filled) + new string('░', 10 - filled);
+            var met = goal.IsEnabled && day.Minutes >= goal.GoalMinutes ? " ✓" : string.Empty;
             DailyLayout.Children.Add(new Label
             {
-                Text = $"{day.Date:dd.MM}  {bar}  {day.AverageAccuracy:0.#}% · {day.Sessions}",
+                Text = $"{day.Date:dd.MM}  {TextBar(day.AverageAccuracy / 100)}  {day.AverageAccuracy:0.#}% · {day.Sessions} · {day.Minutes:0}{met}",
+                FontFamily = "monospace"
+            });
+        }
+
+        while (SpeedLayout.Children.Count > 2)
+        {
+            SpeedLayout.Children.RemoveAt(SpeedLayout.Children.Count - 1);
+        }
+
+        var speeds = TrainingStatistics.SpeedByDay(records);
+        if (speeds.Count == 0)
+        {
+            SpeedLayout.Children.Add(new Label { Text = Texts.T("Пока нет заданий с точностью от 90 %"), Opacity = 0.65, LineBreakMode = LineBreakMode.WordWrap });
+        }
+
+        // Полосы скорости — относительно лучшего дня, чтобы рост был виден и на малых скоростях
+        var fastest = speeds.Count == 0 ? 1 : speeds.Max(item => item.CharactersPerMinute);
+        foreach (var speed in speeds)
+        {
+            SpeedLayout.Children.Add(new Label
+            {
+                Text = $"{speed.Date:dd.MM}  {TextBar((double)speed.CharactersPerMinute / fastest)}  " + Texts.F("{0} зн/мин", speed.CharactersPerMinute),
                 FontFamily = "monospace"
             });
         }
 
         HistoryView.ItemsSource = records.OrderByDescending(item => item.CompletedAt).Take(30).ToList();
+    }
+
+    /// <summary>Текстовая полоса из десяти клеток для доли 0…1.</summary>
+    private static string TextBar(double fraction)
+    {
+        var filled = (int)Math.Round(Math.Clamp(fraction, 0, 1) * 10);
+        return new string('█', filled) + new string('░', 10 - filled);
     }
 
     private async void ClearButton_OnClicked(object sender, EventArgs e)

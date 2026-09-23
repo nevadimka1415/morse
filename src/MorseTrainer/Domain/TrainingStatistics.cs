@@ -13,7 +13,34 @@ public sealed record HistorySummary(
     int TotalSymbols,
     int CorrectSymbols);
 
-public sealed record DailyProgress(DateOnly Date, int Sessions, double AverageAccuracy);
+public sealed record DailyProgress(DateOnly Date, int Sessions, double AverageAccuracy, double Minutes = 0);
+
+/// <summary>Лучшая скорость дня среди заданий с точностью от SpeedAccuracyThreshold.</summary>
+public sealed record DailySpeed(DateOnly Date, int CharactersPerMinute);
+
+/// <summary>Дни подряд с тренировкой: текущая серия (до сегодня или вчера) и рекорд.</summary>
+public sealed record PracticeStreak(int Current, int Best, bool TrainedToday)
+{
+    public string Describe() => Texts.F("Дней подряд: {0} · рекорд {1}", Current, Best) +
+                                (Current > 0 && !TrainedToday ? Texts.T(" · сегодня ещё не занимались") : string.Empty);
+}
+
+/// <summary>Цель «минут в день» и сколько набрано сегодня.</summary>
+public sealed record DailyGoal(int GoalMinutes, double TodayMinutes)
+{
+    public bool IsEnabled => GoalMinutes > 0;
+
+    public bool IsMet => IsEnabled && TodayMinutes >= GoalMinutes;
+
+    /// <summary>Доля выполнения 0…1 для полосы.</summary>
+    public double Progress => IsEnabled ? Math.Min(1, TodayMinutes / GoalMinutes) : 0;
+
+    public string Describe() => !IsEnabled
+        ? Texts.F("Сегодня: {0:0.#} мин · цель не задана", TodayMinutes)
+        : IsMet
+            ? Texts.F("Сегодня: {0:0.#} из {1} мин — цель выполнена ✓", TodayMinutes, GoalMinutes)
+            : Texts.F("Сегодня: {0:0.#} из {1} мин", TodayMinutes, GoalMinutes);
+}
 
 public sealed record ProblemSymbolCount(char Symbol, int Count);
 
@@ -51,19 +78,32 @@ public static class TrainingStatistics
 {
     public const int MaxRecords = 500;
 
+    /// <summary>Потолок времени одного задания: забытое на час задание не засчитывается часом тренировки.</summary>
+    public const int MaxTaskMinutes = 30;
+
+    /// <summary>Скорость дня считается только по заданиям с такой точностью и выше.</summary>
+    public const double SpeedAccuracyThreshold = 90;
+
+    /// <summary>Варианты цели на день в минутах; 0 — без цели.</summary>
+    public static readonly IReadOnlyList<int> DailyGoalChoices = new[] { 0, 5, 10, 15, 20, 30, 45, 60 };
+
+    public static int ClampGoal(int minutes) => Math.Clamp(minutes, 0, DailyGoalChoices[^1]);
+
     public static TrainingRecord CreateRecord(
         DateTime completedAt,
         string profileName,
         int charactersPerMinute,
         int groupCount,
         EvaluationResult result,
-        bool isExam = false)
+        bool isExam = false,
+        TimeSpan? duration = null)
     {
         ArgumentNullException.ThrowIfNull(result);
         return new TrainingRecord
         {
             CompletedAt = completedAt,
             IsExam = isExam,
+            DurationSeconds = duration is null ? 0 : (int)Math.Round(Math.Clamp(duration.Value.TotalSeconds, 0, MaxTaskMinutes * 60)),
             ProfileName = string.IsNullOrWhiteSpace(profileName) ? "Основной" : profileName.Trim(),
             CharactersPerMinute = charactersPerMinute,
             GroupCount = groupCount,
@@ -220,13 +260,85 @@ public static class TrainingStatistics
         return needsQuotes ? "\"" + value.Replace("\"", "\"\"") + "\"" : value;
     }
 
+    /// <summary>
+    /// Минуты тренировки по записи: замер от создания задания до проверки, а для старых записей без замера —
+    /// время звучания задания (символов / скорость).
+    /// </summary>
+    public static double PracticeMinutes(TrainingRecord record)
+    {
+        ArgumentNullException.ThrowIfNull(record);
+        if (record.DurationSeconds > 0)
+        {
+            return record.DurationSeconds / 60.0;
+        }
+
+        return record.CharactersPerMinute > 0 ? (double)record.TotalCount / record.CharactersPerMinute : 0;
+    }
+
+    /// <summary>Лучшая скорость по дням (задания с точностью от SpeedAccuracyThreshold), последние days дней с такими заданиями.</summary>
+    public static IReadOnlyList<DailySpeed> SpeedByDay(IReadOnlyList<TrainingRecord> records, int days = 14)
+    {
+        ArgumentNullException.ThrowIfNull(records);
+        return records
+            .Where(item => item.AccuracyPercent >= SpeedAccuracyThreshold && item.CharactersPerMinute > 0)
+            .GroupBy(item => DateOnly.FromDateTime(item.CompletedAt))
+            .Select(group => new DailySpeed(group.Key, group.Max(item => item.CharactersPerMinute)))
+            .OrderByDescending(item => item.Date)
+            .Take(Math.Max(1, days))
+            .OrderBy(item => item.Date)
+            .ToArray();
+    }
+
+    /// <summary>Серия дней подряд: считается до сегодня, а если сегодня ещё не занимались — до вчера.</summary>
+    public static PracticeStreak Streak(IReadOnlyList<TrainingRecord> records, DateOnly today)
+    {
+        ArgumentNullException.ThrowIfNull(records);
+        var days = records.Select(item => DateOnly.FromDateTime(item.CompletedAt)).ToHashSet();
+        var best = 0;
+        foreach (var day in days)
+        {
+            // Начало серии — день, перед которым тренировки не было
+            if (days.Contains(day.AddDays(-1)))
+            {
+                continue;
+            }
+
+            var length = 1;
+            while (days.Contains(day.AddDays(length)))
+            {
+                length++;
+            }
+
+            best = Math.Max(best, length);
+        }
+
+        var trainedToday = days.Contains(today);
+        var cursor = trainedToday ? today : today.AddDays(-1);
+        var current = 0;
+        while (days.Contains(cursor))
+        {
+            current++;
+            cursor = cursor.AddDays(-1);
+        }
+
+        return new PracticeStreak(current, best, trainedToday);
+    }
+
+    public static DailyGoal Goal(IReadOnlyList<TrainingRecord> records, int goalMinutes, DateOnly today)
+    {
+        ArgumentNullException.ThrowIfNull(records);
+        var minutes = records.Where(item => DateOnly.FromDateTime(item.CompletedAt) == today).Sum(PracticeMinutes);
+        return new DailyGoal(ClampGoal(goalMinutes), Math.Round(minutes, 1));
+    }
+
     /// <summary>Последние дни с тренировками (не больше days), от старых к новым.</summary>
     public static IReadOnlyList<DailyProgress> ByDay(IReadOnlyList<TrainingRecord> records, int days = 14)
     {
         ArgumentNullException.ThrowIfNull(records);
         return records
             .GroupBy(item => DateOnly.FromDateTime(item.CompletedAt))
-            .Select(group => new DailyProgress(group.Key, group.Count(), Math.Round(group.Average(item => item.AccuracyPercent), 1)))
+            .Select(group => new DailyProgress(group.Key, group.Count(), Math.Round(group.Average(item => item.AccuracyPercent), 1),
+                Math.Round(group.Sum(PracticeMinutes), 1)))
             .OrderByDescending(item => item.Date)
             .Take(Math.Max(1, days))
             .OrderBy(item => item.Date)

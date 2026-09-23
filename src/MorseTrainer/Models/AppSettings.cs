@@ -24,6 +24,8 @@ public sealed class AppSettings
     // Экзамен: разрешённые прослушивания (1–3) и лимит времени в минутах (0 — без лимита)
     public int ExamPlaybacks { get; set; } = 1;
     public int ExamTimeLimitMinutes { get; set; }
+    // Цель на день в минутах тренировки (0 — без цели)
+    public int DailyGoalMinutes { get; set; } = 10;
     // Напоминание о тренировке на телефоне: включено и время дня в минутах от полуночи
     public bool ReminderEnabled { get; set; }
     public int ReminderMinutes { get; set; } = 19 * 60;

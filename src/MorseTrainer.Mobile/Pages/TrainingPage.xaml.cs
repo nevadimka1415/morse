@@ -13,6 +13,7 @@ public partial class TrainingPage : ContentPage
     private readonly MobileSettingsService _settingsService;
     private readonly TrainingHistoryStore _historyStore;
     private bool _currentTaskRecorded;
+    private DateTime _currentTaskStartedAt = DateTime.Now;
     private ExamSession? _exam;
     private DrillPlan? _currentDrill;
     private string? _examReport;
@@ -122,6 +123,7 @@ public partial class TrainingPage : ContentPage
                 : TrainingGenerator.Generate(pool, Math.Clamp(settings.GroupCount, 1, 100), emphasized);
             _currentDrill = drill;
             _currentTaskRecorded = false;
+            _currentTaskStartedAt = DateTime.Now;
             _currentGroupCount = Math.Clamp(settings.GroupCount, 1, 100);
             _currentClip = await Task.Run(() => MorseAudioService.Render(
                 _currentTask,
@@ -252,7 +254,7 @@ public partial class TrainingPage : ContentPage
             _currentTaskRecorded = true;
             var settings = _settingsService.LoadSettings();
             var history = _historyStore.Add(TrainingStatistics.CreateRecord(DateTime.Now, settings.ActiveProfileName,
-                settings.CharactersPerMinute, _currentGroupCount, result, examResult is not null));
+                settings.CharactersPerMinute, _currentGroupCount, result, examResult is not null, DateTime.Now - _currentTaskStartedAt));
             UpdateHistoryLabel();
             // Лестница скорости: новая скорость сохраняется в настройки и попадёт в следующее задание
             if (settings.AutoSpeed)

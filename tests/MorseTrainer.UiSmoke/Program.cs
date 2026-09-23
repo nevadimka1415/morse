@@ -200,6 +200,10 @@ public static class Program
             Check(window.ProgressSessionsText.Text == "2" && window.ProgressBestText.Text == "100%", "progress summary shows two sessions, best 100%");
             Check(window.DailyBarsPanel.Children.Count == 1, "daily bars show one day");
             Check(window.ExamSeriesText.Text == Texts.T("Экзаменов пока нет"), "exam series is empty: " + window.ExamSeriesText.Text);
+            Check(window.StreakText.Text == Texts.F("Дней подряд: {0} · рекорд {1}", 1, 1), "streak counts today: " + window.StreakText.Text);
+            Check(window.DailyGoalCombo.SelectedIndex > 0 && window.GoalText.Text.Length > 0 && window.GoalProgress.Visibility == Visibility.Visible,
+                "daily goal is set by default: " + window.GoalText.Text);
+            Check(window.SpeedBarsPanel.Children.Count == 1, "speed bars show one day");
             SaveScreenshot(window, screenshots, "progress-" + suffix);
 
             window.MainTabs.SelectedIndex = 0;

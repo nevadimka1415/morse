@@ -23,4 +23,7 @@ public sealed class TrainingRecord
 
     /// <summary>Ожидавшиеся символы, в которых была ошибка, по одному на каждую ошибку.</summary>
     public string ProblemSymbols { get; set; } = string.Empty;
+
+    /// <summary>Сколько секунд заняло задание: от создания до проверки, не больше 30 мин; 0 — запись до версии 2.5.0.</summary>
+    public int DurationSeconds { get; set; }
 }

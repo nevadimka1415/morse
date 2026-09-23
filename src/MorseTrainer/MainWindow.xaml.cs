@@ -29,6 +29,7 @@ public partial class MainWindow : Window
     private readonly TrainingHistoryStore _historyStore = new(AppPaths.HistoryFile);
     private IReadOnlyList<TrainingRecord> _history = Array.Empty<TrainingRecord>();
     private bool _currentTaskRecorded;
+    private DateTime _currentTaskStartedAt = DateTime.Now;
     private ExamSession? _exam;
     private DrillPlan? _currentDrill;
     private DispatcherTimer? _examTimer;
@@ -76,6 +77,9 @@ public partial class MainWindow : Window
         // Варианты лимита экзамена переводятся кодом: до ApplySettings, который выбирает сохранённый
         ExamLimitCombo.ItemsSource = ExamSession.TimeLimitChoices
             .Select(minutes => minutes == 0 ? Texts.T("без лимита") : Texts.F("{0} мин", minutes))
+            .ToArray();
+        DailyGoalCombo.ItemsSource = TrainingStatistics.DailyGoalChoices
+            .Select(minutes => minutes == 0 ? Texts.T("без цели") : Texts.F("{0} мин", minutes))
             .ToArray();
         ApplyWindowBounds(_settingsService.Load());
     }
@@ -339,50 +343,94 @@ public partial class MainWindow : Window
                 item.ProblemSymbols.Length == 0 ? "—" : string.Join(" ", item.ProblemSymbols.Distinct())))
             .ToList();
 
+        var today = DateOnly.FromDateTime(DateTime.Now);
+        var goal = TrainingStatistics.Goal(history, SelectedDailyGoal, today);
+        GoalText.Text = goal.Describe();
+        GoalText.Foreground = (Brush)FindResource(goal.IsMet ? "PrimaryBrush" : "TextBrush");
+        GoalProgress.Value = goal.Progress * 100;
+        GoalProgress.Visibility = goal.IsEnabled ? Visibility.Visible : Visibility.Collapsed;
+        StreakText.Text = TrainingStatistics.Streak(history, today).Describe();
+
         DailyBarsPanel.Children.Clear();
         var days = TrainingStatistics.ByDay(history);
         if (days.Count == 0)
         {
             DailyBarsPanel.Children.Add(new TextBlock { Text = Texts.T("Пока пусто"), Foreground = (Brush)FindResource("MutedTextBrush") });
-            return;
         }
 
         foreach (var day in days)
         {
-            var row = new Grid { Margin = new Thickness(0, 0, 0, 6) };
-            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(48) });
-            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(78) });
-            var label = new TextBlock { Text = day.Date.ToString("dd.MM", CultureInfo.CurrentCulture), VerticalAlignment = VerticalAlignment.Center };
-            var fill = new Border
+            var met = goal.IsEnabled && day.Minutes >= goal.GoalMinutes ? " ✓" : string.Empty;
+            AddBarRow(DailyBarsPanel, day.Date, day.AverageAccuracy / 100,
+                $"{day.AverageAccuracy:0.#}% · {day.Sessions} · {day.Minutes:0}{met}");
+        }
+
+        SpeedBarsPanel.Children.Clear();
+        var speeds = TrainingStatistics.SpeedByDay(history);
+        if (speeds.Count == 0)
+        {
+            SpeedBarsPanel.Children.Add(new TextBlock
             {
-                Background = (Brush)FindResource("PrimaryBrush"),
-                CornerRadius = new CornerRadius(5),
-                Height = 12,
-                HorizontalAlignment = HorizontalAlignment.Left,
-                Width = Math.Max(4, 220 * day.AverageAccuracy / 100)
-            };
-            var track = new Border
-            {
-                Background = (Brush)FindResource("CardAltBrush"),
-                CornerRadius = new CornerRadius(5),
-                Height = 12,
-                VerticalAlignment = VerticalAlignment.Center,
-                Child = fill
-            };
-            var value = new TextBlock
-            {
-                Text = $"{day.AverageAccuracy:0.#}% · {day.Sessions}",
-                VerticalAlignment = VerticalAlignment.Center,
-                HorizontalAlignment = HorizontalAlignment.Right,
-                Foreground = (Brush)FindResource("MutedTextBrush")
-            };
-            Grid.SetColumn(track, 1);
-            Grid.SetColumn(value, 2);
-            row.Children.Add(label);
-            row.Children.Add(track);
-            row.Children.Add(value);
-            DailyBarsPanel.Children.Add(row);
+                Text = Texts.T("Пока нет заданий с точностью от 90 %"),
+                Foreground = (Brush)FindResource("MutedTextBrush"),
+                TextWrapping = TextWrapping.Wrap
+            });
+        }
+
+        // Полосы скорости — относительно лучшего дня в окне, чтобы рост был виден и на малых скоростях
+        var fastest = speeds.Count == 0 ? 1 : speeds.Max(item => item.CharactersPerMinute);
+        foreach (var speed in speeds)
+        {
+            AddBarRow(SpeedBarsPanel, speed.Date, (double)speed.CharactersPerMinute / fastest, Texts.F("{0} зн/мин", speed.CharactersPerMinute));
+        }
+    }
+
+    private int SelectedDailyGoal => TrainingStatistics.DailyGoalChoices[Math.Clamp(DailyGoalCombo.SelectedIndex, 0, TrainingStatistics.DailyGoalChoices.Count - 1)];
+
+    /// <summary>Строка полосы: дата, заполненная доля 0…1 и подпись справа.</summary>
+    private void AddBarRow(Panel panel, DateOnly date, double fraction, string valueText)
+    {
+        var row = new Grid { Margin = new Thickness(0, 0, 0, 6) };
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(48) });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(130) });
+        var label = new TextBlock { Text = date.ToString("dd.MM", CultureInfo.CurrentCulture), VerticalAlignment = VerticalAlignment.Center };
+        // Доля задаётся звёздными колонками: полоса тянется вместе с окном
+        var fill = new Border { Background = (Brush)FindResource("PrimaryBrush"), CornerRadius = new CornerRadius(5), MinWidth = 4 };
+        var bar = new Grid();
+        var share = Math.Clamp(fraction, 0.02, 1);
+        bar.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(share, GridUnitType.Star) });
+        bar.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1 - share + 0.0001, GridUnitType.Star) });
+        bar.Children.Add(fill);
+        var track = new Border
+        {
+            Background = (Brush)FindResource("CardAltBrush"),
+            CornerRadius = new CornerRadius(5),
+            Height = 12,
+            VerticalAlignment = VerticalAlignment.Center,
+            Child = bar
+        };
+        var value = new TextBlock
+        {
+            Text = valueText,
+            VerticalAlignment = VerticalAlignment.Center,
+            HorizontalAlignment = HorizontalAlignment.Right,
+            Foreground = (Brush)FindResource("MutedTextBrush")
+        };
+        Grid.SetColumn(track, 1);
+        Grid.SetColumn(value, 2);
+        row.Children.Add(label);
+        row.Children.Add(track);
+        row.Children.Add(value);
+        panel.Children.Add(row);
+    }
+
+    private void DailyGoalCombo_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_windowLoaded)
+        {
+            _settingsService.Save(ReadSettings());
+            RefreshProgress();
         }
     }
 
@@ -777,6 +825,7 @@ public partial class MainWindow : Window
 
             _currentTask = generatedTask;
             _currentTaskRecorded = false;
+            _currentTaskStartedAt = DateTime.Now;
             _currentClip = audio;
             _currentSettings = settings;
             _currentDrill = drill;
@@ -974,7 +1023,8 @@ public partial class MainWindow : Window
             _currentTaskRecorded = true;
             var taskSettings = _currentSettings ?? ReadSettings();
             var record = TrainingStatistics.CreateRecord(DateTime.Now, taskSettings.ActiveProfileName,
-                taskSettings.CharactersPerMinute, _currentTask.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length, result, examResult is not null);
+                taskSettings.CharactersPerMinute, _currentTask.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length, result, examResult is not null,
+                DateTime.Now - _currentTaskStartedAt);
             _history = _historyStore.Add(record);
             RefreshProgress();
             // Лестница скорости: по истории этого профиля
@@ -1580,6 +1630,7 @@ public partial class MainWindow : Window
             AutoSpeed = AutoSpeedCheckBox.IsChecked == true,
             ExamPlaybacks = ExamSession.ClampPlaybacks(ExamPlaybacksCombo.SelectedIndex + 1),
             ExamTimeLimitMinutes = ExamSession.TimeLimitChoices[Math.Clamp(ExamLimitCombo.SelectedIndex, 0, ExamSession.TimeLimitChoices.Count - 1)],
+            DailyGoalMinutes = SelectedDailyGoal,
             GroupCount = groupCount,
             CharactersPerMinute = (int)SpeedSlider.Value,
             FrequencyHz = (int)FrequencySlider.Value,
@@ -1615,6 +1666,7 @@ public partial class MainWindow : Window
         AutoSpeedCheckBox.IsChecked = settings.AutoSpeed;
         ExamPlaybacksCombo.SelectedIndex = ExamSession.ClampPlaybacks(settings.ExamPlaybacks) - 1;
         ExamLimitCombo.SelectedIndex = Math.Max(0, ExamSession.TimeLimitChoices.ToList().IndexOf(ExamSession.ClampTimeLimit(settings.ExamTimeLimitMinutes)));
+        DailyGoalCombo.SelectedIndex = Math.Max(0, TrainingStatistics.DailyGoalChoices.ToList().IndexOf(TrainingStatistics.ClampGoal(settings.DailyGoalMinutes)));
         GroupCountText.Text = Math.Clamp(settings.GroupCount, 1, 100).ToString(CultureInfo.InvariantCulture);
         SpeedSlider.Value = Math.Clamp(settings.CharactersPerMinute, 20, 300);
         FrequencySlider.Value = Math.Clamp(settings.FrequencyHz, 300, 1_200);

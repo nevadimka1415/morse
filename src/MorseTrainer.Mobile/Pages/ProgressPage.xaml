@@ -20,8 +20,28 @@
             </Border>
 
             <Border>
+                <VerticalStackLayout Spacing="8">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <Label Text="{loc:Loc 'Цель в день'}" FontAttributes="Bold" VerticalOptions="Center" />
+                        <Picker x:Name="GoalPicker" Grid.Column="1" MinimumWidthRequest="110" SelectedIndexChanged="GoalPicker_OnChanged" />
+                    </Grid>
+                    <Label x:Name="GoalLabel" Text="" LineBreakMode="WordWrap" />
+                    <ProgressBar x:Name="GoalBar" Progress="0" ProgressColor="{StaticResource Primary}" />
+                    <Label x:Name="StreakLabel" Text="" Opacity="0.65" LineBreakMode="WordWrap" />
+                </VerticalStackLayout>
+            </Border>
+
+            <Border>
                 <VerticalStackLayout x:Name="DailyLayout" Spacing="6">
                     <Label Text="{loc:Loc 'По дням'}" FontAttributes="Bold" />
+                    <Label Text="{loc:Loc 'точность · заданий · минут; ✓ — цель выполнена'}" Opacity="0.65" FontSize="12" />
+                </VerticalStackLayout>
+            </Border>
+
+            <Border>
+                <VerticalStackLayout x:Name="SpeedLayout" Spacing="6">
+                    <Label Text="{loc:Loc 'Скорость по дням'}" FontAttributes="Bold" />
+                    <Label Text="{loc:Loc 'лучшая скорость среди заданий с точностью от 90 %'}" Opacity="0.65" FontSize="12" />
                 </VerticalStackLayout>
             </Border>
 

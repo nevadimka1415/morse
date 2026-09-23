@@ -38,7 +38,8 @@ var tests = new (string Name, Action Run)[]
     ("Progress filter and CSV", TestProgressCsv),
     ("Reminder schedule", TestReminderSchedule),
     ("Problem symbol drill", TestProblemDrill),
-    ("Exam rules and series", TestExamRulesAndSeries)
+    ("Exam rules and series", TestExamRulesAndSeries),
+    ("Daily goal, streak and speed", TestDailyGoalStreakSpeed)
 };
 
 var failures = new List<string>();
@@ -803,6 +804,58 @@ static void TestExamRulesAndSeries()
     Assert(flat.Describe().Contains("ровно"), "A tiny change must be shown as flat: " + flat.Describe());
     var single = TrainingStatistics.Exams(history.Take(1).ToArray());
     Assert(single.Exams.Count == 1 && !single.Describe().Contains("тренд"), "One exam has no trend.");
+}
+
+static void TestDailyGoalStreakSpeed()
+{
+    Texts.Apply(AppLanguage.Russian);
+    var perfect = TrainingEvaluator.Evaluate("АБВГД", "АБВГД");
+    var today = new DateOnly(2026, 9, 23);
+    var noon = today.ToDateTime(new TimeOnly(12, 0));
+    Assert(TrainingStatistics.CreateRecord(noon, "Основной", 60, 1, perfect, duration: TimeSpan.FromSeconds(90)).DurationSeconds == 90, "Duration must be stored in seconds.");
+    Assert(TrainingStatistics.CreateRecord(noon, "Основной", 60, 1, perfect, duration: TimeSpan.FromHours(2)).DurationSeconds == TrainingStatistics.MaxTaskMinutes * 60,
+        "A forgotten task must be capped at MaxTaskMinutes.");
+    Assert(TrainingStatistics.CreateRecord(noon, "Основной", 60, 1, perfect).DurationSeconds == 0, "Duration is optional.");
+    Assert(Math.Abs(TrainingStatistics.PracticeMinutes(new TrainingRecord { DurationSeconds = 120 }) - 2) < 0.001, "Measured minutes are wrong.");
+    Assert(Math.Abs(TrainingStatistics.PracticeMinutes(new TrainingRecord { TotalCount = 90, CharactersPerMinute = 60 }) - 1.5) < 0.001,
+        "Old records without a duration must be estimated by the listening time.");
+    var legacy = System.Text.Json.JsonSerializer.Deserialize<List<TrainingRecord>>("[{\"CompletedAt\":\"2026-09-22T12:00:00\",\"TotalCount\":60,\"CharactersPerMinute\":60}]")!;
+    Assert(legacy[0].DurationSeconds == 0 && Math.Abs(TrainingStatistics.PracticeMinutes(legacy[0]) - 1) < 0.001, "History from 2.4.0 must load without durations.");
+
+    // Цель на день: 5 + 6,5 минут сегодня, вчерашние не считаются
+    var records = new[]
+    {
+        new TrainingRecord { CompletedAt = noon, DurationSeconds = 300, AccuracyPercent = 95, CharactersPerMinute = 60 },
+        new TrainingRecord { CompletedAt = noon.AddHours(1), DurationSeconds = 390, AccuracyPercent = 85, CharactersPerMinute = 80 },
+        new TrainingRecord { CompletedAt = noon.AddDays(-1), DurationSeconds = 600, AccuracyPercent = 92, CharactersPerMinute = 70 },
+        new TrainingRecord { CompletedAt = noon.AddDays(-3), DurationSeconds = 60, AccuracyPercent = 40, CharactersPerMinute = 100 }
+    };
+    var goal = TrainingStatistics.Goal(records, 10, today);
+    Assert(goal.IsMet && Math.Abs(goal.TodayMinutes - 11.5) < 0.01 && goal.Progress == 1, $"Goal of 10 minutes must be met with 11.5: {goal.TodayMinutes}.");
+    Assert(goal.Describe() == "Сегодня: 11,5 из 10 мин — цель выполнена ✓" || goal.Describe() == "Сегодня: 11.5 из 10 мин — цель выполнена ✓", "Goal text is wrong: " + goal.Describe());
+    var harder = TrainingStatistics.Goal(records, 15, today);
+    Assert(!harder.IsMet && Math.Abs(harder.Progress - 11.5 / 15) < 0.01, "Goal progress must be a fraction of the goal.");
+    var none = TrainingStatistics.Goal(records, 0, today);
+    Assert(!none.IsEnabled && none.Describe().Contains("цель не задана"), "Zero goal means no goal.");
+    Assert(TrainingStatistics.ClampGoal(500) == 60 && TrainingStatistics.ClampGoal(-1) == 0, "Goal must be clamped to 0–60.");
+    var byDay = TrainingStatistics.ByDay(records);
+    Assert(Math.Abs(byDay[^1].Minutes - 11.5) < 0.01 && Math.Abs(byDay[^2].Minutes - 10) < 0.01, "Daily minutes are wrong.");
+
+    // Скорость дня — только задания с точностью от 90 %
+    var speeds = TrainingStatistics.SpeedByDay(records);
+    Assert(speeds.Count == 2 && speeds[0].CharactersPerMinute == 70 && speeds[1].CharactersPerMinute == 60 && speeds[1].Date == today,
+        "Speed by day must use the best speed among accurate tasks: " + string.Join(", ", speeds));
+
+    // Серия: сегодня, вчера и три дня назад → текущая 2, рекорд 2
+    var streak = TrainingStatistics.Streak(records, today);
+    Assert(streak.Current == 2 && streak.Best == 2 && streak.TrainedToday, $"Streak is wrong: {streak}.");
+    var yesterdayOnly = TrainingStatistics.Streak(records.Skip(2).ToArray(), today);
+    Assert(yesterdayOnly.Current == 1 && !yesterdayOnly.TrainedToday && yesterdayOnly.Describe().Contains("сегодня ещё не занимались"),
+        "A streak must survive until the end of today: " + yesterdayOnly.Describe());
+    var longAgo = Enumerable.Range(6, 5).Select(days => new TrainingRecord { CompletedAt = noon.AddDays(-days) }).Append(new TrainingRecord { CompletedAt = noon }).ToArray();
+    var broken = TrainingStatistics.Streak(longAgo, today);
+    Assert(broken.Current == 1 && broken.Best == 5 && broken.Describe() == "Дней подряд: 1 · рекорд 5", "Best streak must be kept: " + broken.Describe());
+    Assert(TrainingStatistics.Streak(Array.Empty<TrainingRecord>(), today) == new PracticeStreak(0, 0, false), "Empty history has no streak.");
 }
 
 static void Assert(bool condition, string message)
