@@ -149,6 +149,18 @@ public static class Program
             Check(window.AccuracyText.Text == "—", "accuracy resets for a new task");
             SaveScreenshot(window, screenshots, "training-" + suffix);
 
+            // Повтор сложных символов: ошибка в ответе попадает в историю, кнопка строит задание из неё
+            Click(window.ToggleAnswerButton);
+            var missedTask = window.AnswerDisplayText.Text;
+            var missed = missedTask[0];
+            window.UserAnswerText.Text = (missed == 'Б' ? 'А' : 'Б') + missedTask[1..];
+            Click(window.CheckAnswerButton);
+            Check(window.HistoryListView.Items.Count == 2, "history has two records after a wrong answer");
+            Click(window.DrillButton);
+            WaitUntil(() => window.StatusBadgeText.Text == Texts.T("ГОТОВО") && window.GenerateButton.IsEnabled, "drill task generated");
+            Check(window.TaskMetaText.Text.StartsWith(Texts.T("Повтор сложных · "), StringComparison.Ordinal), "drill task meta: " + window.TaskMetaText.Text);
+            Check(window.ResultDetailsText.Text.Contains(missed), $"drill lists the missed symbol {missed}: " + window.ResultDetailsText.Text);
+
             // Обучение: карточки, поиск, привязки шаблона карточки
             window.MainTabs.SelectedIndex = 1;
             DoEvents();
@@ -182,7 +194,7 @@ public static class Program
             window.MainTabs.SelectedIndex = 3;
             DoEvents();
             WaitUntil(() => FindChildren<TextBlock>(window.HistoryListView).Any(block => block.Text == "100%"), "history row bindings render the accuracy");
-            Check(window.ProgressAverageText.Text == "100%" && window.ProgressBestText.Text == "100%", "progress summary shows 100%");
+            Check(window.ProgressSessionsText.Text == "2" && window.ProgressBestText.Text == "100%", "progress summary shows two sessions, best 100%");
             Check(window.DailyBarsPanel.Children.Count == 1, "daily bars show one day");
             SaveScreenshot(window, screenshots, "progress-" + suffix);
 

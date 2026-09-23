@@ -14,6 +14,7 @@ public partial class TrainingPage : ContentPage
     private readonly TrainingHistoryStore _historyStore;
     private bool _currentTaskRecorded;
     private ExamSession? _exam;
+    private DrillPlan? _currentDrill;
     private string? _examReport;
     private bool _examTimerRunning;
     private int _currentGroupCount;
@@ -74,14 +75,15 @@ public partial class TrainingPage : ContentPage
         await GenerateTaskAsync();
     }
 
-    private async Task GenerateTaskAsync()
+    /// <summary>Новое задание по настройкам; drill — упражнение «Повторить сложные символы» вместо обычного состава.</summary>
+    private async Task GenerateTaskAsync(DrillPlan? drill = null)
     {
         StopPlayback();
         EndExam();
         var settings = _settingsService.LoadSettings();
         var alphabet = (AlphabetMode)Math.Clamp(settings.AlphabetIndex, 0, 2);
         var content = ContentModes.Clamp(settings.ContentModeIndex);
-        var pool = MorseAlphabet.BuildPool(alphabet, content, settings.CustomSymbols, settings.KochLevel);
+        var pool = drill?.Pool ?? MorseAlphabet.BuildPool(alphabet, content, settings.CustomSymbols, settings.KochLevel);
         if (pool.Count == 0)
         {
             await DisplayAlertAsync(Texts.T("Нет символов"), Texts.T("Откройте настройки и выберите хотя бы один символ."), Texts.T("Понятно"));
@@ -94,12 +96,17 @@ public partial class TrainingPage : ContentPage
         {
             // Чаще звучат новый символ метода Коха и символы с ошибками из истории
             var emphasized = new HashSet<char>();
-            if (content == ContentMode.Koch)
+            if (drill is not null)
+            {
+                // Упражнение на ошибки: сами сложные символы звучат втрое чаще похожих на них
+                emphasized.UnionWith(drill.Problems);
+            }
+            else if (content == ContentMode.Koch)
             {
                 emphasized.Add(pool[^1]);
             }
 
-            if (settings.EmphasizeProblemSymbols)
+            if (drill is null && settings.EmphasizeProblemSymbols)
             {
                 foreach (var problem in TrainingStatistics.ProblemSymbols(_historyStore.Load(), 6))
                 {
@@ -110,7 +117,10 @@ public partial class TrainingPage : ContentPage
                 }
             }
 
-            _currentTask = TrainingGenerator.GenerateTask(content, alphabet, pool, Math.Clamp(settings.GroupCount, 1, 100), emphasized);
+            _currentTask = drill is null
+                ? TrainingGenerator.GenerateTask(content, alphabet, pool, Math.Clamp(settings.GroupCount, 1, 100), emphasized)
+                : TrainingGenerator.Generate(pool, Math.Clamp(settings.GroupCount, 1, 100), emphasized);
+            _currentDrill = drill;
             _currentTaskRecorded = false;
             _currentGroupCount = Math.Clamp(settings.GroupCount, 1, 100);
             _currentClip = await Task.Run(() => MorseAudioService.Render(
@@ -126,7 +136,8 @@ public partial class TrainingPage : ContentPage
             _answerVisible = false;
             AnswerEditor.Text = string.Empty;
             AccuracyLabel.Text = Texts.T("Точность: —");
-            ResultLabel.Text = Texts.T("Пробелы между группами не учитываются");
+            ResultLabel.Text = drill?.Describe() ?? Texts.T("Пробелы между группами не учитываются");
+            ResultLabel.ClearValue(Label.TextColorProperty);
             UpdateTaskLabel();
             PlayButton.IsEnabled = true;
             RepeatButton.IsEnabled = true;
@@ -272,7 +283,7 @@ public partial class TrainingPage : ContentPage
         {
             ResultLabel.Text = ExamReport.Summary(examResult);
         }
-        else if (checkedSettings.ContentModeIndex == (int)ContentMode.Koch)
+        else if (_currentDrill is null && checkedSettings.ContentModeIndex == (int)ContentMode.Koch)
         {
             var kochAlphabet = (AlphabetMode)Math.Clamp(checkedSettings.AlphabetIndex, 0, 2);
             ResultLabel.Text += "\n" + KochMethod.Advice(kochAlphabet, checkedSettings.KochLevel, result.AccuracyPercent);
@@ -285,6 +296,22 @@ public partial class TrainingPage : ContentPage
 
         _answerVisible = true;
         UpdateTaskLabel();
+    }
+
+    // ---------- Повтор сложных символов ----------
+
+    private async void DrillButton_OnClicked(object sender, EventArgs e)
+    {
+        var plan = ProblemDrill.Build(_historyStore.Load());
+        if (plan.IsEmpty)
+        {
+            await DisplayAlertAsync(Texts.T("Повторить сложные символы"),
+                Texts.T("Ошибок в истории пока нет. Пройдите несколько заданий: символы, в которых вы ошибётесь, и похожие на них по коду попадут в это упражнение."),
+                Texts.T("Понятно"));
+            return;
+        }
+
+        await GenerateTaskAsync(plan);
     }
 
     // ---------- Экзамен ----------

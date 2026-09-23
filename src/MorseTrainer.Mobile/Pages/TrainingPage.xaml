@@ -28,6 +28,7 @@
                         Clicked="GenerateButton_OnClicked" />
                 <Button x:Name="ExamButton" Grid.Column="2" Text="{loc:Loc 'Экзамен'}" Clicked="ExamButton_OnClicked" />
             </Grid>
+            <Button x:Name="DrillButton" Text="{loc:Loc 'Повторить сложные символы'}" Clicked="DrillButton_OnClicked" />
             <Label x:Name="ExamLabel" Text="" IsVisible="False" FontAttributes="Bold" HorizontalTextAlignment="Center"
                    TextColor="{StaticResource PrimaryDark}" />
 

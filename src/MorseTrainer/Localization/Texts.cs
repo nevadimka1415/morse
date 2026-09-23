@@ -437,6 +437,13 @@ public static class Texts
         ["Позиции ошибок: {0}"] = "Mistake positions: {0}",
         ["Ответ:"] = "Answer:",
         ["{0} · экзамен"] = "{0} · exam",
+        // ---- повтор сложных символов ----
+        ["Повторить сложные символы"] = "Drill problem symbols",
+        ["Задание только из символов, в которых вы чаще всего ошибались в последних 100 заданиях, и похожих на них по коду. Сложные звучат втрое чаще."] = "A task made only of the symbols you missed most often in the last 100 tasks and symbols with similar codes. The problem ones play three times as often.",
+        ["Повтор сложных символов: {0}"] = "Problem symbol drill: {0}",
+        ["Повтор сложных символов: {0} · похожие по коду: {1}"] = "Problem symbol drill: {0} · similar codes: {1}",
+        ["Повтор сложных · "] = "Problem drill · ",
+        ["Ошибок в истории пока нет. Пройдите несколько заданий: символы, в которых вы ошибётесь, и похожие на них по коду попадут в это упражнение."] = "No mistakes in the history yet. Complete a few tasks: the symbols you miss and those with similar codes will go into this drill.",
         // ---- напоминание (телефон) ----
         ["Напоминание"] = "Reminder",
         ["Напоминать о тренировке"] = "Remind me to practice",

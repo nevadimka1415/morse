@@ -23,6 +23,7 @@ const requiredFiles = [
   'src/MorseTrainer/Domain/SpeedLadder.cs',
   'src/MorseTrainer/Domain/KeyerAnalysis.cs',
   'src/MorseTrainer/Domain/ReminderSchedule.cs',
+  'src/MorseTrainer/Domain/ProblemDrill.cs',
   'src/MorseTrainer.Mobile/Services/IReminderService.cs',
   'src/MorseTrainer.Mobile/Services/ReminderTexts.cs',
   'src/MorseTrainer.Mobile/Platforms/Android/ReminderService.cs',
@@ -131,6 +132,7 @@ for (const relativePath of [
   'src/MorseTrainer/Domain/SpeedLadder.cs',
   'src/MorseTrainer/Domain/KeyerAnalysis.cs',
   'src/MorseTrainer/Domain/ReminderSchedule.cs',
+  'src/MorseTrainer/Domain/ProblemDrill.cs',
   'src/MorseTrainer.Mobile/Platforms/Android/ReminderService.cs',
   'src/MorseTrainer.Mobile/Platforms/iOS/ReminderService.cs',
   'src/MorseTrainer.Mobile/Pages/KeyerPage.xaml.cs',
@@ -173,6 +175,8 @@ assert(read('src/MorseTrainer/MainWindow.xaml').includes('x:Name="ProgressProfil
   'Both apps must filter progress by profile.');
 assert(read('src/MorseTrainer/MainWindow.xaml').includes('x:Name="ExportCsvButton"') && read('src/MorseTrainer.Mobile/Pages/ProgressPage.xaml').includes('ShareCsvButton_OnClicked'),
   'Both apps must export the history as CSV.');
+assert(read('src/MorseTrainer/MainWindow.xaml').includes('x:Name="DrillButton"') && read('src/MorseTrainer.Mobile/Pages/TrainingPage.xaml').includes('x:Name="DrillButton"'),
+  'Both apps must offer the problem symbol drill.');
 const androidManifest = read('src/MorseTrainer.Mobile/Platforms/Android/AndroidManifest.xml');
 assert(androidManifest.includes('android.permission.POST_NOTIFICATIONS') && androidManifest.includes('android.permission.RECEIVE_BOOT_COMPLETED'),
   'Android manifest must allow reminder notifications and rescheduling after reboot.');

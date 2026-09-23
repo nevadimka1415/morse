@@ -36,7 +36,8 @@ var tests = new (string Name, Action Run)[]
     ("Speed ladder", TestSpeedLadder),
     ("Keyer analysis", TestKeyerAnalysis),
     ("Progress filter and CSV", TestProgressCsv),
-    ("Reminder schedule", TestReminderSchedule)
+    ("Reminder schedule", TestReminderSchedule),
+    ("Problem symbol drill", TestProblemDrill)
 };
 
 var failures = new List<string>();
@@ -703,6 +704,52 @@ static void TestUpdateCheck()
     Assert(info.WindowsInstallerUrl == "https://example.test/MorseTrainer-Setup-x64.exe", "Installer asset was not found.");
     Assert(info.ReleasePageUrl.EndsWith("/v2.3.0", StringComparison.Ordinal), "Release page URL was not parsed.");
     Assert(info.Notes == "- Проверка обновлений", "Release notes must be trimmed.");
+}
+
+static void TestProblemDrill()
+{
+    Assert(ProblemDrill.EditDistance("...", "...") == 0 && ProblemDrill.EditDistance("...", "....") == 1
+           && ProblemDrill.EditDistance(".-", "-.") == 2, "Edit distance between codes is wrong.");
+
+    // Похожие на С (...): отличие в один элемент, той же длины — раньше
+    var similarToS = ProblemDrill.SimilarSymbols('С', 3);
+    Assert(similarToS.Count == 3 && !similarToS.Contains('С'), "С must get three similar symbols.");
+    foreach (var symbol in similarToS)
+    {
+        MorseAlphabet.TryGetCode(symbol, out var code);
+        Assert(ProblemDrill.EditDistance("...", code) == 1 && code.Length == 3, $"{symbol} ({code}) is not the closest to С.");
+        Assert(MorseAlphabet.Russian.ContainsKey(symbol), "Similar symbols for a Russian letter must be Russian letters.");
+    }
+
+    Assert(ProblemDrill.SimilarSymbols('A', 4).All(symbol => MorseAlphabet.Latin.ContainsKey(symbol)), "Similar symbols for a Latin letter must be Latin.");
+    Assert(ProblemDrill.SimilarSymbols('5', 2).All(char.IsDigit), "Similar symbols for a digit must be digits.");
+    Assert(ProblemDrill.SimilarSymbols('#', 2).Count == 0, "Unknown symbol must have no similar symbols.");
+
+    var at = new DateTime(2026, 9, 23, 10, 0, 0);
+    Assert(ProblemDrill.Build(Array.Empty<TrainingRecord>()).IsEmpty, "Empty history must give an empty drill.");
+    var history = new[]
+    {
+        new TrainingRecord { CompletedAt = at, ProblemSymbols = "ССС" },
+        new TrainingRecord { CompletedAt = at.AddMinutes(1), ProblemSymbols = "Д" },
+        // Латинская S звучит как С: второй раз её брать незачем
+        new TrainingRecord { CompletedAt = at.AddMinutes(2), ProblemSymbols = "S" }
+    };
+    var plan = ProblemDrill.Build(history);
+    Assert(plan.Problems.SequenceEqual(new[] { 'С', 'Д' }), "Problems must be ordered by count and deduplicated by code: " + string.Join(",", plan.Problems));
+    Assert(plan.Similar.Count == 4, "Each problem symbol must bring two similar ones: " + string.Join(",", plan.Similar));
+    var codes = plan.Pool.Select(symbol => MorseAlphabet.TryGetCode(symbol, out var code) ? code : "").ToArray();
+    Assert(codes.Distinct().Count() == codes.Length, "Drill pool must not repeat a Morse code.");
+    Assert(plan.Describe().Contains("С Д"), "Description must list the problem symbols: " + plan.Describe());
+
+    var task = TrainingGenerator.Generate(plan.Pool, 20, plan.Problems);
+    Assert(task.Where(symbol => symbol != ' ').All(plan.Pool.Contains), "Drill task must use only the drill symbols.");
+    var problemShare = task.Count(plan.Problems.Contains) / (double)task.Count(symbol => symbol != ' ');
+    Assert(problemShare > 0.4, $"Problem symbols must play more often than similar ones: {problemShare:0.00}.");
+
+    // Учитываются только последние RecentRecords заданий: старые ошибки уже исправлены
+    var old = Enumerable.Range(0, 50).Select(index => new TrainingRecord { CompletedAt = at.AddMinutes(index), ProblemSymbols = "Ж" });
+    var fresh = Enumerable.Range(0, ProblemDrill.RecentRecords).Select(index => new TrainingRecord { CompletedAt = at.AddHours(2).AddMinutes(index) });
+    Assert(ProblemDrill.Build(old.Concat(fresh).ToArray()).IsEmpty, "Old mistakes outside the recent window must be ignored.");
 }
 
 static void Assert(bool condition, string message)

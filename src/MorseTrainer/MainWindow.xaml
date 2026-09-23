@@ -229,6 +229,8 @@
                                            FontSize="11" HorizontalAlignment="Center" Margin="0,8,0,0" />
                                 <Button x:Name="ExamButton" Content="{loc:Loc 'Экзамен'}" Click="ExamButton_OnClick" Padding="12,9" Margin="0,14,0,0"
                                         ToolTip="{loc:Loc 'Экзамен: задание с текущими параметрами, одно прослушивание, ответ скрыт, идёт время. После проверки — протокол и запись в истории с пометкой.'}" />
+                                <Button x:Name="DrillButton" Content="{loc:Loc 'Повторить сложные символы'}" Click="DrillButton_OnClick" Padding="12,9" Margin="0,8,0,0"
+                                        ToolTip="{loc:Loc 'Задание только из символов, в которых вы чаще всего ошибались в последних 100 заданиях, и похожих на них по коду. Сложные звучат втрое чаще.'}" />
                             </StackPanel>
                         </ScrollViewer>
                     </Border>
