@@ -3,7 +3,8 @@
 
 Ставит APK, запускает главную активность, ждёт первое задание на вкладке «Тренировка»,
 нажимает «Слушать»/«Стоп», проходит по пяти вкладкам нижней панели и на каждом шаге
-снимает скриншот, проверяет, что процесс жив и в logcat нет падений приложения.
+снимает скриншот, проверяет, что процесс жив и в logcat нет падений приложения. Затем пересоздаёт
+активность и повторяет проход на русском (язык приложения ru-RU) — скриншоты android-ru-* идут в README.
 
 Запуск: python3 tests/android-smoke.py <apk или папка с apk> <папка для скриншотов и логов>
 """
@@ -286,6 +287,18 @@ def recreate_activity():
     return "активность пересоздана"
 
 
+def switch_to_russian():
+    """Язык только для приложения (cmd locale, Android 13+) и перезапуск: скриншоты ru-* — русский интерфейс для README."""
+    adb("shell", "cmd", "locale", "set-app-locales", PACKAGE, "--locales", "ru-RU")
+    time.sleep(3)
+    adb("shell", "am", "force-stop", PACKAGE)
+    time.sleep(2)
+    launch()
+    found = wait_for(READY_PREFIXES[:1], 120, prefix=True)
+    screenshot("ru-training")
+    return found[0].get("text", "")
+
+
 def write_summary():
     lines = ["### Дымовой тест Android (эмулятор)", "", "| Шаг | Результат | Время | Подробности |", "|---|---|---|---|"]
     for name, status, duration, detail in results:
@@ -321,6 +334,10 @@ def main():
         for key, russian, english in [("learning-after-recreate",) + TABS[1][1:], ("training-after-recreate",) + TABS[0][1:]]:
             step(f"После пересоздания: «{russian}»", open_tab(key, (russian, english)))
         adb("shell", "settings", "put", "system", "font_scale", "1.0", check=False)
+        # Второй проход на русском (эмулятор en-US): ищутся только русские названия вкладок
+        step("Русский язык приложения", switch_to_russian)
+        for key, russian, _ in TABS[1:]:
+            step(f"На русском: «{russian}»", open_tab("ru-" + key, (russian,)))
         step("Итог: процесс жив, падений нет", lambda: f"pid {ensure_alive()}")
     except Exception:
         exit_code = 1
