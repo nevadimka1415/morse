@@ -48,8 +48,10 @@ const requiredFiles = [
   'src/MorseTrainer.Mobile/Localization/LocExtension.cs',
   'src/MorseTrainer/Models/TrainingRecord.cs',
   'src/MorseTrainer/Services/TrainingHistoryStore.cs',
-  'src/MorseTrainer.Mobile/Pages/ProgressPage.xaml',
-  'src/MorseTrainer.Mobile/Pages/ProgressPage.xaml.cs',
+  'src/MorseTrainer.Mobile/Pages/QuizPage.xaml',
+  'src/MorseTrainer.Mobile/Pages/QuizPage.xaml.cs',
+  'src/MorseTrainer.Mobile/Services/ChoiceButtons.cs',
+  'src/MorseTrainer.Mobile/Resources/AppIcon/appiconfg.svg',
   'src/MorseTrainer/Services/ThemeService.cs',
   'src/MorseTrainer/Services/SpeechService.cs',
   'src/MorseTrainer/Services/VoicePackService.cs',
@@ -125,7 +127,7 @@ verifyXamlCodeBehind(
   'src/MorseTrainer/SymbolSelectionWindow.xaml',
   'src/MorseTrainer/SymbolSelectionWindow.xaml.cs'
 );
-for (const page of ['TrainingPage', 'LearningPage', 'SettingsPage', 'ProgressPage', 'KeyerPage']) {
+for (const page of ['TrainingPage', 'LearningPage', 'QuizPage', 'SettingsPage', 'KeyerPage']) {
   verifyXamlCodeBehind(
     `src/MorseTrainer.Mobile/Pages/${page}.xaml`,
     `src/MorseTrainer.Mobile/Pages/${page}.xaml.cs`
@@ -163,7 +165,7 @@ for (const relativePath of [
   'src/MorseTrainer.Mobile/Services/TabletLayout.cs',
   'src/MorseTrainer/Localization/Texts.cs',
   'src/MorseTrainer/Services/TrainingHistoryStore.cs',
-  'src/MorseTrainer.Mobile/Pages/ProgressPage.xaml.cs',
+  'src/MorseTrainer.Mobile/Pages/QuizPage.xaml.cs',
   'src/MorseTrainer/Services/MorseAudioService.cs',
   'src/MorseTrainer/Services/ThemeService.cs',
   'src/MorseTrainer/Services/SpeechService.cs',
@@ -196,17 +198,25 @@ assert(read('src/MorseTrainer/MainWindow.xaml').includes('x:Name="AutoSpeedCheck
 assert(read('src/MorseTrainer/MainWindow.xaml').includes('x:Name="KeyerAnalyzeButton"') && read('src/MorseTrainer.Mobile/Pages/KeyerPage.xaml').includes('x:Name="AnalyzeButton"'),
   'Both apps must offer the keyer quality analysis.');
 assert(read('src/MorseTrainer/MainWindow.xaml').includes('x:Name="ProgressProfileCombo"'), 'Windows must filter progress by profile.');
-assert(!read('src/MorseTrainer.Mobile/Pages/SettingsPage.xaml').includes('ProfilePicker') && !read('src/MorseTrainer.Mobile/Pages/ProgressPage.xaml').includes('ProfilePicker'),
+assert(!read('src/MorseTrainer.Mobile/Pages/SettingsPage.xaml').includes('ProfilePicker'),
   'Phone has no profiles: one device, one person.');
 assert(read('src/MorseTrainer.Mobile/Pages/SettingsPage.xaml').indexOf('x:Name="ModeLettersButton"') < read('src/MorseTrainer.Mobile/Pages/SettingsPage.xaml').indexOf('x:Name="GroupCountStepper"')
   && read('src/MorseTrainer.Mobile/Pages/SettingsPage.xaml').indexOf('x:Name="GroupCountStepper"') < read('src/MorseTrainer.Mobile/Pages/SettingsPage.xaml').indexOf('x:Name="AdvancedLayout"'),
   'Phone settings order: mode buttons first, then task parameters, then the collapsible advanced settings.');
-assert(read('src/MorseTrainer/MainWindow.xaml').includes('x:Name="ExportCsvButton"') && read('src/MorseTrainer.Mobile/Pages/ProgressPage.xaml').includes('ShareCsvButton_OnClicked'),
-  'Both apps must export the history as CSV.');
+assert(read('src/MorseTrainer/MainWindow.xaml').includes('x:Name="ExportCsvButton"'), 'Windows must export the history as CSV.');
+assert(!existsSync(resolve(root, 'src/MorseTrainer.Mobile/Pages/ProgressPage.xaml')) && read('src/MorseTrainer.Mobile/AppShell.cs').includes('QuizPage quizPage')
+  && !read('src/MorseTrainer.Mobile/AppShell.cs').includes('ProgressPage'),
+  'Phone has no Progress tab (answers are checked on paper); the listening quiz has its own tab instead.');
+assert(!read('src/MorseTrainer.Mobile/Pages/LearningPage.xaml').includes('QuizAnswers') && !read('src/MorseTrainer.Mobile/Pages/LearningPage.xaml').includes('AlphabetPicker')
+  && read('src/MorseTrainer.Mobile/Pages/LearningPage.xaml').includes('x:Name="AlphabetLatinButton"') && read('src/MorseTrainer.Mobile/Pages/QuizPage.xaml').includes('x:Name="AlphabetLatinButton"'),
+  'Phone learning: symbol sets are chosen with buttons, the quiz lives on its own tab.');
+assert(/x:Name="AnswerPanel"[^>]*IsVisible="False"/.test(read('src/MorseTrainer.Mobile/Pages/TrainingPage.xaml')) && read('src/MorseTrainer.Mobile/Pages/TrainingPage.xaml.cs').includes('SetAnswerPanel(true, remember: false)'),
+  'Phone training: typing the answer is optional (collapsed), exams and course steps open it.');
+assert(read('src/MorseTrainer.Mobile/MorseTrainer.Mobile.csproj').includes('ForegroundFile="Resources/AppIcon/appiconfg.svg"'),
+  'Android adaptive icon needs a separate foreground inside the safe zone, otherwise the launcher mask crops it.');
 assert(read('src/MorseTrainer/MainWindow.xaml').includes('x:Name="DrillButton"') && read('src/MorseTrainer.Mobile/Pages/TrainingPage.xaml').includes('x:Name="DrillButton"'),
   'Both apps must offer the problem symbol drill.');
-assert(read('src/MorseTrainer/MainWindow.xaml').includes('x:Name="ImportHistoryButton"') && read('src/MorseTrainer.Mobile/Pages/ProgressPage.xaml').includes('x:Name="ImportHistoryButton"'),
-  'Both apps must export and import the history.');
+assert(read('src/MorseTrainer/MainWindow.xaml').includes('x:Name="ImportHistoryButton"'), 'Windows must export and import the history.');
 assert(read('src/MorseTrainer/MainWindow.xaml').includes('LearningCardEdit_OnClick') && read('src/MorseTrainer.Mobile/Pages/LearningPage.xaml').includes('EditChantButton_OnClicked'),
   'Both apps must let the user edit chants.');
 assert(read('src/MorseTrainer.Mobile/Services/VoicePackService.cs').includes('AppInfo.Current.BuildString'),
@@ -256,7 +266,7 @@ for (const shot of ['training', 'learning', 'keyer', 'progress', 'training-en', 
 }
 assert(read('README.md').includes('docs/screenshots/training.png'), 'README must show the screenshots.');
 
-for (const file of ['src/MorseTrainer/MainWindow.xaml', 'src/MorseTrainer/SymbolSelectionWindow.xaml', ...['TrainingPage', 'LearningPage', 'SettingsPage', 'ProgressPage', 'KeyerPage'].map((page) => `src/MorseTrainer.Mobile/Pages/${page}.xaml`)]) {
+for (const file of ['src/MorseTrainer/MainWindow.xaml', 'src/MorseTrainer/SymbolSelectionWindow.xaml', ...['TrainingPage', 'LearningPage', 'QuizPage', 'SettingsPage', 'KeyerPage'].map((page) => `src/MorseTrainer.Mobile/Pages/${page}.xaml`)]) {
   const xaml = read(file);
   assert(!/\b(Text|Content|Header|Title|ToolTip|Placeholder)="[^"{]*[А-Яа-яЁё]/.test(xaml), `${file} has untranslated Russian text; use {loc:Loc '…'}.`);
   assert(!/<x:String>[^<]*[А-Яа-яЁё]/.test(xaml), `${file} has Russian picker items in XAML; set ItemsSource in code with Texts.T.`);

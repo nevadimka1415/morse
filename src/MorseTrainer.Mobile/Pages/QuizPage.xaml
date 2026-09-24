@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:loc="clr-namespace:MorseTrainer.Mobile.Localization"
+             x:Class="MorseTrainer.Mobile.Pages.QuizPage"
+             Title="{loc:Loc 'На слух'}">
+    <!-- Проверка на слух отдельной вкладкой: на «Обучении» она занимала место карточек -->
+    <ScrollView>
+        <VerticalStackLayout x:Name="RootLayout" Padding="16" Spacing="14">
+            <VerticalStackLayout>
+                <Label Text="{loc:Loc 'Проверка на слух'}" FontSize="26" FontAttributes="Bold" />
+                <Label Text="{loc:Loc 'Прослушайте сигнал и выберите символ'}" Opacity="0.65" LineBreakMode="WordWrap" />
+            </VerticalStackLayout>
+
+            <Grid ColumnDefinitions="*,8,*" RowDefinitions="Auto,8,Auto">
+                <Button x:Name="AlphabetRussianButton" Padding="6,10" LineBreakMode="WordWrap" Text="{loc:Loc 'Русские буквы'}" CommandParameter="0" Clicked="AlphabetButton_OnClicked" />
+                <Button x:Name="AlphabetLatinButton" Padding="6,10" LineBreakMode="WordWrap" Grid.Column="2" Text="{loc:Loc 'Латинские буквы'}" CommandParameter="1" Clicked="AlphabetButton_OnClicked" />
+                <Button x:Name="AlphabetBothButton" Padding="6,10" LineBreakMode="WordWrap" Grid.Row="2" Text="{loc:Loc 'Русские и латинские'}" CommandParameter="2" Clicked="AlphabetButton_OnClicked" />
+                <Button x:Name="AlphabetDigitsButton" Padding="6,10" LineBreakMode="WordWrap" Grid.Row="2" Grid.Column="2" Text="{loc:Loc 'Цифры'}" CommandParameter="3" Clicked="AlphabetButton_OnClicked" />
+            </Grid>
+
+            <Border BackgroundColor="{AppThemeBinding Light=#ECFDF5, Dark=#102F29}">
+                <VerticalStackLayout Spacing="14">
+                    <Label x:Name="QuizStatusLabel" Text="{loc:Loc 'Нажмите «Новый символ» и слушайте'}" FontSize="17" FontAttributes="Bold"
+                           HorizontalTextAlignment="Center" LineBreakMode="WordWrap" />
+                    <Grid ColumnDefinitions="*,10,*" RowDefinitions="Auto,10,Auto">
+                        <Button x:Name="Answer0Button" Text="?" FontSize="30" HeightRequest="76" IsEnabled="False" Clicked="AnswerButton_OnClicked" />
+                        <Button x:Name="Answer1Button" Grid.Column="2" Text="?" FontSize="30" HeightRequest="76" IsEnabled="False" Clicked="AnswerButton_OnClicked" />
+                        <Button x:Name="Answer2Button" Grid.Row="2" Text="?" FontSize="30" HeightRequest="76" IsEnabled="False" Clicked="AnswerButton_OnClicked" />
+                        <Button x:Name="Answer3Button" Grid.Row="2" Grid.Column="2" Text="?" FontSize="30" HeightRequest="76" IsEnabled="False" Clicked="AnswerButton_OnClicked" />
+                    </Grid>
+                    <Label x:Name="QuizScoreLabel" Text="{loc:Loc 'Результат: 0 / 0'}" HorizontalTextAlignment="Center" />
+                </VerticalStackLayout>
+            </Border>
+
+            <Grid ColumnDefinitions="*,10,*">
+                <Button x:Name="NewButton" Text="{loc:Loc '▶ Новый символ'}" BackgroundColor="{StaticResource Primary}" TextColor="#06231C"
+                        Clicked="NewButton_OnClicked" />
+                <Button x:Name="RepeatButton" Grid.Column="2" Text="{loc:Loc '↻ Ещё раз'}" IsEnabled="False" Clicked="RepeatButton_OnClicked" />
+            </Grid>
+            <Button x:Name="ResetScoreButton" Text="{loc:Loc 'Сбросить счёт'}" HorizontalOptions="Center" BackgroundColor="Transparent"
+                    TextColor="{StaticResource PrimaryDark}" Clicked="ResetScoreButton_OnClicked" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

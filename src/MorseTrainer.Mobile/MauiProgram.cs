@@ -41,8 +41,8 @@ public static class MauiProgram
         // Страницы и оболочка живут в области окна (см. App.CreateWindow), сервисы данных — одни на приложение
         builder.Services.AddScoped<TrainingPage>();
         builder.Services.AddScoped<LearningPage>();
+        builder.Services.AddScoped<QuizPage>();
         builder.Services.AddScoped<KeyerPage>();
-        builder.Services.AddScoped<ProgressPage>();
         builder.Services.AddScoped<SettingsPage>();
         builder.Services.AddScoped<AppShell>();
         return builder.Build();

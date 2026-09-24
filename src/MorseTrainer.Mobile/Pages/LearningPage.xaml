@@ -5,35 +5,50 @@
              xmlns:domain="clr-namespace:MorseTrainer.Domain;assembly=MorseTrainer.Core"
              x:Class="MorseTrainer.Mobile.Pages.LearningPage"
              Title="{loc:Loc 'Обучение'}">
-    <Grid x:Name="RootLayout" Padding="14" RowDefinitions="Auto,Auto,*,Auto" RowSpacing="10">
-        <VerticalStackLayout>
-            <Label Text="{loc:Loc 'Обучение'}" FontSize="26" FontAttributes="Bold" />
-            <Label Text="{loc:Loc 'Напевы сохранены в приложении и работают без интернета'}" Opacity="0.65" />
-            <Button x:Name="CustomVoiceButton" Text="{loc:Loc 'Свой голос…'}" HorizontalOptions="Start" Padding="12,6" Margin="0,6,0,0"
+    <Grid x:Name="RootLayout" Padding="14" RowDefinitions="Auto,Auto,Auto,Auto,*" RowSpacing="10">
+        <!-- Шапка в одну строку: карточкам остаётся больше места -->
+        <Grid ColumnDefinitions="*,Auto,6,Auto">
+            <Label Text="{loc:Loc 'Обучение'}" FontSize="26" FontAttributes="Bold" VerticalOptions="Center" />
+            <Button x:Name="SearchToggleButton" Grid.Column="1" Text="🔍" Padding="10,6" Clicked="SearchToggleButton_OnClicked" />
+            <Button x:Name="CustomVoiceButton" Grid.Column="3" Text="{loc:Loc 'Свой голос…'}" Padding="12,6"
                     Clicked="CustomVoiceButton_OnClicked" />
-            <!-- Курс «С нуля до 60 зн/мин»: кнопки ставят настройки шага и открывают тренировку -->
-            <Border Margin="0,8,0,0" BackgroundColor="{AppThemeBinding Light=#ECFDF5, Dark=#102F29}">
-                <VerticalStackLayout Spacing="6">
-                    <Label x:Name="CourseTitleLabel" Text="{loc:Loc 'Курс «С нуля до 60 зн/мин»'}" FontAttributes="Bold" LineBreakMode="WordWrap" />
-                    <Label x:Name="CourseDetailsLabel" Text="" FontSize="13" Opacity="0.75" LineBreakMode="WordWrap" />
-                    <Label x:Name="CourseStatusLabel" Text="" FontSize="12" LineBreakMode="WordWrap" />
-                    <Grid ColumnDefinitions="*,6,*,6,Auto">
-                        <Button x:Name="CourseStartButton" Text="{loc:Loc 'Начать курс'}" BackgroundColor="{StaticResource Primary}" TextColor="#06231C"
-                                Padding="8,7" Clicked="CourseStartButton_OnClicked" />
-                        <Button x:Name="CourseNextButton" Grid.Column="2" Text="{loc:Loc 'Следующий шаг'}" Padding="8,7" Clicked="CourseNextButton_OnClicked" />
-                        <Button x:Name="CourseResetButton" Grid.Column="4" Text="✕" Padding="10,7" Clicked="CourseResetButton_OnClicked" />
-                    </Grid>
-                </VerticalStackLayout>
-            </Border>
-        </VerticalStackLayout>
-
-        <Grid Grid.Row="1" ColumnDefinitions="*,10,*">
-            <Picker x:Name="AlphabetPicker" Title="{loc:Loc 'Алфавит'}" SelectedIndexChanged="Filter_OnChanged" />
-            <SearchBar x:Name="SearchBox" Grid.Column="2" Placeholder="{loc:Loc 'Найти'}"
-                       TextChanged="Filter_OnChanged" />
         </Grid>
 
-        <CollectionView x:Name="CardsView" Grid.Row="2" SelectionMode="None">
+        <!-- Курс «С нуля до 60 зн/мин»: кнопки ставят настройки шага и открывают тренировку; подробности — по «▾» -->
+        <Border Grid.Row="1" Padding="12,10" BackgroundColor="{AppThemeBinding Light=#ECFDF5, Dark=#102F29}">
+            <VerticalStackLayout Spacing="6">
+                <Grid ColumnDefinitions="*,Auto">
+                    <Label x:Name="CourseTitleLabel" Text="{loc:Loc 'Курс «С нуля до 60 зн/мин»'}" FontAttributes="Bold" LineBreakMode="WordWrap"
+                           VerticalOptions="Center" />
+                    <Button x:Name="CourseDetailsButton" Grid.Column="1" Text="▾" Padding="10,0" MinimumWidthRequest="36" MinimumHeightRequest="36"
+                            VerticalOptions="Start" BackgroundColor="Transparent" TextColor="{StaticResource PrimaryDark}"
+                            Clicked="CourseDetailsButton_OnClicked" />
+                </Grid>
+                <Label x:Name="CourseDetailsLabel" Text="" FontSize="13" Opacity="0.75" LineBreakMode="WordWrap" IsVisible="False" />
+                <Label x:Name="CourseStatusLabel" Text="" FontSize="12" LineBreakMode="WordWrap" />
+                <Grid ColumnDefinitions="*,6,*,6,Auto">
+                    <Button x:Name="CourseStartButton" Text="{loc:Loc 'Начать курс'}" BackgroundColor="{StaticResource Primary}" TextColor="#06231C"
+                            Padding="8,7" Clicked="CourseStartButton_OnClicked" />
+                    <Button x:Name="CourseNextButton" Grid.Column="2" Text="{loc:Loc 'Следующий шаг'}" Padding="8,7" Clicked="CourseNextButton_OnClicked" />
+                    <Button x:Name="CourseResetButton" Grid.Column="4" Text="✕" Padding="10,7" Clicked="CourseResetButton_OnClicked" />
+                </Grid>
+            </VerticalStackLayout>
+        </Border>
+
+        <!-- Какие символы показать: кнопки вместо выпадающего списка, выбранная подсвечена -->
+        <Grid Grid.Row="2" ColumnDefinitions="*,8,*" RowDefinitions="Auto,8,Auto">
+            <Button x:Name="AlphabetRussianButton" Text="{loc:Loc 'Русские буквы'}" Padding="6,10" LineBreakMode="WordWrap" CommandParameter="0"
+                    Clicked="AlphabetButton_OnClicked" />
+            <Button x:Name="AlphabetLatinButton" Grid.Column="2" Text="{loc:Loc 'Латинские буквы'}" Padding="6,10" LineBreakMode="WordWrap" CommandParameter="1"
+                    Clicked="AlphabetButton_OnClicked" />
+            <Button x:Name="AlphabetBothButton" Grid.Row="2" Text="{loc:Loc 'Русские и латинские'}" Padding="6,10" LineBreakMode="WordWrap" CommandParameter="2"
+                    Clicked="AlphabetButton_OnClicked" />
+            <Button x:Name="AlphabetDigitsButton" Grid.Row="2" Grid.Column="2" Text="{loc:Loc 'Цифры'}" Padding="6,10" LineBreakMode="WordWrap" CommandParameter="3"
+                    Clicked="AlphabetButton_OnClicked" />
+        </Grid>
+        <SearchBar x:Name="SearchBox" Grid.Row="3" Placeholder="{loc:Loc 'Найти'}" IsVisible="False" TextChanged="SearchBox_OnTextChanged" />
+
+        <CollectionView x:Name="CardsView" Grid.Row="4" SelectionMode="None">
             <CollectionView.ItemsLayout>
                 <GridItemsLayout x:Name="CardsLayout" Orientation="Vertical" Span="2" HorizontalItemSpacing="8" VerticalItemSpacing="8" />
             </CollectionView.ItemsLayout>
@@ -63,18 +78,5 @@
             </CollectionView.ItemTemplate>
         </CollectionView>
 
-        <Border Grid.Row="3" BackgroundColor="{AppThemeBinding Light=#ECFDF5, Dark=#102F29}">
-            <VerticalStackLayout Spacing="8">
-                <Grid ColumnDefinitions="*,Auto">
-                    <VerticalStackLayout>
-                        <Label Text="{loc:Loc 'Проверка на слух'}" FontAttributes="Bold" FontSize="17" />
-                        <Label x:Name="QuizStatusLabel" Text="{loc:Loc 'Прослушайте сигнал и выберите символ'}" Opacity="0.65" />
-                    </VerticalStackLayout>
-                    <Button Grid.Column="1" Text="{loc:Loc 'Новое'}" Clicked="QuizButton_OnClicked" />
-                </Grid>
-                <FlexLayout x:Name="QuizAnswers" Direction="Row" Wrap="Wrap" JustifyContent="SpaceAround" />
-                <Label x:Name="QuizScoreLabel" Text="{loc:Loc 'Результат: 0 / 0'}" HorizontalTextAlignment="Center" />
-            </VerticalStackLayout>
-        </Border>
     </Grid>
 </ContentPage>

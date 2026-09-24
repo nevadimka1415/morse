@@ -32,7 +32,7 @@
             <Border>
                 <VerticalStackLayout Spacing="12">
                     <Grid ColumnDefinitions="*,Auto">
-                        <Label Text="{loc:Loc 'Правильный ответ'}" Opacity="0.65" />
+                        <Label Text="{loc:Loc 'Текст задания'}" Opacity="0.65" />
                         <Button Grid.Column="1" x:Name="ToggleAnswerButton" Text="{loc:Loc 'Показать'}"
                                 Padding="10,6" Clicked="ToggleAnswerButton_OnClicked" />
                     </Grid>
@@ -51,19 +51,25 @@
                         Clicked="PlayButton_OnClicked" IsEnabled="False" />
             </Grid>
             <Label x:Name="PlaybackStatusLabel" Text="{loc:Loc 'Подготовьте задание'}" HorizontalTextAlignment="Center" Opacity="0.65" />
+            <!-- Обычно группы записывают на бумаге и сверяют с текстом задания; ввод в приложении — по желанию -->
+            <Label x:Name="PaperHintLabel" Text="{loc:Loc 'Записывайте на бумаге, затем нажмите «Показать» и сверьте.'}"
+                   HorizontalTextAlignment="Center" FontSize="13" Opacity="0.65" LineBreakMode="WordWrap" />
+            <Button x:Name="AnswerPanelButton" Text="{loc:Loc 'Проверить вводом ▾'}" Clicked="AnswerPanelButton_OnClicked" />
 
-            <Label Text="{loc:Loc 'Введите услышанные группы'}" FontAttributes="Bold" />
-            <Editor x:Name="AnswerEditor" HeightRequest="110" AutoSize="TextChanges"
-                    Placeholder="{loc:Loc 'Например: АГЖДЕ БВГДА'}" />
-            <Button x:Name="CheckButton" Text="{loc:Loc 'Проверить ответ'}" Clicked="CheckButton_OnClicked" IsEnabled="False" />
-            <Border>
-                <VerticalStackLayout Spacing="6">
-                    <Label x:Name="AccuracyLabel" Text="{loc:Loc 'Точность: —'}" FontSize="20" FontAttributes="Bold" />
-                    <Label x:Name="ResultLabel" Text="{loc:Loc 'Пробелы между группами не учитываются'}" LineBreakMode="WordWrap" />
-                    <Label x:Name="HistoryLabel" Text="" Opacity="0.65" LineBreakMode="WordWrap" />
-                    <Button x:Name="ExamShareButton" Text="{loc:Loc 'Поделиться протоколом'}" IsVisible="False" Clicked="ExamShareButton_OnClicked" />
-                </VerticalStackLayout>
-            </Border>
+            <VerticalStackLayout x:Name="AnswerPanel" Spacing="14" IsVisible="False">
+                <Label Text="{loc:Loc 'Введите услышанные группы'}" FontAttributes="Bold" />
+                <Editor x:Name="AnswerEditor" HeightRequest="110" AutoSize="TextChanges"
+                        Placeholder="{loc:Loc 'Например: АГЖДЕ БВГДА'}" />
+                <Button x:Name="CheckButton" Text="{loc:Loc 'Проверить ответ'}" Clicked="CheckButton_OnClicked" IsEnabled="False" />
+                <Border>
+                    <VerticalStackLayout Spacing="6">
+                        <Label x:Name="AccuracyLabel" Text="{loc:Loc 'Точность: —'}" FontSize="20" FontAttributes="Bold" />
+                        <Label x:Name="ResultLabel" Text="{loc:Loc 'Пробелы между группами не учитываются'}" LineBreakMode="WordWrap" />
+                        <Label x:Name="HistoryLabel" Text="" Opacity="0.65" LineBreakMode="WordWrap" />
+                        <Button x:Name="ExamShareButton" Text="{loc:Loc 'Поделиться протоколом'}" IsVisible="False" Clicked="ExamShareButton_OnClicked" />
+                    </VerticalStackLayout>
+                </Border>
+            </VerticalStackLayout>
         </VerticalStackLayout>
     </ScrollView>
 </ContentPage>

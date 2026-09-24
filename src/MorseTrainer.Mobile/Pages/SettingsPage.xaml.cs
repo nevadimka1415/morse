@@ -188,20 +188,7 @@ public partial class SettingsPage : ContentPage
     private void UpdateModeButtons()
     {
         var mode = ContentModes.Clamp(ContentPicker.SelectedIndex);
-        var buttons = new[] { ModeLettersButton, ModeDigitsButton, ModeBothButton, ModeCustomButton };
-        for (var index = 0; index < buttons.Length; index++)
-        {
-            if (MainModes[index] == mode)
-            {
-                buttons[index].BackgroundColor = (Color)Application.Current!.Resources["Primary"];
-                buttons[index].TextColor = Color.FromArgb("#06231C");
-            }
-            else
-            {
-                buttons[index].ClearValue(Button.BackgroundColorProperty);
-                buttons[index].ClearValue(Button.TextColorProperty);
-            }
-        }
+        ChoiceButtons.Highlight(new[] { ModeLettersButton, ModeDigitsButton, ModeBothButton, ModeCustomButton }, Array.IndexOf(MainModes, mode));
 
         CustomSymbolsLayout.IsVisible = mode == ContentMode.Custom;
         var alphabet = (AlphabetMode)Math.Clamp(AlphabetPicker.SelectedIndex, 0, 2);

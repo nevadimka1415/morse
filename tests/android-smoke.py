@@ -2,7 +2,7 @@
 """Дымовой тест APK на Android-эмуляторе (job android-smoke в .github/workflows/mobile.yml).
 
 Ставит APK, запускает главную активность, ждёт первое задание на вкладке «Тренировка»,
-нажимает «Слушать»/«Стоп», проходит по пяти вкладкам нижней панели и на каждом шаге
+нажимает «Слушать»/«Стоп», проходит по пяти вкладкам нижней панели (на «На слух» — раунд с ответом) и на каждом шаге
 снимает скриншот, проверяет, что процесс жив и в logcat нет падений приложения. Затем пересоздаёт
 активность и повторяет проход на русском (язык приложения ru-RU) — скриншоты android-ru-* идут в README.
 
@@ -21,13 +21,16 @@ PACKAGE = "ru.morsetrainer.app"
 TABS = [
     ("training", "Тренировка", "Training"),
     ("learning", "Обучение", "Learning"),
+    ("quiz", "На слух", "By ear"),
     ("keyer", "Передача", "Sending"),
-    ("progress", "Прогресс", "Progress"),
     ("settings", "Настройки", "Settings"),
 ]
 READY_PREFIXES = ("Готово ·", "Done ·")
 PLAY_TEXTS = ("▶ Слушать", "▶ Play")
 STOP_TEXTS = ("■ Стоп", "■ Stop")
+QUIZ_NEW_TEXTS = ("▶ Новый символ", "▶ New symbol")
+QUIZ_QUESTION_TEXTS = ("Какой символ прозвучал?", "Which symbol was that?")
+QUIZ_ANSWERED_PREFIXES = ("Верно:", "Правильно:", "Correct:")
 
 out_dir = Path(sys.argv[2] if len(sys.argv) > 2 else "android-smoke")
 results = []
@@ -270,6 +273,30 @@ def open_tab(key, titles):
     return action
 
 
+def quiz_round(prefix=""):
+    """«На слух»: «Новый символ» → звучит сигнал → четыре варианта → ответ; экран показывает верный символ."""
+    def action():
+        root, _ = dump_ui()
+        new = nodes_with_text(root, QUIZ_NEW_TEXTS)
+        if not new:
+            raise RuntimeError("Нет кнопки «Новый символ»")
+        tap(new[0])
+        time.sleep(3)
+        ensure_alive()
+        alert = close_alert()
+        wait_for(QUIZ_QUESTION_TEXTS, 30)
+        root, _ = dump_ui()
+        answers = [node for node in root.iter("node") if node.get("clickable") == "true" and len(node.get("text", "")) == 1]
+        if len(answers) != 4:
+            raise RuntimeError(f"Ожидалось 4 варианта ответа, на экране {len(answers)}")
+        screenshot(prefix + "quiz-question")
+        tap(answers[0])
+        found = wait_for(QUIZ_ANSWERED_PREFIXES, 15, prefix=True)
+        screenshot(prefix + "quiz-answered")
+        return found[0].get("text", "") + (f"; звук: {alert}" if alert else "")
+    return action
+
+
 def activity_creations():
     log = adb("logcat", "-d", "-b", "events", check=False, timeout=60)
     return sum(1 for line in log.splitlines() if "wm_on_create_called" in line and "MainActivity" in line)
@@ -329,6 +356,8 @@ def main():
         # По всем вкладкам и обратно на «Тренировку» (второй скриншот — под своим именем)
         for key, russian, english in TABS[1:] + [("training-return",) + TABS[0][1:]]:
             step(f"Вкладка «{russian}»", open_tab(key, (russian, english)))
+            if key == "quiz":
+                step("На слух: новый символ и ответ", quiz_round())
         # Пересоздание активности: страницы старого окна не должны ронять приложение при переключении вкладок
         step("Пересоздание активности (шрифт 1.15)", recreate_activity)
         for key, russian, english in [("learning-after-recreate",) + TABS[1][1:], ("training-after-recreate",) + TABS[0][1:]]:
@@ -338,6 +367,8 @@ def main():
         step("Русский язык приложения", switch_to_russian)
         for key, russian, _ in TABS[1:]:
             step(f"На русском: «{russian}»", open_tab("ru-" + key, (russian,)))
+            if key == "quiz":
+                step("На русском: раунд «На слух»", quiz_round("ru-"))
         step("Итог: процесс жив, падений нет", lambda: f"pid {ensure_alive()}")
     except Exception:
         exit_code = 1

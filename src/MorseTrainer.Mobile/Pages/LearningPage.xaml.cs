@@ -1,4 +1,3 @@
-using System.Security.Cryptography;
 using MorseTrainer.Domain;
 using MorseTrainer.Localization;
 using MorseTrainer.Mobile.Services;
@@ -16,11 +15,10 @@ public partial class LearningPage : ContentPage
     private readonly TrainingHistoryStore _historyStore;
     private readonly TrainingPage _trainingPage;
     private readonly IAudioRecorderService _recorder;
-    private IReadOnlyList<LearningSymbolItem> _visibleItems = Array.Empty<LearningSymbolItem>();
-    private LearningSymbolItem? _quizTarget;
-    private int _quizCorrect;
-    private int _quizTotal;
-    private bool _pageReady;
+    private const string AlphabetKey = "learning.alphabet";
+
+    private readonly Button[] _alphabetButtons;
+    private int _alphabet;
 
     public LearningPage(
         IAudioPlaybackService audioPlayback,
@@ -39,14 +37,10 @@ public partial class LearningPage : ContentPage
         _historyStore = historyStore;
         _trainingPage = trainingPage;
         _recorder = recorder;
-        AlphabetPicker.ItemsSource = new[] { Texts.T("Русские"), Texts.T("Латинские"), Texts.T("Русские и латинские"), Texts.T("Цифры") };
-        AlphabetPicker.SelectedIndex = 0;
-        _pageReady = true;
+        _alphabetButtons = new[] { AlphabetRussianButton, AlphabetLatinButton, AlphabetBothButton, AlphabetDigitsButton };
+        _alphabet = ChoiceButtons.LoadAlphabet(AlphabetKey);
+        ChoiceButtons.Highlight(_alphabetButtons, _alphabet);
         RefreshItems();
-        var settings = _settingsService.LoadSettings();
-        _quizCorrect = settings.QuizCorrect;
-        _quizTotal = settings.QuizTotal;
-        UpdateScore();
     }
 
     protected override void OnAppearing()
@@ -122,28 +116,49 @@ public partial class LearningPage : ContentPage
         await _trainingPage.StartTaskAsync(step.IsExam);
     }
 
-    private void Filter_OnChanged(object sender, EventArgs e)
+    private void CourseDetailsButton_OnClicked(object sender, EventArgs e)
     {
-        if (_pageReady)
-        {
-            RefreshItems();
-        }
+        CourseDetailsLabel.IsVisible = !CourseDetailsLabel.IsVisible;
+        CourseDetailsButton.Text = CourseDetailsLabel.IsVisible ? "▴" : "▾";
     }
 
-    private void RefreshItems()
+    private void AlphabetButton_OnClicked(object sender, EventArgs e)
     {
-        if (CardsView is null)
+        if (sender is not Button { CommandParameter: string parameter } || !int.TryParse(parameter, out var index))
         {
             return;
         }
 
-        var items = LearningCatalog.GetItems(Math.Clamp(AlphabetPicker?.SelectedIndex ?? 0, 0, 3));
-        var search = SearchBox?.Text?.Trim() ?? string.Empty;
-        _visibleItems = string.IsNullOrWhiteSpace(search)
+        _alphabet = Math.Clamp(index, 0, 3);
+        ChoiceButtons.SaveAlphabet(AlphabetKey, _alphabet);
+        ChoiceButtons.Highlight(_alphabetButtons, _alphabet);
+        RefreshItems();
+    }
+
+    // Поиск нужен редко — поле появляется по кнопке 🔍, при скрытии фильтр сбрасывается
+    private void SearchToggleButton_OnClicked(object sender, EventArgs e)
+    {
+        SearchBox.IsVisible = !SearchBox.IsVisible;
+        if (SearchBox.IsVisible)
+        {
+            SearchBox.Focus();
+        }
+        else if (!string.IsNullOrEmpty(SearchBox.Text))
+        {
+            SearchBox.Text = string.Empty;
+        }
+    }
+
+    private void SearchBox_OnTextChanged(object sender, TextChangedEventArgs e) => RefreshItems();
+
+    private void RefreshItems()
+    {
+        var items = LearningCatalog.GetItems(_alphabet);
+        var search = SearchBox.Text?.Trim() ?? string.Empty;
+        CardsView.ItemsSource = string.IsNullOrWhiteSpace(search)
             ? items
             : items.Where(item => item.Symbol.ToString().Contains(search, StringComparison.OrdinalIgnoreCase)
                                   || item.Chant.Contains(search, StringComparison.OrdinalIgnoreCase)).ToArray();
-        CardsView.ItemsSource = _visibleItems;
     }
 
     private async void VoiceButton_OnClicked(object sender, EventArgs e)
@@ -153,7 +168,6 @@ public partial class LearningPage : ContentPage
             return;
         }
 
-        var item = LearningCatalog.Find(symbol);
         var path = await _voicePack.GetVoiceFileAsync(symbol);
         if (path is null)
         {
@@ -161,7 +175,6 @@ public partial class LearningPage : ContentPage
             return;
         }
 
-        QuizStatusLabel.Text = $"{item?.Symbol}: {item?.Chant}";
         await PlayFileSafelyAsync(path);
     }
 
@@ -450,69 +463,6 @@ public partial class LearningPage : ContentPage
         {
             await DisplayAlertAsync(Texts.T("Не удалось воспроизвести"), exception.Message, Texts.T("Закрыть"));
         }
-    }
-
-    private async void QuizButton_OnClicked(object sender, EventArgs e)
-    {
-        var pool = _visibleItems.Count >= 4 ? _visibleItems : LearningCatalog.Russian;
-        _quizTarget = pool[RandomNumberGenerator.GetInt32(pool.Count)];
-        var answers = new List<LearningSymbolItem> { _quizTarget };
-        answers.AddRange(pool.Where(item => item.Symbol != _quizTarget.Symbol && item.Code != _quizTarget.Code)
-            .OrderBy(_ => RandomNumberGenerator.GetInt32(int.MaxValue)).Take(3));
-        answers = answers.OrderBy(_ => RandomNumberGenerator.GetInt32(int.MaxValue)).ToList();
-
-        QuizAnswers.Children.Clear();
-        foreach (var answer in answers)
-        {
-            var button = new Button
-            {
-                Text = answer.Symbol.ToString(),
-                CommandParameter = answer.Symbol,
-                MinimumWidthRequest = 64,
-                Margin = 4
-            };
-            button.Clicked += QuizAnswer_OnClicked;
-            QuizAnswers.Children.Add(button);
-        }
-
-        QuizStatusLabel.Text = Texts.T("Слушайте…");
-        await PlayMorseAsync(_quizTarget.Symbol);
-        QuizStatusLabel.Text = Texts.T("Какой символ прозвучал?");
-    }
-
-    private void QuizAnswer_OnClicked(object? sender, EventArgs e)
-    {
-        if (_quizTarget is null || sender is not Button { CommandParameter: char answer })
-        {
-            return;
-        }
-
-        _quizTotal++;
-        if (answer == _quizTarget.Symbol)
-        {
-            _quizCorrect++;
-            QuizStatusLabel.Text = Texts.F("Верно: {0} — {1}", _quizTarget.Symbol, _quizTarget.Chant);
-        }
-        else
-        {
-            QuizStatusLabel.Text = Texts.F("Правильно: {0} — {1}", _quizTarget.Symbol, _quizTarget.Chant);
-        }
-
-        foreach (var button in QuizAnswers.Children.OfType<Button>())
-        {
-            button.IsEnabled = false;
-        }
-
-        var settings = _settingsService.LoadSettings();
-        settings.QuizCorrect = _quizCorrect;
-        settings.QuizTotal = _quizTotal;
-        _settingsService.SaveSettings(settings);
-        UpdateScore();
-    }
-
-    private void UpdateScore()
-    {
-        QuizScoreLabel.Text = Texts.F("Результат: {0} / {1}", _quizCorrect, _quizTotal);
     }
 
     // Планшет или альбомная ориентация: центрируем контент полосой до 720 px

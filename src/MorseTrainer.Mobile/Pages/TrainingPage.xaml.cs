@@ -24,6 +24,7 @@ public partial class TrainingPage : ContentPage, IDisposable
     private AudioClip? _currentClip;
     private string _currentTask = string.Empty;
     private bool _answerVisible;
+    private const string AnswerPanelKey = "training.typed_answer";
 
     public TrainingPage(IAudioPlaybackService audioPlayback, MobileSettingsService settingsService, TrainingHistoryStore historyStore)
     {
@@ -33,6 +34,7 @@ public partial class TrainingPage : ContentPage, IDisposable
         _historyStore = historyStore;
         _settingsChanged = (_, _) => MainThread.BeginInvokeOnMainThread(RefreshSettingsSummary);
         _settingsService.SettingsChanged += _settingsChanged;
+        SetAnswerPanel(Preferences.Default.Get(AnswerPanelKey, false), remember: false);
     }
 
     // Окно закрыто (Android пересоздал активность): страница больше не показывается — отписка от настроек,
@@ -194,8 +196,16 @@ public partial class TrainingPage : ContentPage, IDisposable
         {
             var path = await AudioFileService.SaveClipAsync(_currentClip, "current-training.wav", _playbackCancellation.Token);
             await _audioPlayback.PlayAsync(path, _playbackCancellation.Token);
-            PlaybackStatusLabel.Text = Texts.T("Готово — введите ответ");
-            AnswerEditor.Focus();
+            // Клавиатура нужна только при вводе ответа; при записи на бумаге она закрыла бы полэкрана
+            if (AnswerPanel.IsVisible)
+            {
+                PlaybackStatusLabel.Text = Texts.T("Готово — введите ответ");
+                AnswerEditor.Focus();
+            }
+            else
+            {
+                PlaybackStatusLabel.Text = Texts.T("Готово — сверьте запись с текстом задания");
+            }
         }
         catch (OperationCanceledException)
         {
@@ -223,6 +233,23 @@ public partial class TrainingPage : ContentPage, IDisposable
     {
         _playbackCancellation?.Cancel();
         _audioPlayback.Stop();
+    }
+
+    private void AnswerPanelButton_OnClicked(object sender, EventArgs e) => SetAnswerPanel(!AnswerPanel.IsVisible, remember: true);
+
+    /// <summary>
+    /// Ввод ответа — по желанию: обычно группы пишут на бумаге и сверяют с текстом задания («Показать»).
+    /// Экзамен и шаги курса засчитываются по введённому ответу — там поле раскрывается само, без запоминания.
+    /// </summary>
+    private void SetAnswerPanel(bool visible, bool remember)
+    {
+        AnswerPanel.IsVisible = visible;
+        PaperHintLabel.IsVisible = !visible;
+        AnswerPanelButton.Text = visible ? Texts.T("Проверить вводом ▴") : Texts.T("Проверить вводом ▾");
+        if (remember)
+        {
+            Preferences.Default.Set(AnswerPanelKey, visible);
+        }
     }
 
     private void ToggleAnswerButton_OnClicked(object sender, EventArgs e)
@@ -338,6 +365,7 @@ public partial class TrainingPage : ContentPage, IDisposable
     /// <summary>Новое задание или экзамен по текущим настройкам (кнопки курса на странице «Обучение»).</summary>
     public async Task StartTaskAsync(bool exam)
     {
+        SetAnswerPanel(true, remember: false);
         if (exam)
         {
             await StartExamAsync();
@@ -350,6 +378,7 @@ public partial class TrainingPage : ContentPage, IDisposable
 
     private async Task StartExamAsync()
     {
+        SetAnswerPanel(true, remember: false);
         await GenerateTaskAsync();
         if (string.IsNullOrEmpty(_currentTask) || _currentClip is null)
         {
