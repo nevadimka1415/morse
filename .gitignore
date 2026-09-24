@@ -8,3 +8,6 @@ morse-start.log
 *.user
 *.suo
 *.log
+
+# Кэш Python от scripts/ и tests/
+__pycache__/
