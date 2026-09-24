@@ -209,6 +209,8 @@ assert(read('src/MorseTrainer/MainWindow.xaml').includes('x:Name="ImportHistoryB
   'Both apps must export and import the history.');
 assert(read('src/MorseTrainer/MainWindow.xaml').includes('LearningCardEdit_OnClick') && read('src/MorseTrainer.Mobile/Pages/LearningPage.xaml').includes('EditChantButton_OnClicked'),
   'Both apps must let the user edit chants.');
+assert(read('src/MorseTrainer.Mobile/Services/VoicePackService.cs').includes('AppInfo.Current.BuildString'),
+  'Phone must cache the built-in voice per app build, otherwise an update keeps playing the old voice.');
 assert(read('src/MorseTrainer/Services/VoicePackService.cs').includes('CustomVoice.Find') && read('src/MorseTrainer.Mobile/Services/VoicePackService.cs').includes('CustomVoice.Find'),
   'Both apps must prefer the custom voice pack.');
 assert(read('src/MorseTrainer/MainWindow.xaml').includes('MinWidth="1000" MinHeight="680"') && read('src/MorseTrainer/MainWindow.xaml.cs').includes('SystemParameters.WorkArea'),
