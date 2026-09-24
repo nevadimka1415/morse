@@ -73,7 +73,7 @@ return 0;
 
 static void TestAlphabetCounts()
 {
-    Assert(MorseAlphabet.Russian.Count == 33, "Russian alphabet must contain 33 letters.");
+    Assert(MorseAlphabet.Russian.Count == 32 && !MorseAlphabet.Russian.ContainsKey('Ё'), "Russian alphabet must contain 32 letters without Ё (sent as Е).");
     Assert(MorseAlphabet.Latin.Count == 26, "Latin alphabet must contain 26 letters.");
     Assert(MorseAlphabet.Digits.Count == 10, "Digits must contain 10 symbols.");
     Assert(MorseAlphabet.Punctuation.Count >= 10, "Punctuation must contain at least 10 symbols.");
@@ -113,7 +113,7 @@ static void TestGeneration()
 
 static void TestLearningChants()
 {
-    Assert(LearningCatalog.Russian.Count == 33, "Learning mode must contain all Russian letters.");
+    Assert(LearningCatalog.Russian.Count == 32 && LearningCatalog.Russian.All(item => item.Symbol != 'Ё'), "Learning mode must contain all Russian letters without Ё.");
     Assert(LearningCatalog.Latin.Count == 26, "Learning mode must contain all Latin letters.");
     Assert(LearningCatalog.Digits.Count == 10, "Learning mode must contain all digits.");
 
@@ -476,7 +476,7 @@ static void TestSameCodeEvaluation()
     var mixed = TrainingEvaluator.Evaluate("ABC", "АБС");
     Assert(mixed.CorrectCount == 2 && mixed.Mistakes.Count == 1 && mixed.Mistakes[0].Position == 3,
         "A/А and B/Б share a code and must match; C/С do not.");
-    Assert(TrainingEvaluator.Evaluate("ЁЛКА", "ЕЛКА").IsPerfect, "Е typed for Ё must be accepted.");
+    Assert(TrainingEvaluator.Evaluate("ЕЛКА", "ёлка").IsPerfect, "Ё typed for Е must be accepted.");
     Assert(TrainingEvaluator.Evaluate("R3ABC UA9XYZ", "r3abc ua9xyz").IsPerfect, "Callsigns must be compared case-insensitively.");
     Assert(!TrainingEvaluator.Matches('А', 'Б') && TrainingEvaluator.Matches('Р', 'R'), "Matches must compare Morse codes.");
 }

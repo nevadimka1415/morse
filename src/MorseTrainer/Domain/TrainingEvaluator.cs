@@ -49,7 +49,7 @@ public static class TrainingEvaluator
     }
 
     /// <summary>
-    /// Символы с одинаковым кодом Морзе (А/A, Р/R, Е/Ё) на слух неразличимы,
+    /// Символы с одинаковым кодом Морзе (А/A, Р/R) на слух неразличимы,
     /// поэтому ответ другим алфавитом засчитывается как верный.
     /// </summary>
     public static bool Matches(char expected, char actual)
@@ -64,11 +64,13 @@ public static class TrainingEvaluator
                && expectedCode == actualCode;
     }
 
+    /// <summary>Верхний регистр без пробелов; набранная по привычке Ё считается Е — в азбуке это одна буква.</summary>
     public static string Normalize(string value)
     {
         return new string(value
             .ToUpperInvariant()
             .Where(symbol => !char.IsWhiteSpace(symbol))
+            .Select(symbol => symbol == 'Ё' ? 'Е' : symbol)
             .ToArray());
     }
 }

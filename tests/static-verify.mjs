@@ -99,7 +99,7 @@ for (const relativePath of requiredFiles) {
 
 const alphabetSource = read('src/MorseTrainer/Domain/MorseAlphabet.cs');
 const mapNames = ['Russian', 'Latin', 'Digits', 'Punctuation'];
-const expectedCounts = { Russian: 33, Latin: 26, Digits: 10 };
+const expectedCounts = { Russian: 32, Latin: 26, Digits: 10 }; // русских 32: Ё передают как Е
 
 for (let index = 0; index < mapNames.length; index += 1) {
   const name = mapNames[index];
@@ -358,7 +358,7 @@ assert(desktopVoiceFiles.length === 42, `Desktop voice pack has ${desktopVoiceFi
 const voiceCodes = new Set(voiceFiles.map((file) => file.slice('code_'.length, -'.m4a'.length)));
 const requiredVoiceCodes = [...alphabetSource.matchAll(/\['[^']+'\]\s*=\s*"([.-]+)"/g)]
   .map((match) => match[1])
-  .slice(0, 33 + 26 + 10)
+  .slice(0, expectedCounts.Russian + expectedCounts.Latin + expectedCounts.Digits)
   .map((code) => [...code].map((symbol) => symbol === '.' ? '0' : '1').join(''));
 for (const code of new Set(requiredVoiceCodes)) {
   assert(voiceCodes.has(code), `Voice pack is missing Morse code ${code}.`);

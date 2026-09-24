@@ -210,18 +210,18 @@ public static class Program
             // Обучение: карточки, поиск, привязки шаблона карточки
             window.MainTabs.SelectedIndex = 1;
             DoEvents();
-            Check(window.LearningItemsControl.Items.Count == 33, "learning shows 33 Russian letters");
+            Check(window.LearningItemsControl.Items.Count == 32, "learning shows 32 Russian letters (no Ё)");
             WaitUntil(() => FindChildren<TextBlock>(window.LearningItemsControl).Any(block => block.Text == "ай-даа"), "learning card bindings render the chant");
             window.LearningSearchText.Text = "ай";
             DoEvents();
-            Check(window.LearningItemsControl.Items.Count is >= 1 and < 33, "search filters the cards: " + window.LearningItemsControl.Items.Count);
+            Check(window.LearningItemsControl.Items.Count is >= 1 and < 32, "search filters the cards: " + window.LearningItemsControl.Items.Count);
             window.LearningSearchText.Text = string.Empty;
             window.LearningAlphabetCombo.SelectedIndex = 3;
             DoEvents();
             Check(window.LearningItemsControl.Items.Count == 10, "digits section has 10 cards");
             window.LearningAlphabetCombo.SelectedIndex = 0;
             DoEvents();
-            Check(FindChildren<Button>(window.LearningItemsControl).Count(button => button.Content as string == "✎") == 33, "every learning card has the chant edit button");
+            Check(FindChildren<Button>(window.LearningItemsControl).Count(button => button.Content as string == "✎") == 32, "every learning card has the chant edit button");
             Check(window.CustomVoiceText.Text.StartsWith(Texts.T("Свой голос не добавлен: звучат встроенные напевы."), StringComparison.Ordinal),
                 "custom voice status is shown: " + window.CustomVoiceText.Text);
             SaveScreenshot(window, screenshots, "learning-" + suffix);
@@ -289,7 +289,7 @@ public static class Program
             window.Show();
             DoEvents();
             Check(window.SelectionCountText.Text == Texts.F("Выбрано: {0}", 3), "three symbols are preselected: " + window.SelectionCountText.Text);
-            Check(window.RussianSymbolsPanel.Children.Count == 33 && window.LatinSymbolsPanel.Children.Count == 26
+            Check(window.RussianSymbolsPanel.Children.Count == 32 && window.LatinSymbolsPanel.Children.Count == 26
                   && window.DigitSymbolsPanel.Children.Count == 10 && window.PunctuationSymbolsPanel.Children.Count >= 10, "symbol panels are filled");
             var first = window.RussianSymbolsPanel.Children.OfType<ToggleButton>().First();
             Check(first.IsChecked == true && first.Content as string == "А", "first Russian toggle is А and checked");

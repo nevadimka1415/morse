@@ -39,11 +39,12 @@ public static class ContentModes
 
 public static class MorseAlphabet
 {
+    // Буквы Ё нет: её передают как Е (тот же код ·), отдельная Ё только дублировала Е в заданиях и карточках
     public static readonly IReadOnlyDictionary<char, string> Russian =
         new ReadOnlyDictionary<char, string>(new Dictionary<char, string>
         {
             ['А'] = ".-", ['Б'] = "-...", ['В'] = ".--", ['Г'] = "--.",
-            ['Д'] = "-..", ['Е'] = ".", ['Ё'] = ".", ['Ж'] = "...-",
+            ['Д'] = "-..", ['Е'] = ".", ['Ж'] = "...-",
             ['З'] = "--..", ['И'] = "..", ['Й'] = ".---", ['К'] = "-.-",
             ['Л'] = ".-..", ['М'] = "--", ['Н'] = "-.", ['О'] = "---",
             ['П'] = ".--.", ['Р'] = ".-.", ['С'] = "...", ['Т'] = "-",

@@ -185,7 +185,7 @@ public partial class LearningPage : ContentPage
     /// <summary>Своя запись символа (m4a, mp3 или wav в папке voice) или null.</summary>
     private static string? CustomRecording(char symbol) => CustomVoice.Find(MobilePaths.VoiceDirectory, symbol, VoiceExtensions);
 
-    /// <summary>Все записи для полного голоса: русские буквы (Ё звучит как Е) и цифры; латиница использует те же коды.</summary>
+    /// <summary>Все записи для полного голоса: русские буквы и цифры; латиница использует те же коды.</summary>
     private static IReadOnlyList<char> RecordingOrder() => MorseAlphabet.Russian.Keys
         .Concat(MorseAlphabet.Digits.Keys)
         .DistinctBy(symbol => VoiceClipCatalog.GetClipName(symbol))
