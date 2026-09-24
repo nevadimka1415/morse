@@ -217,8 +217,8 @@ assert(read('src/MorseTrainer/MainWindow.xaml').includes('MinWidth="1000" MinHei
   'Windows window must fit a 1366×768 screen.');
 assert(read('src/MorseTrainer/MainWindow.xaml').includes('x:Name="TogglePanelButton"'), 'Training settings panel must be collapsible.');
 const wpfProject = read('src/MorseTrainer/MorseTrainer.csproj');
-assert(wpfProject.includes('<UseWindowsForms>true</UseWindowsForms>') && wpfProject.includes('<Using Remove="System.Windows.Forms" />'),
-  'WPF project uses WinForms only for the tray reminder and must not import its namespaces implicitly.');
+assert(!wpfProject.includes('UseWindowsForms') && read('src/MorseTrainer/Services/TrayReminder.cs').includes('Shell_NotifyIconW'),
+  'Tray reminder must call Shell_NotifyIcon directly: WinForms adds ~7 MB to the self-contained build.');
 assert(read('src/MorseTrainer/MainWindow.xaml').includes('x:Name="NudgeBanner"') && read('src/MorseTrainer/MainWindow.xaml').includes('x:Name="ReminderCheckBox"'),
   'Windows app must show the practice banner and offer the reminder notification.');
 assert(read('src/MorseTrainer/MainWindow.xaml').includes('x:Name="CourseStartButton"') && read('src/MorseTrainer.Mobile/Pages/LearningPage.xaml').includes('x:Name="CourseStartButton"'),

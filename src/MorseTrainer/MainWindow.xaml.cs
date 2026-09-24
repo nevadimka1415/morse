@@ -276,7 +276,7 @@ public partial class MainWindow : Window
         _reminderShownOn = today;
         try
         {
-            _trayReminder ??= new TrayReminder(ActivateFromReminder);
+            _trayReminder ??= new TrayReminder(this, ActivateFromReminder);
             _trayReminder.Show("Morse Trainer", Texts.T("Пора потренироваться: пять минут азбуки Морзе."));
         }
         catch (Exception exception) when (exception is InvalidOperationException or System.Runtime.InteropServices.ExternalException)

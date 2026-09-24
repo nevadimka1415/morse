@@ -145,6 +145,18 @@ public static class Program
             Check(window.AdvancedPanel.Visibility == Visibility.Collapsed, "advanced settings collapse again");
             Check(window.ReminderCheckBox.IsChecked == false && window.ReminderTimeCombo.Items.Count == 48 && window.ReminderTimeCombo.SelectedItem as string == "19:00",
                 "Windows reminder is off by default at 19:00");
+            // Уведомление без WinForms: значок через Shell_NotifyIcon, события приходят в главное окно
+            try
+            {
+                using var reminder = new TrayReminder(window, () => { });
+                reminder.Show("Morse Trainer", Texts.T("Пора потренироваться: пять минут азбуки Морзе."));
+                Console.WriteLine("      tray notification shown");
+            }
+            catch (System.ComponentModel.Win32Exception exception)
+            {
+                // На раннере может не быть панели задач — тогда оболочка отказывает, это не ошибка программы
+                Console.WriteLine("      tray notification unavailable: " + exception.Message);
+            }
             Check(window.ExamLimitCombo.Items.Count == Domain.ExamSession.TimeLimitChoices.Count && window.ExamLimitCombo.Items[0] as string == Texts.T("без лимита"),
                 "exam time limit choices are translated: " + window.ExamLimitCombo.Items[0]);
 
