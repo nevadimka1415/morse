@@ -1,5 +1,5 @@
 #ifndef AppVersion
-  #define AppVersion "2.6.2"
+  #define AppVersion "2.7.0"
 #endif
 
 #define AppName "Morse Trainer"

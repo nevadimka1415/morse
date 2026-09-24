@@ -261,7 +261,7 @@ assert(/<Style TargetType="TabItem">\s*<Setter Property="Foreground" Value="\{Dy
 assert(read('src/MorseTrainer/MainWindow.xaml.cs').includes('DownloadAndRunInstallerAsync'), 'Windows update must download and run the installer.');
 assert(read('src/MorseTrainer.Mobile/MorseTrainer.Mobile.csproj').includes('<AndroidLinkTool>r8</AndroidLinkTool>'), 'Android release build must use R8.');
 assert(read('README.md').includes('actions/workflows/build.yml/badge.svg'), 'README must show the build status badges.');
-for (const shot of ['training', 'learning', 'keyer', 'progress', 'training-en', 'learning-en', 'training-compact', 'phone-training', 'phone-learning', 'phone-settings']) {
+for (const shot of ['training', 'learning', 'keyer', 'progress', 'training-en', 'learning-en', 'training-compact', 'phone-training', 'phone-learning', 'phone-quiz', 'phone-settings']) {
   assert(existsSync(resolve(root, `docs/screenshots/${shot}.png`)) && statSync(resolve(root, `docs/screenshots/${shot}.png`)).size > 10000, `Screenshot is missing: ${shot}.png`);
 }
 assert(read('README.md').includes('docs/screenshots/training.png'), 'README must show the screenshots.');

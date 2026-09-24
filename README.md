@@ -83,11 +83,11 @@
 
 Ещё: [обучение на английском в тёмной теме](docs/screenshots/learning-en.png).
 
-Телефон (Android, снимки дымового теста на эмуляторе, язык системы — английский):
+Телефон (Android, снимки дымового теста на эмуляторе, язык приложения — русский):
 
-| Тренировка | Настройки | Обучение и курс |
-|---|---|---|
-| ![Phone training](docs/screenshots/phone-training.png) | ![Phone settings](docs/screenshots/phone-settings.png) | ![Phone learning](docs/screenshots/phone-learning.png) |
+| Тренировка | Обучение и курс | На слух | Настройки |
+|---|---|---|---|
+| ![Тренировка на телефоне](docs/screenshots/phone-training.png) | ![Обучение на телефоне](docs/screenshots/phone-learning.png) | ![Проверка на слух](docs/screenshots/phone-quiz.png) | ![Настройки на телефоне](docs/screenshots/phone-settings.png) |
 
 ## Скачать готовую программу
 
