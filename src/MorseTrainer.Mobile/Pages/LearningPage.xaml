@@ -20,7 +20,7 @@
                 <Grid ColumnDefinitions="*,Auto">
                     <Label x:Name="CourseTitleLabel" Text="{loc:Loc 'Курс «С нуля до 60 зн/мин»'}" FontAttributes="Bold" LineBreakMode="WordWrap"
                            VerticalOptions="Center" />
-                    <Button x:Name="CourseDetailsButton" Grid.Column="1" Text="▾" Padding="10,0" MinimumWidthRequest="36" MinimumHeightRequest="36"
+                    <Button x:Name="CourseDetailsButton" Grid.Column="1" Text="▾" FontSize="18" Padding="10,0" MinimumWidthRequest="36" MinimumHeightRequest="36"
                             VerticalOptions="Start" BackgroundColor="Transparent" TextColor="{StaticResource PrimaryDark}"
                             Clicked="CourseDetailsButton_OnClicked" />
                 </Grid>

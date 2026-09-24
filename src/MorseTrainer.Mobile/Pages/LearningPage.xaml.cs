@@ -63,6 +63,8 @@ public partial class LearningPage : ContentPage
             CourseTitleLabel.Text = Texts.T("Курс «С нуля до 60 зн/мин»");
             CourseDetailsLabel.Text = Texts.F("{0} шагов: метод Коха по 4 символа, слова на 50 и 60 зн/мин, итоговый экзамен. Кнопка ставит нужные настройки и создаёт задание.", steps.Count);
             CourseStatusLabel.Text = passed > 0 ? Texts.F("Пройдено шагов: {0} из {1}.", passed, steps.Count) : string.Empty;
+            // Пустая строка статуса оставляла зазор над кнопкой
+            CourseStatusLabel.IsVisible = passed > 0;
             CourseStartButton.Text = Texts.T("Начать курс");
             CourseNextButton.IsVisible = false;
             CourseResetButton.IsVisible = false;
@@ -73,6 +75,7 @@ public partial class LearningPage : ContentPage
         CourseTitleLabel.Text = Texts.F("Курс «С нуля до 60 зн/мин» · шаг {0} из {1}: {2}", step.Number, steps.Count, step.Title);
         CourseDetailsLabel.Text = step.Details;
         CourseStatusLabel.Text = Course.Status(history, step) + " " + Texts.F("Пройдено шагов: {0} из {1}.", passed, steps.Count);
+        CourseStatusLabel.IsVisible = true;
         CourseStartButton.Text = step.IsExam ? Texts.T("Начать экзамен") : Texts.T("Начать шаг");
         CourseNextButton.IsVisible = step.Number < steps.Count;
         CourseNextButton.IsEnabled = stepPassed;
