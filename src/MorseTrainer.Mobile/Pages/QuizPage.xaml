@@ -38,6 +38,20 @@
                         Clicked="NewButton_OnClicked" />
                 <Button x:Name="RepeatButton" Grid.Column="2" Text="{loc:Loc '↻ Ещё раз'}" IsEnabled="False" Clicked="RepeatButton_OnClicked" />
             </Grid>
+            <!-- Скорость сигнала своя (кому-то медленнее, кому-то быстрее); следующий символ звучит сам после ответа -->
+            <Border>
+                <VerticalStackLayout Spacing="8">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <Label Text="{loc:Loc 'Скорость сигнала'}" VerticalOptions="Center" />
+                        <Label x:Name="SpeedValueLabel" Grid.Column="1" Text="" FontAttributes="Bold" VerticalOptions="Center" />
+                    </Grid>
+                    <Slider x:Name="SpeedSlider" Minimum="20" Maximum="200" Value="45" ValueChanged="SpeedSlider_OnValueChanged" />
+                    <Grid ColumnDefinitions="*,Auto">
+                        <Label Text="{loc:Loc 'Следующий символ — сразу после ответа'}" VerticalOptions="Center" LineBreakMode="WordWrap" />
+                        <Switch x:Name="AutoNextSwitch" Grid.Column="1" Toggled="AutoNextSwitch_OnToggled" />
+                    </Grid>
+                </VerticalStackLayout>
+            </Border>
             <Button x:Name="ResetScoreButton" Text="{loc:Loc 'Сбросить счёт'}" HorizontalOptions="Center" BackgroundColor="Transparent"
                     TextColor="{StaticResource PrimaryDark}" Clicked="ResetScoreButton_OnClicked" />
         </VerticalStackLayout>

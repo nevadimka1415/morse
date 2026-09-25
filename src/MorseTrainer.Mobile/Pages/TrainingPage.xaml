@@ -6,16 +6,18 @@
              Title="{loc:Loc 'Тренировка'}">
     <ScrollView>
         <VerticalStackLayout x:Name="RootLayout" Padding="16" Spacing="14">
+            <!-- Параметры задания нужны редко: свёрнуты под кнопкой в шапке, выбор запоминается -->
             <Grid ColumnDefinitions="*,Auto">
                 <Label Text="{loc:Loc 'Тренировка'}" FontSize="26" FontAttributes="Bold" VerticalOptions="Center" />
-                <Button Grid.Column="1" Text="{loc:Loc 'Настроить'}" Clicked="SettingsButton_OnClicked" />
+                <Button x:Name="ParamsToggleButton" Grid.Column="1" Text="{loc:Loc 'Параметры ▾'}" Padding="12,6"
+                        Clicked="ParamsToggleButton_OnClicked" />
             </Grid>
 
-            <Border BackgroundColor="{AppThemeBinding Light=#ECFDF5, Dark=#102F29}">
+            <Border x:Name="ParamsPanel" IsVisible="False" BackgroundColor="{AppThemeBinding Light=#ECFDF5, Dark=#102F29}">
                 <VerticalStackLayout Spacing="8">
-                    <Label Text="{loc:Loc 'Параметры'}" FontAttributes="Bold" />
                     <Label x:Name="SettingsSummaryLabel" Text="{loc:Loc '10 групп × 5 · 60 знаков/мин'}" LineBreakMode="WordWrap" />
                     <Label Text="{loc:Loc 'Перед началом: Ж Ж Ж → пауза → задание'}" TextColor="{StaticResource PrimaryDark}" FontAttributes="Bold" />
+                    <Button Text="{loc:Loc 'Изменить в настройках'}" Clicked="SettingsButton_OnClicked" />
                 </VerticalStackLayout>
             </Border>
 

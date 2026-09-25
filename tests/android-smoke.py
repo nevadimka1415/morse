@@ -2,7 +2,8 @@
 """Дымовой тест APK на Android-эмуляторе (job android-smoke в .github/workflows/mobile.yml).
 
 Ставит APK, запускает главную активность, ждёт первое задание на вкладке «Тренировка»,
-нажимает «Слушать»/«Стоп», проходит по пяти вкладкам нижней панели (на «На слух» — раунд с ответом) и на каждом шаге
+нажимает «Слушать»/«Стоп», раскрывает и сворачивает «Параметры», проходит по пяти вкладкам нижней панели
+(на «На слух» — ответ и автопереход к следующему символу, затем раунд с выключенным автопереходом) и на каждом шаге
 снимает скриншот, проверяет, что процесс жив и в logcat нет падений приложения. Затем пересоздаёт
 активность и повторяет проход на русском (язык приложения ru-RU) — скриншоты android-ru-* идут в README.
 
@@ -31,6 +32,8 @@ STOP_TEXTS = ("■ Стоп", "■ Stop")
 QUIZ_NEW_TEXTS = ("▶ Новый символ", "▶ New symbol")
 QUIZ_QUESTION_TEXTS = ("Какой символ прозвучал?", "Which symbol was that?")
 QUIZ_ANSWERED_PREFIXES = ("Верно:", "Правильно:", "Correct:")
+PARAMS_TEXTS = ("Параметры ▾", "Параметры ▴", "Parameters ▾", "Parameters ▴")
+PARAMS_OPEN_TEXTS = ("Изменить в настройках", "Change in settings")
 
 out_dir = Path(sys.argv[2] if len(sys.argv) > 2 else "android-smoke")
 results = []
@@ -273,8 +276,13 @@ def open_tab(key, titles):
     return action
 
 
+def quiz_answers():
+    root, _ = dump_ui()
+    return [node for node in root.iter("node") if node.get("clickable") == "true" and len(node.get("text", "")) == 1]
+
+
 def quiz_round(prefix=""):
-    """«На слух»: «Новый символ» → звучит сигнал → четыре варианта → ответ; экран показывает верный символ."""
+    """«На слух»: «Новый символ» → звучит сигнал → четыре варианта → ответ; следующий символ звучит сам (автопереход)."""
     def action():
         root, _ = dump_ui()
         new = nodes_with_text(root, QUIZ_NEW_TEXTS)
@@ -285,16 +293,90 @@ def quiz_round(prefix=""):
         ensure_alive()
         alert = close_alert()
         wait_for(QUIZ_QUESTION_TEXTS, 30)
-        root, _ = dump_ui()
-        answers = [node for node in root.iter("node") if node.get("clickable") == "true" and len(node.get("text", "")) == 1]
+        answers = quiz_answers()
         if len(answers) != 4:
             raise RuntimeError(f"Ожидалось 4 варианта ответа, на экране {len(answers)}")
+        before = [node.get("text") for node in answers]
         screenshot(prefix + "quiz-question")
         tap(answers[0])
-        found = wait_for(QUIZ_ANSWERED_PREFIXES, 15, prefix=True)
+        # Ответ виден 1–2 с, потом звучит следующий символ: снимок сразу, без дампа экрана
+        time.sleep(0.4)
         screenshot(prefix + "quiz-answered")
-        return found[0].get("text", "") + (f"; звук: {alert}" if alert else "")
+        deadline = time.time() + 30
+        while time.time() < deadline:
+            ensure_alive()
+            close_alert()
+            root, _ = dump_ui()
+            after = [node.get("text") for node in quiz_answers()]
+            if nodes_with_text(root, QUIZ_QUESTION_TEXTS) and len(after) == 4 and after != before:
+                return f"ответ {before[0]}; следующий вопрос сам: {' '.join(before)} → {' '.join(after)}" + (f"; звук: {alert}" if alert else "")
+            time.sleep(1)
+        raise RuntimeError(f"После ответа следующий символ не прозвучал сам (варианты {' '.join(before)})")
     return action
+
+
+def quiz_manual_round():
+    """Переключатель автоперехода: выключен — после ответа вопрос остаётся на экране с верным символом; потом включается обратно."""
+    def toggle():
+        for _ in range(3):
+            root, _ = dump_ui()
+            switches = [node for node in root.iter("node") if node.get("checkable") == "true"]
+            if switches:
+                tap(switches[-1])
+                time.sleep(1)
+                return switches[-1].get("checked")
+            # Переключатель ниже края экрана — прокрутка вверх
+            adb("shell", "input", "swipe", "540", "1600", "540", "700", "300")
+            time.sleep(1)
+        raise RuntimeError("Не найден переключатель «Следующий символ — сразу после ответа»")
+
+    def action():
+        was = toggle()
+        if was != "true":
+            raise RuntimeError(f"Автопереход по умолчанию должен быть включён, а переключатель: checked={was}")
+        adb("shell", "input", "swipe", "540", "700", "540", "1600", "300")
+        time.sleep(1)
+        root, _ = dump_ui()
+        new = nodes_with_text(root, QUIZ_NEW_TEXTS)
+        if not new:
+            raise RuntimeError("Нет кнопки «Новый символ»")
+        tap(new[0])
+        time.sleep(3)
+        close_alert()
+        wait_for(QUIZ_QUESTION_TEXTS, 30)
+        answers = quiz_answers()
+        if len(answers) != 4:
+            raise RuntimeError(f"Ожидалось 4 варианта ответа, на экране {len(answers)}")
+        tap(answers[0])
+        found = wait_for(QUIZ_ANSWERED_PREFIXES, 15, prefix=True)
+        # Без автоперехода ответ остаётся на экране
+        time.sleep(4)
+        root, _ = dump_ui()
+        if not nodes_with_text(root, QUIZ_ANSWERED_PREFIXES, prefix=True):
+            raise RuntimeError("Автопереход выключен, но ответ сменился следующим вопросом")
+        toggle()
+        return found[0].get("text", "") + "; ответ остался на экране, автопереход снова включён"
+    return action
+
+
+def training_params():
+    """«Тренировка»: параметры свёрнуты, «Параметры ▾» раскрывает сводку, повторное нажатие сворачивает."""
+    root, _ = dump_ui()
+    if nodes_with_text(root, PARAMS_OPEN_TEXTS):
+        raise RuntimeError("Параметры должны быть свёрнуты по умолчанию")
+    toggle = nodes_with_text(root, PARAMS_TEXTS)
+    if not toggle:
+        raise RuntimeError("Нет кнопки «Параметры ▾»")
+    tap(toggle[0])
+    found = wait_for(PARAMS_OPEN_TEXTS, 10)
+    screenshot("training-params")
+    root, _ = dump_ui()
+    tap(nodes_with_text(root, PARAMS_TEXTS)[0])
+    time.sleep(2)
+    root, _ = dump_ui()
+    if nodes_with_text(root, PARAMS_OPEN_TEXTS):
+        raise RuntimeError("Параметры не свернулись")
+    return "раскрыты и свёрнуты"
 
 
 def activity_creations():
@@ -353,11 +435,13 @@ def main():
         step("Запуск MainActivity", launch)
         step("Первое задание на «Тренировке»", training_ready)
         step("Слушать и Стоп", play_and_stop)
+        step("Параметры: раскрыть и свернуть", training_params)
         # По всем вкладкам и обратно на «Тренировку» (второй скриншот — под своим именем)
         for key, russian, english in TABS[1:] + [("training-return",) + TABS[0][1:]]:
             step(f"Вкладка «{russian}»", open_tab(key, (russian, english)))
             if key == "quiz":
-                step("На слух: новый символ и ответ", quiz_round())
+                step("На слух: ответ и следующий символ сам", quiz_round())
+                step("На слух: без автоперехода", quiz_manual_round())
         # Пересоздание активности: страницы старого окна не должны ронять приложение при переключении вкладок
         step("Пересоздание активности (шрифт 1.15)", recreate_activity)
         for key, russian, english in [("learning-after-recreate",) + TABS[1][1:], ("training-after-recreate",) + TABS[0][1:]]:

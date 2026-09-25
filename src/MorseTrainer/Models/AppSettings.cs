@@ -37,6 +37,9 @@ public sealed class AppSettings
     public int LearningAudioModeIndex { get; set; } = 1;
     public int QuizCorrect { get; set; }
     public int QuizTotal { get; set; }
+    // Проверка на слух: своя скорость сигнала и следующий символ сразу после ответа
+    public int QuizSpeed { get; set; } = 45;
+    public bool QuizAutoNext { get; set; } = true;
     public string ActiveProfileName { get; set; } = "Основной";
     // Windows: размер окна и открытая вкладка между запусками (0 — не сохранялось)
     public double WindowWidth { get; set; }

@@ -44,7 +44,8 @@ var tests = new (string Name, Action Run)[]
     ("Custom chants and voice", TestCustomChantsAndVoice),
     ("Windows practice nudge", TestPracticeNudge),
     ("Course from zero to 60 cpm", TestCourse),
-    ("Keyer target highlight", TestKeyerProgress)
+    ("Keyer target highlight", TestKeyerProgress),
+    ("Listening quiz", TestEarQuiz)
 };
 
 var failures = new List<string>();
@@ -1092,6 +1093,33 @@ static void TestKeyerProgress()
     Assert(KeyerProgress.MatchedLength("CQ DE R3ABC", "CQ DX") == 4, "Highlight stops at the first mistake.");
     Assert(KeyerProgress.MatchedLength("МАМА", "MAM") == 3, "Same-code symbols (М/M, А/A) match.");
     Assert(KeyerProgress.MatchedLength("АБ", "АБВГ") == 2, "Extra symbols do not overflow the task.");
+}
+
+static void TestEarQuiz()
+{
+    Assert(EarQuiz.ClampSpeed(3) == EarQuiz.MinSpeed && EarQuiz.ClampSpeed(999) == EarQuiz.MaxSpeed, "quiz speed is clamped to 20–200");
+    Assert(EarQuiz.ClampSpeed(47) == 45 && EarQuiz.ClampSpeed(48) == 50 && EarQuiz.ClampSpeed(EarQuiz.DefaultSpeed) == 45, "quiz speed snaps to a step of 5");
+    Assert(new AppSettings().QuizSpeed == EarQuiz.DefaultSpeed && new AppSettings().QuizAutoNext, "defaults: 45 cpm, next symbol plays by itself");
+    Assert(EarQuiz.NextDelay(false) > EarQuiz.NextDelay(true), "after a mistake the pause is longer to see the right answer");
+
+    foreach (var alphabet in new[] { 0, 1, 2, 3 })
+    {
+        var pool = LearningCatalog.GetItems(alphabet);
+        char? previous = null;
+        for (var round = 0; round < 300; round++)
+        {
+            var question = EarQuiz.Next(pool, previous);
+            Assert(question.Answers.Count == EarQuiz.AnswerCount, $"alphabet {alphabet}: four answers");
+            Assert(question.Answers.Count(item => item.Symbol == question.Target.Symbol) == 1, $"alphabet {alphabet}: the target is among the answers once");
+            Assert(question.Answers.Select(item => item.Code).Distinct().Count() == question.Answers.Count, $"alphabet {alphabet}: answers never share a code (А and A)");
+            Assert(question.Target.Symbol != previous, $"alphabet {alphabet}: the same symbol does not repeat twice in a row");
+            previous = question.Target.Symbol;
+        }
+    }
+
+    var single = LearningCatalog.GetItems(3).Take(1).ToArray();
+    var only = EarQuiz.Next(single, single[0].Symbol);
+    Assert(only.Target.Symbol == single[0].Symbol && only.Answers.Count == 1, "a one-symbol pool still asks its only symbol");
 }
 
 static void Assert(bool condition, string message)

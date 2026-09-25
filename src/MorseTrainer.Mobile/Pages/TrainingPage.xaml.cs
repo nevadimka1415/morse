@@ -25,6 +25,7 @@ public partial class TrainingPage : ContentPage, IDisposable
     private string _currentTask = string.Empty;
     private bool _answerVisible;
     private const string AnswerPanelKey = "training.typed_answer";
+    private const string ParamsPanelKey = "training.params_open";
 
     public TrainingPage(IAudioPlaybackService audioPlayback, MobileSettingsService settingsService, TrainingHistoryStore historyStore)
     {
@@ -35,6 +36,7 @@ public partial class TrainingPage : ContentPage, IDisposable
         _settingsChanged = (_, _) => MainThread.BeginInvokeOnMainThread(RefreshSettingsSummary);
         _settingsService.SettingsChanged += _settingsChanged;
         SetAnswerPanel(Preferences.Default.Get(AnswerPanelKey, false), remember: false);
+        SetParamsPanel(Preferences.Default.Get(ParamsPanelKey, false));
     }
 
     // Окно закрыто (Android пересоздал активность): страница больше не показывается — отписка от настроек,
@@ -82,6 +84,19 @@ public partial class TrainingPage : ContentPage, IDisposable
     private async void SettingsButton_OnClicked(object sender, EventArgs e)
     {
         await Shell.Current.GoToAsync("//settings");
+    }
+
+    private void ParamsToggleButton_OnClicked(object sender, EventArgs e)
+    {
+        SetParamsPanel(!ParamsPanel.IsVisible);
+        Preferences.Default.Set(ParamsPanelKey, ParamsPanel.IsVisible);
+    }
+
+    /// <summary>Сводка параметров задания: по умолчанию свёрнута, раскрывается кнопкой «Параметры ▾» в шапке.</summary>
+    private void SetParamsPanel(bool visible)
+    {
+        ParamsPanel.IsVisible = visible;
+        ParamsToggleButton.Text = visible ? Texts.T("Параметры ▴") : Texts.T("Параметры ▾");
     }
 
     private async void GenerateButton_OnClicked(object sender, EventArgs e)

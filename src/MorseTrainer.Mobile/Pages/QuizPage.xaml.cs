@@ -1,4 +1,3 @@
-using System.Security.Cryptography;
 using MorseTrainer.Domain;
 using MorseTrainer.Localization;
 using MorseTrainer.Mobile.Services;
@@ -7,7 +6,7 @@ using MorseTrainer.Services;
 namespace MorseTrainer.Mobile.Pages;
 
 /// <summary>Проверка на слух: звучит символ, из четырёх вариантов нужно выбрать прозвучавший.</summary>
-public partial class QuizPage : ContentPage
+public partial class QuizPage : ContentPage, IDisposable
 {
     private const string AlphabetKey = "quiz.alphabet";
 
@@ -17,9 +16,14 @@ public partial class QuizPage : ContentPage
     private readonly Button[] _answerButtons;
     private LearningSymbolItem? _target;
     private bool _answered = true;
+    private bool _visible;
     private int _correct;
     private int _total;
     private int _alphabet;
+    private int _speed;
+    private bool _autoNext;
+    private bool _ready;
+    private CancellationTokenSource? _nextCancellation;
 
     public QuizPage(IAudioPlaybackService audioPlayback, MobileSettingsService settingsService)
     {
@@ -33,7 +37,35 @@ public partial class QuizPage : ContentPage
         var settings = _settingsService.LoadSettings();
         _correct = settings.QuizCorrect;
         _total = settings.QuizTotal;
+        _speed = EarQuiz.ClampSpeed(settings.QuizSpeed);
+        _autoNext = settings.QuizAutoNext;
+        SpeedSlider.Value = _speed;
+        AutoNextSwitch.IsToggled = _autoNext;
+        UpdateSpeedLabel();
         UpdateScore();
+        // До этой строки ползунок и переключатель только принимают сохранённые значения, настройки не пишутся
+        _ready = true;
+    }
+
+    // Окно закрыто (Android пересоздал активность): следующий символ не должен прозвучать со старой страницы
+    public void Dispose()
+    {
+        CancelScheduledNext();
+        _visible = false;
+    }
+
+    protected override void OnAppearing()
+    {
+        base.OnAppearing();
+        _visible = true;
+    }
+
+    // Ушли на другую вкладку — автопереход останавливается, чтобы символы не звучали поверх другой страницы
+    protected override void OnDisappearing()
+    {
+        base.OnDisappearing();
+        _visible = false;
+        CancelScheduledNext();
     }
 
     private void AlphabetButton_OnClicked(object? sender, EventArgs e)
@@ -43,6 +75,7 @@ public partial class QuizPage : ContentPage
             return;
         }
 
+        CancelScheduledNext();
         _alphabet = Math.Clamp(index, 0, 3);
         ChoiceButtons.SaveAlphabet(AlphabetKey, _alphabet);
         ChoiceButtons.Highlight(_alphabetButtons, _alphabet);
@@ -60,24 +93,21 @@ public partial class QuizPage : ContentPage
         QuizStatusLabel.Text = Texts.T("Нажмите «Новый символ» и слушайте");
     }
 
-    private async void NewButton_OnClicked(object? sender, EventArgs e)
+    private async void NewButton_OnClicked(object? sender, EventArgs e) => await AskNextAsync();
+
+    private async Task AskNextAsync()
     {
-        var pool = LearningCatalog.GetItems(_alphabet);
-        _target = pool[RandomNumberGenerator.GetInt32(pool.Count)];
-        // Варианты с тем же кодом (А и A) не показываются: их на слух не различить
-        var answers = pool.Where(item => item.Symbol != _target.Symbol && item.Code != _target.Code)
-            .OrderBy(_ => RandomNumberGenerator.GetInt32(int.MaxValue))
-            .Take(_answerButtons.Length - 1)
-            .Append(_target)
-            .OrderBy(_ => RandomNumberGenerator.GetInt32(int.MaxValue))
-            .ToArray();
+        CancelScheduledNext();
+        var question = EarQuiz.Next(LearningCatalog.GetItems(_alphabet), _target?.Symbol);
+        _target = question.Target;
         for (var index = 0; index < _answerButtons.Length; index++)
         {
             var button = _answerButtons[index];
+            var answer = index < question.Answers.Count ? question.Answers[index] : null;
             ClearMark(button);
-            button.IsEnabled = index < answers.Length;
-            button.Text = index < answers.Length ? answers[index].Symbol.ToString() : string.Empty;
-            button.CommandParameter = index < answers.Length ? answers[index].Symbol : null;
+            button.IsEnabled = answer is not null;
+            button.Text = answer?.Symbol.ToString() ?? string.Empty;
+            button.CommandParameter = answer?.Symbol;
         }
 
         _answered = false;
@@ -85,7 +115,16 @@ public partial class QuizPage : ContentPage
         await PlayTargetAsync();
     }
 
-    private async void RepeatButton_OnClicked(object? sender, EventArgs e) => await PlayTargetAsync();
+    private async void RepeatButton_OnClicked(object? sender, EventArgs e)
+    {
+        // Повтор после ответа (например, послушать верный символ после ошибки): следующий ждёт конца повтора
+        var waitingForNext = CancelScheduledNext();
+        await PlayTargetAsync();
+        if (waitingForNext && _answered)
+        {
+            await ScheduleNextAsync(correct: true);
+        }
+    }
 
     private async Task PlayTargetAsync()
     {
@@ -96,7 +135,7 @@ public partial class QuizPage : ContentPage
 
         QuizStatusLabel.Text = Texts.T("Слушайте…");
         var settings = _settingsService.LoadSettings();
-        var clip = MorseAudioService.Render(_target.Symbol.ToString(), 45, settings.FrequencyHz, settings.VolumePercent, 3, 7);
+        var clip = MorseAudioService.Render(_target.Symbol.ToString(), _speed, settings.FrequencyHz, settings.VolumePercent, 3, 7);
         try
         {
             var path = await AudioFileService.SaveClipAsync(clip, "quiz-signal.wav");
@@ -118,7 +157,7 @@ public partial class QuizPage : ContentPage
         }
     }
 
-    private void AnswerButton_OnClicked(object? sender, EventArgs e)
+    private async void AnswerButton_OnClicked(object? sender, EventArgs e)
     {
         // Кнопки не выключаются после ответа: у выключенной кнопки не видно, где верный ответ
         if (_answered || _target is null || sender is not Button { CommandParameter: char answer } chosen)
@@ -128,7 +167,8 @@ public partial class QuizPage : ContentPage
 
         _answered = true;
         _total++;
-        if (answer == _target.Symbol)
+        var correct = answer == _target.Symbol;
+        if (correct)
         {
             _correct++;
             QuizStatusLabel.Text = Texts.F("Верно: {0} — {1}", _target.Symbol, _target.Chant);
@@ -147,7 +187,88 @@ public partial class QuizPage : ContentPage
         }
 
         SaveScore();
+        await ScheduleNextAsync(correct);
     }
+
+    /// <summary>Следующий символ после паузы, если включён автопереход и вкладка открыта.</summary>
+    private async Task ScheduleNextAsync(bool correct)
+    {
+        if (!_autoNext || !_visible)
+        {
+            return;
+        }
+
+        CancelScheduledNext();
+        var cancellation = new CancellationTokenSource();
+        _nextCancellation = cancellation;
+        try
+        {
+            await Task.Delay(EarQuiz.NextDelay(correct), cancellation.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+
+        if (!ReferenceEquals(_nextCancellation, cancellation) || !_visible || !_autoNext)
+        {
+            return;
+        }
+
+        _nextCancellation = null;
+        cancellation.Dispose();
+        await AskNextAsync();
+    }
+
+    /// <summary>Отменяет ожидающий следующий символ; true — он действительно ждал.</summary>
+    private bool CancelScheduledNext()
+    {
+        var pending = _nextCancellation;
+        if (pending is null)
+        {
+            return false;
+        }
+
+        _nextCancellation = null;
+        pending.Cancel();
+        pending.Dispose();
+        return true;
+    }
+
+    private void SpeedSlider_OnValueChanged(object? sender, ValueChangedEventArgs e)
+    {
+        var speed = EarQuiz.ClampSpeed((int)Math.Round(e.NewValue));
+        if (!_ready || speed == _speed)
+        {
+            return;
+        }
+
+        _speed = speed;
+        UpdateSpeedLabel();
+        var settings = _settingsService.LoadSettings();
+        settings.QuizSpeed = _speed;
+        _settingsService.SaveSettings(settings);
+    }
+
+    private void AutoNextSwitch_OnToggled(object? sender, ToggledEventArgs e)
+    {
+        if (!_ready)
+        {
+            return;
+        }
+
+        _autoNext = e.Value;
+        if (!_autoNext)
+        {
+            CancelScheduledNext();
+        }
+
+        var settings = _settingsService.LoadSettings();
+        settings.QuizAutoNext = _autoNext;
+        _settingsService.SaveSettings(settings);
+    }
+
+    private void UpdateSpeedLabel() => SpeedValueLabel.Text = Texts.F("{0} знаков/мин", _speed);
 
     private void ResetScoreButton_OnClicked(object? sender, EventArgs e)
     {
