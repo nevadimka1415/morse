@@ -6,7 +6,7 @@ namespace MorseTrainer.Domain;
 public sealed record EarQuizQuestion(LearningSymbolItem Target, IReadOnlyList<LearningSymbolItem> Answers);
 
 /// <summary>
-/// Проверка на слух (Windows и телефон): звучит символ, из четырёх вариантов нужно выбрать прозвучавший.
+/// Проверка на слух (Windows и телефон): звучит символ, из четырёх похожих на слух вариантов нужно выбрать прозвучавший.
 /// Скорость сигнала своя, не из настроек тренировки; после ответа следующий символ может звучать сам.
 /// </summary>
 public static class EarQuiz
@@ -28,8 +28,9 @@ public static class EarQuiz
     public static TimeSpan NextDelay(bool correct) => correct ? TimeSpan.FromSeconds(1) : TimeSpan.FromSeconds(2.2);
 
     /// <summary>
-    /// Новый вопрос из набора. Варианты с тем же кодом (А и A) не показываются — их на слух не различить;
-    /// previous — прошлый символ: подряд один и тот же не звучит.
+    /// Новый вопрос из набора. Варианты ответа — похожие на слух: ближайшие по коду к прозвучавшему (отличие в один-два
+    /// элемента, например к И «··» — Е, А, Н, С), среди одинаково близких — случайные. Варианты с тем же кодом (А и A)
+    /// не показываются — их на слух не различить; previous — прошлый символ: подряд один и тот же не звучит.
     /// </summary>
     public static EarQuizQuestion Next(IReadOnlyList<LearningSymbolItem> pool, char? previous = null, Func<int, int>? random = null)
     {
@@ -44,7 +45,11 @@ public static class EarQuiz
         var answers = pool.Where(item => item.Symbol != target.Symbol && item.Code != target.Code)
             .GroupBy(item => item.Code)
             .Select(group => group.First())
-            .OrderBy(_ => random(int.MaxValue))
+            .Select(item => (Item: item, Tie: random(int.MaxValue)))
+            .OrderBy(x => ProblemDrill.EditDistance(target.Code, x.Item.Code))
+            .ThenBy(x => Math.Abs(target.Code.Length - x.Item.Code.Length))
+            .ThenBy(x => x.Tie)
+            .Select(x => x.Item)
             .Take(AnswerCount - 1)
             .Append(target)
             .OrderBy(_ => random(int.MaxValue))
