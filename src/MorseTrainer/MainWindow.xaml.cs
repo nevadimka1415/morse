@@ -1361,6 +1361,7 @@ public partial class MainWindow : Window
         AnswerStatsGrid.Visibility = visibility;
         ProgressTab.Visibility = visibility;
         PaperHintText.Visibility = visible ? Visibility.Collapsed : Visibility.Visible;
+        AnswerPromptText.Visibility = visibility;
         AnswerInputButton.Content = visible ? Texts.T("Проверить вводом ▴") : Texts.T("Проверить вводом ▾");
     }
 
