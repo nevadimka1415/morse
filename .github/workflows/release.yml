@@ -167,6 +167,51 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: gh release upload "${{ github.ref_name }}" "dist/MorseTrainer-Android.apk" --clobber
 
+      # Отдельный APK только для arm64 (почти все телефоны последних лет): вдвое меньше универсального, скачивается
+      # быстрее. Та же подпись и тот же versionCode — ставится поверх универсального и наоборот
+      - name: Build Android APK (arm64 only)
+        id: arm64
+        continue-on-error: true
+        shell: powershell
+        run: |
+          $version = "${{ github.ref_name }}".TrimStart("v")
+          $m = [regex]::Match($version, '^(\d+)\.(\d+)\.(\d+)')
+          $code = [int]$m.Groups[1].Value * 10000 + [int]$m.Groups[2].Value * 100 + [int]$m.Groups[3].Value
+          $signArgs = @()
+          $ks = Join-Path $env:RUNNER_TEMP "morsetrainer.jks"
+          if ($env:ANDROID_KEYSTORE_BASE64 -and (Test-Path $ks)) {
+            $signArgs = @(
+              "-p:AndroidKeyStore=true",
+              "-p:AndroidSigningKeyStore=$ks",
+              "-p:AndroidSigningKeyAlias=morsetrainer",
+              "-p:AndroidSigningKeyPass=env:ANDROID_KEYSTORE_PASSWORD",
+              "-p:AndroidSigningStorePass=env:ANDROID_KEYSTORE_PASSWORD")
+          }
+          dotnet publish .\src\MorseTrainer.Mobile\MorseTrainer.Mobile.csproj `
+            -f net10.0-android `
+            -c Release `
+            -p:MobileTargetFrameworks=net10.0-android `
+            -p:RuntimeIdentifier=android-arm64 `
+            -p:AndroidPackageFormats=apk `
+            -p:ApplicationDisplayVersion=$version `
+            -p:ApplicationVersion=$code `
+            -p:AndroidSdkDirectory="$env:ANDROID_HOME" `
+            -p:JavaSdkDirectory="$env:JAVA_HOME" `
+            @signArgs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $apk = Get-ChildItem .\src\MorseTrainer.Mobile\bin\Release\net10.0-android\android-arm64 -Recurse -Filter *-Signed.apk | Select-Object -First 1
+          if (-not $apk) { $apk = Get-ChildItem .\src\MorseTrainer.Mobile\bin\Release\net10.0-android\android-arm64 -Recurse -Filter *.apk | Select-Object -First 1 }
+          if (-not $apk) { throw "arm64 APK not found" }
+          Copy-Item $apk.FullName .\dist\MorseTrainer-Android-arm64.apk
+          Get-Item .\dist\MorseTrainer-Android-arm64.apk | Format-List Name, Length
+
+      - name: Attach arm64 APK to GitHub release
+        if: ${{ steps.arm64.outcome == 'success' }}
+        shell: powershell
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ github.ref_name }}" "dist/MorseTrainer-Android-arm64.apk" --clobber
+
   # Неподписанный IPA для установки на iPhone через Sideloadly/AltStore
   ios:
     needs: release
