@@ -14,16 +14,18 @@ const samples = 4;
 /** Фигуры знака в долях стороны: точка и два тире-капсулы по центру круга. */
 function markShapes(size) {
   // На маленьких размерах промежутки шире, иначе точка и тире сливаются
-  // Тире почти вдвое длиннее точки; на 16–24 px короче, чтобы знак не упирался в край круга
-  const half = 0.07;
-  const gap = Math.max(0.05, 1.5 / size);
-  const dash = size <= 24 ? 0.22 : 0.27;
-  const total = half * 2 + gap + dash + gap + dash;
+  // Пропорции эскиза из GPT, как на телефоне: тире чуть тоньше точки и вдвое с лишним длиннее;
+  // на 16–24 px тире короче, чтобы знак не упирался в край круга
+  const dot = 0.06;
+  const half = dot * 38 / 44;
+  const gap = Math.max(dot * 2 * 13 / 44, 1.5 / size);
+  const dash = size <= 24 ? 0.22 : dot * 2 * 95 / 44;
+  const total = dot * 2 + gap + dash + gap + dash;
   const left = 0.5 - total / 2;
-  const dotCenter = left + half;
-  const dashOne = left + half * 2 + gap;
+  const dotCenter = left + dot;
+  const dashOne = left + dot * 2 + gap;
   const dashTwo = dashOne + dash + gap;
-  return { half, dotCenter, dashes: [[dashOne, dashOne + dash], [dashTwo, dashTwo + dash]] };
+  return { dot, half, dotCenter, dashes: [[dashOne, dashOne + dash], [dashTwo, dashTwo + dash]] };
 }
 
 function insideCapsule(x, y, from, to, half) {
@@ -45,7 +47,7 @@ function coverage(size, px, py) {
       }
 
       circleHits += 1;
-      const onDot = Math.hypot(x - shapes.dotCenter, y - 0.5) <= shapes.half;
+      const onDot = Math.hypot(x - shapes.dotCenter, y - 0.5) <= shapes.dot;
       const onDash = shapes.dashes.some(([from, to]) => insideCapsule(x, y, from, to, shapes.half));
       if (onDot || onDash) {
         markHits += 1;

@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <!-- Заставка — тот же знак «· — —», что и на иконке -->
-  <circle cx="102" cy="256" r="34" fill="#34d399"/>
-  <rect x="162" y="222" width="128" height="68" rx="34" fill="#34d399"/>
-  <rect x="316" y="222" width="128" height="68" rx="34" fill="#34d399"/>
+  <circle cx="100" cy="256" r="32" fill="#34d399"/>
+  <rect x="151" y="229" width="137" height="55" rx="27.5" fill="#34d399"/>
+  <rect x="307" y="229" width="137" height="55" rx="27.5" fill="#34d399"/>
 </svg>

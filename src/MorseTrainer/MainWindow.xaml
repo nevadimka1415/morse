@@ -34,8 +34,8 @@
                 <!-- Знак «· — —» (буква В), как на иконке; фигурами — символы тире в шрифте сливаются в одну черту -->
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
                     <Ellipse Width="6" Height="6" Fill="#10251D" />
-                    <Rectangle Width="11" Height="6" RadiusX="3" RadiusY="3" Fill="#10251D" Margin="3,0,0,0" />
-                    <Rectangle Width="11" Height="6" RadiusX="3" RadiusY="3" Fill="#10251D" Margin="3,0,0,0" />
+                    <Rectangle Width="13" Height="5" RadiusX="2.5" RadiusY="2.5" Fill="#10251D" Margin="2,0,0,0" VerticalAlignment="Center" />
+                    <Rectangle Width="13" Height="5" RadiusX="2.5" RadiusY="2.5" Fill="#10251D" Margin="2,0,0,0" VerticalAlignment="Center" />
                 </StackPanel>
             </Border>
             <StackPanel Grid.Column="2" VerticalAlignment="Center">
