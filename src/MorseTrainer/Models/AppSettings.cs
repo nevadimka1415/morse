@@ -40,6 +40,12 @@ public sealed class AppSettings
     // Проверка на слух: своя скорость сигнала и следующий символ сразу после ответа
     public int QuizSpeed { get; set; } = 45;
     public bool QuizAutoNext { get; set; } = true;
+    // Windows: набор символов «На слух» (0 русские, 1 латинские, 2 русские и латинские, 3 цифры)
+    public int QuizAlphabetIndex { get; set; }
+    // Windows: поле ввода ответа на «Тренировке» (обычно пишут на бумаге — по умолчанию скрыто)
+    public bool ShowAnswerInput { get; set; }
+    // Когда последний раз занимались без ввода ответа (прослушано задание, ответ «На слух»): для плашки и напоминания
+    public DateTime? LastPracticeAt { get; set; }
     public string ActiveProfileName { get; set; } = "Основной";
     // Windows: размер окна и открытая вкладка между запусками (0 — не сохранялось)
     public double WindowWidth { get; set; }

@@ -212,6 +212,18 @@ assert(!read('src/MorseTrainer.Mobile/Pages/LearningPage.xaml').includes('QuizAn
   'Phone learning: symbol sets are chosen with buttons, the quiz lives on its own tab.');
 assert(/x:Name="AnswerPanel"[^>]*IsVisible="False"/.test(read('src/MorseTrainer.Mobile/Pages/TrainingPage.xaml')) && read('src/MorseTrainer.Mobile/Pages/TrainingPage.xaml.cs').includes('SetAnswerPanel(true, remember: false)'),
   'Phone training: typing the answer is optional (collapsed), exams and course steps open it.');
+assert(/x:Name="ParamsPanel"[^>]*IsVisible="False"/.test(read('src/MorseTrainer.Mobile/Pages/TrainingPage.xaml')) && read('src/MorseTrainer.Mobile/Pages/TrainingPage.xaml').includes('x:Name="ParamsToggleButton"'),
+  'Phone training: the parameters summary is folded under «Параметры ▾».');
+assert(read('src/MorseTrainer.Mobile/Pages/QuizPage.xaml').includes('x:Name="SpeedSlider"') && read('src/MorseTrainer.Mobile/Pages/QuizPage.xaml').includes('x:Name="AutoNextSwitch"')
+  && read('src/MorseTrainer/MainWindow.xaml').includes('x:Name="QuizSpeedSlider"') && read('src/MorseTrainer/MainWindow.xaml').includes('x:Name="QuizAutoNextCheckBox"')
+  && read('src/MorseTrainer/MainWindow.xaml').includes('x:Name="QuizRepeatButton"'),
+  'Listening quiz on both apps: own signal speed, repeat, next symbol right after the answer.');
+assert(/x:Name="AnswerInputPanel"[^>]*Visibility="Collapsed"/.test(read('src/MorseTrainer/MainWindow.xaml')) && /x:Name="ProgressTab"[^>]*Visibility="Collapsed"/.test(read('src/MorseTrainer/MainWindow.xaml'))
+  && read('src/MorseTrainer/MainWindow.xaml.cs').includes('SetAnswerInput(true, remember: false)'),
+  'Windows training like the phone: typing the answer and the Progress tab are optional (collapsed), exams and course steps open the input.');
+assert(!read('src/MorseTrainer/MainWindow.xaml').includes('LearningAlphabetCombo') && read('src/MorseTrainer/MainWindow.xaml').includes('x:Name="LearningLatinButton"')
+  && !read('src/MorseTrainer/MainWindow.xaml').includes('QuizAnswersPanel'),
+  'Windows learning: symbol sets are chosen with buttons, the quiz lives on its own tab.');
 assert(read('src/MorseTrainer.Mobile/MorseTrainer.Mobile.csproj').includes('ForegroundFile="Resources/AppIcon/appiconfg.svg"'),
   'Android adaptive icon needs a separate foreground inside the safe zone, otherwise the launcher mask crops it.');
 assert(read('src/MorseTrainer/MainWindow.xaml').includes('x:Name="DrillButton"') && read('src/MorseTrainer.Mobile/Pages/TrainingPage.xaml').includes('x:Name="DrillButton"'),

@@ -115,7 +115,7 @@ public static class Program
 
             var version = typeof(App).Assembly.GetName().Version!;
             Check(window.SubtitleText.Text.Contains($"{version.Major}.{version.Minor}.{version.Build}"), "subtitle shows the version: " + window.SubtitleText.Text);
-            Check(window.MainTabs.Items.Count == 4, "window has four tabs");
+            Check(window.MainTabs.Items.Count == 5, "window has five tabs (Progress is hidden without typed answers)");
             foreach (var item in window.MainTabs.Items.OfType<TabItem>())
             {
                 Check(item.Header is string header && header.Length > 0 && !header.Contains("loc:"), "tab header is translated: " + item.Header);
@@ -131,6 +131,17 @@ public static class Program
                 $"window fits the work area: {window.ActualWidth:0}×{window.ActualHeight:0} in {area.Width:0}×{area.Height:0}");
             Check(window.ExamPlaybacksCombo.Items.Count == 3 && window.ExamPlaybacksCombo.SelectedIndex == 0, "exam playbacks default to one");
             Check(window.NudgeBanner.Visibility == Visibility.Collapsed, "no 'you have not practiced' banner for an empty history");
+
+            // По умолчанию — как на телефоне: пишут на бумаге и сверяют с текстом задания, ввод ответа и «Прогресс» спрятаны
+            Check(window.AnswerInputPanel.Visibility == Visibility.Collapsed && window.AnswerStatsGrid.Visibility == Visibility.Collapsed
+                  && window.PaperHintText.Visibility == Visibility.Visible && window.ProgressTab.Visibility == Visibility.Collapsed
+                  && window.AnswerInputButton.Content as string == Texts.T("Проверить вводом ▾"), "typed answer and Progress are hidden by default (paper mode)");
+            SaveScreenshot(window, screenshots, "training-" + suffix);
+            Click(window.AnswerInputButton);
+            Check(window.AnswerInputPanel.Visibility == Visibility.Visible && window.AnswerStatsGrid.Visibility == Visibility.Visible
+                  && window.PaperHintText.Visibility == Visibility.Collapsed && window.ProgressTab.Visibility == Visibility.Visible
+                  && window.AnswerInputButton.Content as string == Texts.T("Проверить вводом ▴"), "'Check by typing' shows the answer field and the Progress tab");
+            Check(new SettingsService().Load().ShowAnswerInput, "typed answer choice is saved");
 
             // Что тренировать: четыре кнопки сверху управляют полным списком режимов в дополнительных настройках
             Check(window.AdvancedPanel.Visibility == Visibility.Collapsed && window.ModeHintText.Text.Length > 1, "advanced settings are collapsed, mode hint is shown");
@@ -183,7 +194,7 @@ public static class Program
             WaitUntil(() => window.StatusBadgeText.Text == Texts.T("ГОТОВО") && window.GenerateButton.IsEnabled, "task regenerated");
             Check(window.AnswerDisplayText.Text.Contains('•'), "new task is hidden again");
             Check(window.AccuracyText.Text == "—", "accuracy resets for a new task");
-            SaveScreenshot(window, screenshots, "training-" + suffix);
+            SaveScreenshot(window, screenshots, "training-typed-" + suffix);
 
             // Свёрнутая панель параметров: задание на всю ширину, «Новое задание» в шапке
             Click(window.TogglePanelButton);
@@ -216,11 +227,16 @@ public static class Program
             DoEvents();
             Check(window.LearningItemsControl.Items.Count is >= 1 and < 32, "search filters the cards: " + window.LearningItemsControl.Items.Count);
             window.LearningSearchText.Text = string.Empty;
-            window.LearningAlphabetCombo.SelectedIndex = 3;
-            DoEvents();
-            Check(window.LearningItemsControl.Items.Count == 10, "digits section has 10 cards");
-            window.LearningAlphabetCombo.SelectedIndex = 0;
-            DoEvents();
+            Check(window.LearningRussianButton.Style == window.FindResource("PrimaryButton") && window.LearningVoiceModeButton.Style == window.FindResource("PrimaryButton"),
+                "learning: Russian letters and voice playback are highlighted by default");
+            Click(window.LearningDigitsButton);
+            Check(window.LearningItemsControl.Items.Count == 10 && window.LearningDigitsButton.Style == window.FindResource("PrimaryButton")
+                  && window.LearningRussianButton.Style != window.FindResource("PrimaryButton"), "digits button shows 10 cards and is highlighted");
+            Click(window.LearningChantModeButton);
+            Check(window.LearningChantModeButton.Style == window.FindResource("PrimaryButton") && new SettingsService().Load().LearningAudioModeIndex == 0,
+                "playback mode button switches and is saved");
+            Click(window.LearningVoiceModeButton);
+            Click(window.LearningRussianButton);
             Check(FindChildren<Button>(window.LearningItemsControl).Count(button => button.Content as string == "✎") == 32, "every learning card has the chant edit button");
             Check(window.CustomVoiceText.Text.StartsWith(Texts.T("Свой голос не добавлен: звучат встроенные напевы."), StringComparison.Ordinal),
                 "custom voice status is shown: " + window.CustomVoiceText.Text);
@@ -240,8 +256,53 @@ public static class Program
             Check(window.CourseNextButton.Visibility == Visibility.Visible && window.CourseNextButton.IsEnabled && window.CourseStatusText.Text.Contains('✓'),
                 "a correct answer passes course step 1: " + window.CourseStatusText.Text);
 
-            // Передача: режим задания, новое задание, стереть, очистить (ключ не нажимаем — без звука)
+            // На слух: вопрос, ответ, следующий символ сам; скорость, клавиатура, без автоперехода
             window.MainTabs.SelectedIndex = 2;
+            DoEvents();
+            Check(window.QuizAnswer0Button.IsEnabled == false && window.QuizRussianButton.Style == window.FindResource("PrimaryButton")
+                  && window.QuizAutoNextCheckBox.IsChecked == true && window.QuizSpeedValueText.Text == Texts.F("{0} знаков/мин", 45), "quiz starts idle at 45 cpm with auto-next");
+            var answerButtons = new[] { window.QuizAnswer0Button, window.QuizAnswer1Button, window.QuizAnswer2Button, window.QuizAnswer3Button };
+            string QuizAnswers() => string.Join(" ", answerButtons.Select(button => button.Content as string));
+            Click(window.QuizNewButton);
+            WaitUntil(() => window.QuizStatusText.Text == Texts.T("Какой символ прозвучал?"), "quiz question after the signal");
+            Check(answerButtons.All(button => button.IsEnabled && button.Content is string { Length: 1 }) && window.QuizRepeatButton.IsEnabled, "four answers and repeat are enabled: " + QuizAnswers());
+            var firstSymbol = (char)window.QuizAnswer0Button.Tag;
+            Check(window.FindQuizAnswerButton(char.ToLowerInvariant(firstSymbol)) == window.QuizAnswer0Button, "typing the symbol (any case) picks its answer button");
+            var firstAnswers = QuizAnswers();
+            Click(window.QuizAnswer0Button);
+            // Верный вариант подсвечен мятным, ошибочный выбранный — красным (по-английски оба текста начинаются с «Correct:»)
+            var answeredCorrectly = ReferenceEquals(window.QuizAnswer0Button.Background, window.FindResource("PrimaryBrush"));
+            Check(answeredCorrectly || ReferenceEquals(window.QuizAnswer0Button.Background, window.FindResource("DangerBrush")), "the chosen answer is marked");
+            Check(answerButtons.Count(button => ReferenceEquals(button.Background, window.FindResource("PrimaryBrush"))) == 1, "exactly one answer is marked as right");
+            Check(window.QuizStatusText.Text.StartsWith(Texts.T("Верно: {0} — {1}").Split('{')[0], StringComparison.Ordinal)
+                  || window.QuizStatusText.Text.StartsWith(Texts.T("Правильно: {0} — {1}").Split('{')[0], StringComparison.Ordinal),
+                "answer result is shown: " + window.QuizStatusText.Text);
+            Check(window.QuizScoreText.Text == Texts.F("Результат: {0} / {1}", answeredCorrectly ? 1 : 0, 1), "score counts the answer: " + window.QuizScoreText.Text);
+            WaitUntil(() => window.QuizStatusText.Text == Texts.T("Какой символ прозвучал?") && QuizAnswers() != firstAnswers, "next quiz symbol plays by itself after the answer", 15);
+            window.QuizSpeedSlider.Value = 83;
+            DoEvents();
+            Check(window.QuizSpeedValueText.Text == Texts.F("{0} знаков/мин", 85), "quiz speed snaps to 5: " + window.QuizSpeedValueText.Text);
+            window.QuizAutoNextCheckBox.IsChecked = false;
+            DoEvents();
+            Click(window.QuizDigitsButton);
+            Check(window.QuizAnswer0Button.IsEnabled == false && window.QuizDigitsButton.Style == window.FindResource("PrimaryButton"), "digits set resets the question");
+            Click(window.QuizNewButton);
+            WaitUntil(() => window.QuizStatusText.Text == Texts.T("Какой символ прозвучал?"), "digit question after the signal");
+            Check(answerButtons.All(button => button.Content is string text && char.IsDigit(text[0])), "digit answers only: " + QuizAnswers());
+            Click(window.QuizAnswer1Button);
+            var answered = window.QuizStatusText.Text;
+            Thread.Sleep(2600);
+            DoEvents();
+            Check(window.QuizStatusText.Text == answered && answered.Length > 3, "without auto-next the answer stays on screen: " + answered);
+            SaveScreenshot(window, screenshots, "quiz-" + suffix);
+            var saved = new SettingsService().Load();
+            Check(saved.QuizSpeed == 85 && !saved.QuizAutoNext && saved.QuizAlphabetIndex == 3 && saved.QuizTotal == 2 && saved.LastPracticeAt is not null,
+                $"quiz settings are saved: {saved.QuizSpeed} {saved.QuizAutoNext} {saved.QuizAlphabetIndex} {saved.QuizTotal}");
+            Click(window.QuizResetButton);
+            Check(window.QuizScoreText.Text == Texts.F("Результат: {0} / {1}", 0, 0), "quiz score resets");
+
+            // Передача: режим задания, новое задание, стереть, очистить (ключ не нажимаем — без звука)
+            window.MainTabs.SelectedIndex = 3;
             DoEvents();
             window.KeyerModeCombo.SelectedIndex = 1;
             DoEvents();
@@ -254,8 +315,8 @@ public static class Program
             Check(window.KeyerTimingText.Text.Length > 0 && !window.KeyerTimingText.Text.Contains("loc:"), "keyer timing label is translated");
             SaveScreenshot(window, screenshots, "keyer-" + suffix);
 
-            // Прогресс: сводка и таблица с привязками строк
-            window.MainTabs.SelectedIndex = 3;
+            // Прогресс (виден, раз включён ввод ответа): сводка и таблица с привязками строк
+            window.MainTabs.SelectedIndex = 4;
             DoEvents();
             WaitUntil(() => FindChildren<TextBlock>(window.HistoryListView).Any(block => block.Text == "100%"), "history row bindings render the accuracy");
             Check(window.ProgressSessionsText.Text == "3" && window.ProgressBestText.Text == "100%", "progress summary shows three sessions, best 100%");

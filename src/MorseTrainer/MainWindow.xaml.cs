@@ -40,7 +40,8 @@ public partial class MainWindow : Window
     private DispatcherTimer? _examTimer;
     private string? _examReport;
     private string _autoSpeedNote = string.Empty;
-    private const int KeyerTabIndex = 2;
+    private const int QuizTabIndex = 2;
+    private const int KeyerTabIndex = 3;
     private readonly Stopwatch _keyerClock = Stopwatch.StartNew();
     private KeyerDecoder? _keyer;
     private int _keyerSpeed;
@@ -75,6 +76,15 @@ public partial class MainWindow : Window
     private int _attempts;
     private int _quizCorrect;
     private int _quizTotal;
+    private int _quizAlphabet;
+    private int _quizSpeed = EarQuiz.DefaultSpeed;
+    private bool _quizAnswered = true;
+    private CancellationTokenSource? _quizNextCancellation;
+    private int _learningAlphabet;
+    private int _learningAudioMode = 1;
+    private bool _answerInputPreferred;
+    private DateTime? _lastPracticeAt;
+    private static readonly Brush QuizMarkTextBrush = CreateFrozenBrush("#10251D");
 
     public MainWindow()
     {
@@ -108,13 +118,31 @@ public partial class MainWindow : Window
         Width = Math.Min(Width, area.Width);
         Height = Math.Min(Height, area.Height);
         SetTrainingPanelCollapsed(settings.TrainingPanelCollapsed);
+        SetAnswerInput(settings.ShowAnswerInput, remember: true);
 
         if (settings.WindowMaximized)
         {
             WindowState = WindowState.Maximized;
         }
 
-        MainTabs.SelectedIndex = Math.Clamp(settings.MainTabIndex, 0, MainTabs.Items.Count - 1);
+        // Спрятанная вкладка («Прогресс» без ввода ответа) не открывается — вместо неё «Тренировка»
+        var tab = Math.Clamp(settings.MainTabIndex, 0, MainTabs.Items.Count - 1);
+        MainTabs.SelectedIndex = ((TabItem)MainTabs.Items[tab]).Visibility == Visibility.Visible ? tab : 0;
+    }
+
+    private static Brush CreateFrozenBrush(string color)
+    {
+        var brush = (SolidColorBrush)new BrushConverter().ConvertFromString(color)!;
+        brush.Freeze();
+        return brush;
+    }
+
+    private void SaveSettingsIfLoaded()
+    {
+        if (_windowLoaded)
+        {
+            _settingsService.Save(ReadSettings());
+        }
     }
 
     private async void Window_OnLoaded(object sender, RoutedEventArgs e)
@@ -210,6 +238,7 @@ public partial class MainWindow : Window
         _settingsService.Save(settings);
         RefreshCourse();
         MainTabs.SelectedIndex = 0;
+        SetAnswerInput(true, remember: false);
         if (step.IsExam)
         {
             await StartExamAsync();
@@ -224,7 +253,7 @@ public partial class MainWindow : Window
 
     private void ShowNudgeBanner()
     {
-        var text = PracticeNudge.Banner(_history, DateOnly.FromDateTime(DateTime.Now));
+        var text = PracticeNudge.Banner(_history, DateOnly.FromDateTime(DateTime.Now), _lastPracticeAt);
         NudgeText.Text = text ?? " ";
         NudgeBanner.Visibility = text is null ? Visibility.Collapsed : Visibility.Visible;
     }
@@ -267,7 +296,7 @@ public partial class MainWindow : Window
 
         var now = DateTime.Now;
         var today = DateOnly.FromDateTime(now);
-        var trainedToday = _history.Any(item => DateOnly.FromDateTime(item.CompletedAt) == today);
+        var trainedToday = PracticeNudge.PracticedOn(today, _history, _lastPracticeAt);
         if (!PracticeNudge.IsReminderDue(now, SelectedReminderMinutes, _reminderShownOn, trainedToday))
         {
             return;
@@ -300,6 +329,7 @@ public partial class MainWindow : Window
 
     private void Window_OnClosing(object? sender, CancelEventArgs e)
     {
+        CancelQuizNext();
         _examTimer?.Stop();
         _reminderTimer?.Stop();
         _trayReminder?.Dispose();
@@ -350,6 +380,46 @@ public partial class MainWindow : Window
             StopPlayback();
             StopLearningPlayback();
             e.Handled = true;
+        }
+    }
+
+    // «На слух» с клавиатуры: пробел — ещё раз, Enter — новый символ. Перехват до кнопок: иначе пробел нажал бы кнопку в фокусе
+    private async void Window_OnPreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (MainTabs.SelectedIndex != QuizTabIndex || Keyboard.Modifiers != ModifierKeys.None || e.OriginalSource is TextBox
+            || (e.Key != Key.Space && e.Key != Key.Enter))
+        {
+            return;
+        }
+
+        e.Handled = true;
+        if (e.IsRepeat)
+        {
+            return;
+        }
+
+        if (e.Key == Key.Space)
+        {
+            await RepeatQuizAsync();
+        }
+        else
+        {
+            await AskQuizAsync();
+        }
+    }
+
+    // «На слух»: набранный символ — ответ (в любой раскладке: латинская W засчитывается как В с тем же кодом)
+    private void Window_OnPreviewTextInput(object sender, TextCompositionEventArgs e)
+    {
+        if (MainTabs.SelectedIndex != QuizTabIndex || e.OriginalSource is TextBox || string.IsNullOrEmpty(e.Text) || char.IsWhiteSpace(e.Text[0]))
+        {
+            return;
+        }
+
+        if (FindQuizAnswerButton(e.Text[0]) is { } button)
+        {
+            e.Handled = true;
+            AnswerQuiz(button);
         }
     }
 
@@ -1221,9 +1291,19 @@ public partial class MainWindow : Window
             if (!cancellation.IsCancellationRequested)
             {
                 PlaybackProgress.Value = 100;
-                PlaybackStatusText.Text = Texts.T("Прослушивание завершено — введите ответ");
-                SetStatus(Texts.T("ВАШ ОТВЕТ"), isActive: true);
-                UserAnswerText.Focus();
+                MarkPracticed();
+                // Фокус в поле ответа — только при вводе; при записи на бумаге остаётся сверка с текстом задания
+                if (AnswerInputPanel.Visibility == Visibility.Visible)
+                {
+                    PlaybackStatusText.Text = Texts.T("Прослушивание завершено — введите ответ");
+                    SetStatus(Texts.T("ВАШ ОТВЕТ"), isActive: true);
+                    UserAnswerText.Focus();
+                }
+                else
+                {
+                    PlaybackStatusText.Text = Texts.T("Готово — сверьте запись с текстом задания");
+                    SetStatus(Texts.T("СВЕРЬТЕ"), isActive: true);
+                }
             }
         }
         catch (OperationCanceledException)
@@ -1246,6 +1326,43 @@ public partial class MainWindow : Window
     }
 
     private void StopButton_OnClick(object sender, RoutedEventArgs e) => StopPlayback();
+
+    /// <summary>Занятие без записи в истории (задание дослушано, ответ «На слух»): плашка и напоминание его учитывают.</summary>
+    private void MarkPracticed()
+    {
+        _lastPracticeAt = DateTime.Now;
+        NudgeBanner.Visibility = Visibility.Collapsed;
+    }
+
+    private void AnswerInputButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        SetAnswerInput(AnswerInputPanel.Visibility != Visibility.Visible, remember: true);
+        SaveSettingsIfLoaded();
+        if (AnswerInputPanel.Visibility == Visibility.Visible && UserAnswerText.IsEnabled)
+        {
+            UserAnswerText.Focus();
+        }
+    }
+
+    /// <summary>
+    /// Ввод ответа — по желанию: обычно группы пишут на бумаге и сверяют с текстом задания («Показать»).
+    /// С вводом видны точность и попытки и появляется вкладка «Прогресс»; экзамен и шаги курса засчитываются
+    /// по введённому ответу — там ввод раскрывается сам, без запоминания.
+    /// </summary>
+    private void SetAnswerInput(bool visible, bool remember)
+    {
+        if (remember)
+        {
+            _answerInputPreferred = visible;
+        }
+
+        var visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+        AnswerInputPanel.Visibility = visibility;
+        AnswerStatsGrid.Visibility = visibility;
+        ProgressTab.Visibility = visibility;
+        PaperHintText.Visibility = visible ? Visibility.Collapsed : Visibility.Visible;
+        AnswerInputButton.Content = visible ? Texts.T("Проверить вводом ▴") : Texts.T("Проверить вводом ▾");
+    }
 
     private void StopPlayback(bool resetProgress = true)
     {
@@ -1425,6 +1542,7 @@ public partial class MainWindow : Window
     private async Task StartExamAsync()
     {
         MainTabs.SelectedIndex = 0;
+        SetAnswerInput(true, remember: false);
         await GenerateTaskAsync();
         if (string.IsNullOrEmpty(_currentTask) || _currentSettings is null || _currentClip is null)
         {
@@ -1579,10 +1697,56 @@ public partial class MainWindow : Window
         }
     }
 
-    private void LearningFilter_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
+    // ---------- Кнопки выбора вместо выпадающих списков (как на телефоне) ----------
+
+    private Button[] LearningAlphabetButtons => new[] { LearningRussianButton, LearningLatinButton, LearningBothButton, LearningDigitsButton };
+
+    private Button[] QuizAlphabetButtons => new[] { QuizRussianButton, QuizLatinButton, QuizBothButton, QuizDigitsButton };
+
+    private Button[] QuizAnswerButtons => new[] { QuizAnswer0Button, QuizAnswer1Button, QuizAnswer2Button, QuizAnswer3Button };
+
+    /// <summary>Выбранная кнопка — мятная (PrimaryButton), остальные в обычном стиле.</summary>
+    private void HighlightChoice(IReadOnlyList<Button> buttons, int selected)
     {
-        RefreshLearningItemsIfReady();
+        for (var index = 0; index < buttons.Count; index++)
+        {
+            buttons[index].Style = (Style)FindResource(index == selected ? "PrimaryButton" : typeof(Button));
+        }
     }
+
+    private static int ChoiceIndex(object sender, int max) =>
+        sender is Button { Tag: string tag } && int.TryParse(tag, out var index) ? Math.Clamp(index, 0, max) : -1;
+
+    private void LearningAlphabetButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        var index = ChoiceIndex(sender, 3);
+        if (index < 0)
+        {
+            return;
+        }
+
+        _learningAlphabet = index;
+        HighlightChoice(LearningAlphabetButtons, _learningAlphabet);
+        RefreshLearningItems();
+        SaveSettingsIfLoaded();
+    }
+
+    private void LearningAudioModeButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        var mode = ChoiceIndex(sender, 1);
+        if (mode < 0)
+        {
+            return;
+        }
+
+        _learningAudioMode = mode;
+        UpdateLearningAudioModeButtons();
+        SaveSettingsIfLoaded();
+    }
+
+    // Кнопки в порядке «Голос + сигнал» (режим 1), «Напев на экране + сигнал» (режим 0)
+    private void UpdateLearningAudioModeButtons() =>
+        HighlightChoice(new[] { LearningVoiceModeButton, LearningChantModeButton }, _learningAudioMode == 1 ? 0 : 1);
 
     private void LearningFilter_OnTextChanged(object sender, TextChangedEventArgs e)
     {
@@ -1600,7 +1764,7 @@ public partial class MainWindow : Window
     private void RefreshLearningItems()
     {
         var search = LearningSearchText?.Text?.Trim() ?? string.Empty;
-        var items = LearningCatalog.GetItems(Math.Clamp(LearningAlphabetCombo?.SelectedIndex ?? 0, 0, 3));
+        var items = LearningCatalog.GetItems(_learningAlphabet);
         _visibleLearningItems = string.IsNullOrEmpty(search)
             ? items
             : items.Where(item => item.Symbol.ToString().Contains(search, StringComparison.OrdinalIgnoreCase)
@@ -1710,7 +1874,7 @@ public partial class MainWindow : Window
 
         try
         {
-            if (LearningAudioModeCombo.SelectedIndex == 1)
+            if (_learningAudioMode == 1)
             {
                 LearningPlaybackStatusText.Text = Texts.T("Произносим напев…");
                 _learningAudioStream = VoicePackService.Open(item.Symbol);
@@ -1795,68 +1959,98 @@ public partial class MainWindow : Window
         }
     }
 
-    private async void QuizPlayButton_OnClick(object sender, RoutedEventArgs e)
+    // ---------- На слух ----------
+
+    private void QuizAlphabetButton_OnClick(object sender, RoutedEventArgs e)
     {
-        var pool = GetQuizPool();
-        if (pool.Count < 4)
+        var index = ChoiceIndex(sender, 3);
+        if (index < 0)
         {
-            QuizResultText.Text = Texts.T("Для проверки нужно не менее четырёх символов.");
             return;
         }
 
-        _quizTarget = pool[RandomNumberGenerator.GetInt32(pool.Count)];
-        var answers = new List<LearningSymbolItem> { _quizTarget };
-        var distractors = pool.Where(item => item.Symbol != _quizTarget.Symbol && item.Code != _quizTarget.Code)
-            .OrderBy(_ => RandomNumberGenerator.GetInt32(int.MaxValue)).Take(3);
-        answers.AddRange(distractors);
-        answers = answers.OrderBy(_ => RandomNumberGenerator.GetInt32(int.MaxValue)).ToList();
-
-        QuizAnswersPanel.Children.Clear();
-        foreach (var answer in answers)
+        CancelQuizNext();
+        StopLearningPlayback();
+        _quizAlphabet = index;
+        HighlightChoice(QuizAlphabetButtons, _quizAlphabet);
+        // Вопрос из прежнего набора больше не подходит
+        _quizTarget = null;
+        _quizAnswered = true;
+        foreach (var button in QuizAnswerButtons)
         {
-            var button = new Button
-            {
-                Content = answer.Symbol.ToString(),
-                Tag = answer.Symbol,
-                Margin = new Thickness(4),
-                FontSize = 20,
-                IsEnabled = false
-            };
-            button.Click += QuizAnswerButton_OnClick;
-            QuizAnswersPanel.Children.Add(button);
+            button.Content = "?";
+            button.Tag = null;
+            button.IsEnabled = false;
+            ClearQuizMark(button);
         }
 
-        QuizResultText.Text = " ";
-        QuizPromptText.Text = Texts.T("Слушайте…");
-        await PlayQuizSignalAsync(_quizTarget);
-        QuizPromptText.Text = Texts.T("Какой символ прозвучал?");
-        foreach (var button in QuizAnswersPanel.Children.OfType<Button>())
+        QuizRepeatButton.IsEnabled = false;
+        QuizStatusText.Text = Texts.T("Нажмите «Новый символ» и слушайте");
+        QuizStatusText.ClearValue(TextBlock.ForegroundProperty);
+        SaveSettingsIfLoaded();
+    }
+
+    private async void QuizNewButton_OnClick(object sender, RoutedEventArgs e) => await AskQuizAsync();
+
+    private async void QuizRepeatButton_OnClick(object sender, RoutedEventArgs e) => await RepeatQuizAsync();
+
+    private async Task AskQuizAsync()
+    {
+        CancelQuizNext();
+        var question = EarQuiz.Next(LearningCatalog.GetItems(_quizAlphabet), _quizTarget?.Symbol);
+        _quizTarget = question.Target;
+        var buttons = QuizAnswerButtons;
+        for (var index = 0; index < buttons.Length; index++)
         {
-            button.IsEnabled = true;
+            var answer = index < question.Answers.Count ? question.Answers[index] : null;
+            ClearQuizMark(buttons[index]);
+            buttons[index].IsEnabled = answer is not null;
+            buttons[index].Content = answer?.Symbol.ToString() ?? string.Empty;
+            buttons[index].Tag = answer?.Symbol;
+        }
+
+        _quizAnswered = false;
+        QuizRepeatButton.IsEnabled = true;
+        await PlayQuizTargetAsync();
+    }
+
+    /// <summary>Повтор сигнала; после ответа (послушать верный символ) следующий ждёт конца повтора.</summary>
+    private async Task RepeatQuizAsync()
+    {
+        if (_quizTarget is null)
+        {
+            return;
+        }
+
+        var waitingForNext = CancelQuizNext();
+        await PlayQuizTargetAsync();
+        if (waitingForNext && _quizAnswered)
+        {
+            await ScheduleQuizNextAsync(correct: true);
         }
     }
 
-    private IReadOnlyList<LearningSymbolItem> GetQuizPool()
+    private async Task PlayQuizTargetAsync()
     {
-        if (LearningAlphabetCombo.SelectedIndex == 2)
+        if (_quizTarget is null)
         {
-            return LearningCatalog.Russian;
+            return;
         }
 
-        return _visibleLearningItems.Count >= 4
-            ? _visibleLearningItems
-            : LearningCatalog.GetItems(LearningAlphabetCombo.SelectedIndex);
-    }
-
-    private async Task PlayQuizSignalAsync(LearningSymbolItem item)
-    {
         StopPlayback();
         StopLearningPlayback();
+        if (!_quizAnswered)
+        {
+            QuizStatusText.Text = Texts.T("Слушайте…");
+            QuizStatusText.ClearValue(TextBlock.ForegroundProperty);
+        }
+
         var cancellation = new CancellationTokenSource();
         _learningCancellation = cancellation;
         try
         {
-            var clip = MorseAudioService.Render(item.Symbol.ToString(), 45, (int)FrequencySlider.Value,
+            // Скорость сигнала своя, по ползунку «На слух»; тон и громкость — из параметров тренировки
+            var clip = MorseAudioService.Render(_quizTarget.Symbol.ToString(), _quizSpeed, (int)FrequencySlider.Value,
                 (int)VolumeSlider.Value, 3, 7);
             _learningAudioStream = new MemoryStream(clip.WavBytes, writable: false);
             _learningPlayer = new SoundPlayer(_learningAudioStream);
@@ -1867,6 +2061,12 @@ public partial class MainWindow : Window
         catch (OperationCanceledException)
         {
         }
+        catch (Exception exception) when (exception is InvalidOperationException or TimeoutException or IOException or System.ComponentModel.Win32Exception)
+        {
+            // Нет звукового устройства или файл не проигрывается — вопрос остаётся, отвечать можно
+            QuizStatusText.Text = Texts.T("Не удалось воспроизвести");
+            return;
+        }
         finally
         {
             if (ReferenceEquals(_learningCancellation, cancellation))
@@ -1874,46 +2074,157 @@ public partial class MainWindow : Window
                 _learningCancellation = null;
             }
         }
+
+        if (!_quizAnswered)
+        {
+            QuizStatusText.Text = Texts.T("Какой символ прозвучал?");
+        }
     }
 
     private void QuizAnswerButton_OnClick(object sender, RoutedEventArgs e)
     {
-        if (_quizTarget is null || sender is not Button { Tag: char selected })
+        if (sender is Button button)
+        {
+            AnswerQuiz(button);
+        }
+    }
+
+    /// <summary>Кнопка варианта для набранного символа: сам символ или символ с тем же кодом (другая раскладка).</summary>
+    internal Button? FindQuizAnswerButton(char typed)
+    {
+        var symbol = char.ToUpperInvariant(typed) == 'Ё' ? 'Е' : char.ToUpperInvariant(typed);
+        var buttons = QuizAnswerButtons.Where(button => button.Tag is char).ToArray();
+        return buttons.FirstOrDefault(button => (char)button.Tag == symbol)
+               ?? (MorseAlphabet.TryGetCode(symbol, out var code)
+                   ? buttons.FirstOrDefault(button => MorseAlphabet.TryGetCode((char)button.Tag, out var answerCode) && answerCode == code)
+                   : null);
+    }
+
+    private async void AnswerQuiz(Button chosen)
+    {
+        // Кнопки не выключаются после ответа: у выключенной кнопки не видно подсветки верного ответа
+        if (_quizAnswered || _quizTarget is null || chosen.Tag is not char answer)
         {
             return;
         }
 
+        _quizAnswered = true;
         _quizTotal++;
-        var isCorrect = selected == _quizTarget.Symbol;
-        if (isCorrect)
+        var correct = answer == _quizTarget.Symbol;
+        if (correct)
         {
             _quizCorrect++;
-            QuizResultText.Text = Texts.F("Верно: {0} — {1}", _quizTarget.Symbol, _quizTarget.Chant);
-            QuizResultText.Foreground = (Brush)FindResource("PrimaryBrush");
+            QuizStatusText.Text = Texts.F("Верно: {0} — {1}", _quizTarget.Symbol, _quizTarget.Chant);
+            QuizStatusText.SetResourceReference(TextBlock.ForegroundProperty, "PrimaryBrush");
         }
         else
         {
-            QuizResultText.Text = Texts.F("Правильный ответ: {0} — {1}", _quizTarget.Symbol, _quizTarget.Chant);
-            QuizResultText.Foreground = (Brush)FindResource("DangerBrush");
+            QuizStatusText.Text = Texts.F("Правильно: {0} — {1}", _quizTarget.Symbol, _quizTarget.Chant);
+            QuizStatusText.SetResourceReference(TextBlock.ForegroundProperty, "DangerBrush");
+            chosen.SetResourceReference(BackgroundProperty, "DangerBrush");
+            chosen.Foreground = QuizMarkTextBrush;
         }
 
-        foreach (var button in QuizAnswersPanel.Children.OfType<Button>())
+        foreach (var button in QuizAnswerButtons.Where(button => button.Tag is char symbol && symbol == _quizTarget.Symbol))
         {
-            button.IsEnabled = false;
-            if (button.Tag is char symbol && symbol == _quizTarget.Symbol)
-            {
-                button.BorderBrush = (Brush)FindResource("PrimaryBrush");
-                button.BorderThickness = new Thickness(2);
-            }
+            button.SetResourceReference(BackgroundProperty, "PrimaryBrush");
+            button.Foreground = QuizMarkTextBrush;
         }
 
+        MarkPracticed();
         UpdateQuizScore();
-        _settingsService.Save(ReadSettings());
+        SaveSettingsIfLoaded();
+        await ScheduleQuizNextAsync(correct);
+    }
+
+    /// <summary>Следующий символ после паузы, если включён автопереход и вкладка «На слух» открыта.</summary>
+    private async Task ScheduleQuizNextAsync(bool correct)
+    {
+        if (QuizAutoNextCheckBox.IsChecked != true)
+        {
+            return;
+        }
+
+        CancelQuizNext();
+        var cancellation = new CancellationTokenSource();
+        _quizNextCancellation = cancellation;
+        try
+        {
+            await Task.Delay(EarQuiz.NextDelay(correct), cancellation.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+
+        // Ушли с вкладки, выключили автопереход или закрыли окно — следующий символ не звучит
+        if (!ReferenceEquals(_quizNextCancellation, cancellation) || MainTabs.SelectedIndex != QuizTabIndex
+            || QuizAutoNextCheckBox.IsChecked != true || !IsVisible)
+        {
+            return;
+        }
+
+        _quizNextCancellation = null;
+        cancellation.Dispose();
+        await AskQuizAsync();
+    }
+
+    /// <summary>Отменяет ожидающий следующий символ; true — он действительно ждал.</summary>
+    private bool CancelQuizNext()
+    {
+        var pending = _quizNextCancellation;
+        if (pending is null)
+        {
+            return false;
+        }
+
+        _quizNextCancellation = null;
+        pending.Cancel();
+        pending.Dispose();
+        return true;
+    }
+
+    private void QuizSpeedSlider_OnValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        _quizSpeed = EarQuiz.ClampSpeed((int)Math.Round(e.NewValue));
+        UpdateQuizSpeedText();
+    }
+
+    private void UpdateQuizSpeedText()
+    {
+        if (QuizSpeedValueText is not null)
+        {
+            QuizSpeedValueText.Text = Texts.F("{0} знаков/мин", _quizSpeed);
+        }
+    }
+
+    private void QuizAutoNext_OnChanged(object sender, RoutedEventArgs e)
+    {
+        // Сохраняется вместе с остальными настройками (ответ, закрытие окна): здесь не пишем, чтобы не сохранить
+        // наполовину применённые настройки, когда флажок ставит ApplySettings
+        if (QuizAutoNextCheckBox.IsChecked != true)
+        {
+            CancelQuizNext();
+        }
+    }
+
+    private void QuizResetButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        _quizCorrect = 0;
+        _quizTotal = 0;
+        UpdateQuizScore();
+        SaveSettingsIfLoaded();
     }
 
     private void UpdateQuizScore()
     {
-        QuizScoreText.Text = $"{_quizCorrect} / {_quizTotal}";
+        QuizScoreText.Text = Texts.F("Результат: {0} / {1}", _quizCorrect, _quizTotal);
+    }
+
+    private static void ClearQuizMark(Button button)
+    {
+        button.ClearValue(BackgroundProperty);
+        button.ClearValue(ForegroundProperty);
     }
 
     private void StopLearningPlayback()
@@ -2089,10 +2400,15 @@ public partial class MainWindow : Window
             CustomSymbols = _selectedSymbols,
             ThemeIndex = Math.Clamp(ThemeCombo.SelectedIndex, 0, 2),
             LanguageIndex = Math.Clamp(LanguageCombo.SelectedIndex, 0, 2),
-            LearningAlphabetIndex = Math.Clamp(LearningAlphabetCombo.SelectedIndex, 0, 3),
-            LearningAudioModeIndex = Math.Clamp(LearningAudioModeCombo.SelectedIndex, 0, 1),
+            LearningAlphabetIndex = _learningAlphabet,
+            LearningAudioModeIndex = _learningAudioMode,
             QuizCorrect = _quizCorrect,
             QuizTotal = _quizTotal,
+            QuizAlphabetIndex = _quizAlphabet,
+            QuizSpeed = _quizSpeed,
+            QuizAutoNext = QuizAutoNextCheckBox.IsChecked == true,
+            ShowAnswerInput = _answerInputPreferred,
+            LastPracticeAt = _lastPracticeAt,
             ActiveProfileName = string.IsNullOrWhiteSpace(ProfileCombo.Text) ? "Основной" : ProfileCombo.Text.Trim(),
             WindowWidth = WindowState == WindowState.Normal ? ActualWidth : RestoreBounds.Width,
             WindowHeight = WindowState == WindowState.Normal ? ActualHeight : RestoreBounds.Height,
@@ -2129,8 +2445,17 @@ public partial class MainWindow : Window
         _selectedSymbols = string.IsNullOrWhiteSpace(settings.CustomSymbols) ? "АГЖД" : settings.CustomSymbols;
         ThemeCombo.SelectedIndex = Math.Clamp(settings.ThemeIndex, 0, 2);
         LanguageCombo.SelectedIndex = Math.Clamp(settings.LanguageIndex, 0, 2);
-        LearningAlphabetCombo.SelectedIndex = Math.Clamp(settings.LearningAlphabetIndex, 0, 3);
-        LearningAudioModeCombo.SelectedIndex = Math.Clamp(settings.LearningAudioModeIndex, 0, 1);
+        _learningAlphabet = Math.Clamp(settings.LearningAlphabetIndex, 0, 3);
+        HighlightChoice(LearningAlphabetButtons, _learningAlphabet);
+        _learningAudioMode = Math.Clamp(settings.LearningAudioModeIndex, 0, 1);
+        UpdateLearningAudioModeButtons();
+        _quizAlphabet = Math.Clamp(settings.QuizAlphabetIndex, 0, 3);
+        HighlightChoice(QuizAlphabetButtons, _quizAlphabet);
+        _quizSpeed = EarQuiz.ClampSpeed(settings.QuizSpeed);
+        QuizSpeedSlider.Value = _quizSpeed;
+        UpdateQuizSpeedText();
+        QuizAutoNextCheckBox.IsChecked = settings.QuizAutoNext;
+        _lastPracticeAt = settings.LastPracticeAt;
         _courseStep = Math.Max(0, settings.CourseStep);
         UpdateKochSummary();
     }

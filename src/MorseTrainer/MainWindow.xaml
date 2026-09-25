@@ -11,7 +11,9 @@
         Loaded="Window_OnLoaded"
         Closing="Window_OnClosing"
         KeyDown="Window_OnKeyDown"
-        KeyUp="Window_OnKeyUp">
+        KeyUp="Window_OnKeyUp"
+        PreviewKeyDown="Window_OnPreviewKeyDown"
+        PreviewTextInput="Window_OnPreviewTextInput">
     <Grid Margin="26">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -285,6 +287,18 @@
                                                       ToolTip="{loc:Loc 'Когда время выйдет, ответ проверится автоматически'}" />
                                         </StackPanel>
                                     </Grid>
+                                    <Grid Margin="0,18,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="90" />
+                                        </Grid.ColumnDefinitions>
+                                        <CheckBox x:Name="ReminderCheckBox" VerticalAlignment="Center" Margin="0,0,8,0"
+                                                  Checked="ReminderOption_OnChanged" Unchecked="ReminderOption_OnChanged"
+                                                  ToolTip="{loc:Loc 'Каждый день в выбранное время, если вы ещё не занимались. Уведомление приходит, пока программа открыта (можно свернуть).'}">
+                                            <TextBlock Text="{loc:Loc 'Напоминать уведомлением Windows'}" TextWrapping="Wrap" />
+                                        </CheckBox>
+                                        <ComboBox x:Name="ReminderTimeCombo" Grid.Column="1" SelectionChanged="ReminderOption_OnChanged" />
+                                    </Grid>
                                 </StackPanel>
                             </StackPanel>
                         </ScrollViewer>
@@ -338,7 +352,7 @@
                                         <RowDefinition Height="Auto" />
                                     </Grid.RowDefinitions>
                                     <Grid>
-                                        <TextBlock Text="{loc:Loc 'Правильный ответ'}" Foreground="{DynamicResource MutedTextBrush}" />
+                                        <TextBlock Text="{loc:Loc 'Текст задания'}" Foreground="{DynamicResource MutedTextBrush}" />
                                         <Button x:Name="ToggleAnswerButton" Content="{loc:Loc 'Показать'}" HorizontalAlignment="Right"
                                                 Padding="12,5" Click="ToggleAnswerButton_OnClick" IsEnabled="False" />
                                     </Grid>
@@ -368,58 +382,81 @@
                                 </StackPanel>
                             </Grid>
 
+                            <!-- Обычно группы записывают на бумаге и сверяют с текстом задания; ввод ответа — по желанию, под кнопкой.
+                                 С вводом появляются точность, попытки и вкладка «Прогресс»; экзамен и шаги курса открывают ввод сами -->
                             <Grid Grid.Row="6">
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto" />
-                                    <RowDefinition Height="8" />
                                     <RowDefinition Height="*" />
-                                    <RowDefinition Height="10" />
-                                    <RowDefinition Height="Auto" />
                                 </Grid.RowDefinitions>
-                                <TextBlock Text="{loc:Loc 'Введите то, что услышали'}" Foreground="{DynamicResource MutedTextBrush}" />
-                                <TextBox x:Name="UserAnswerText" Grid.Row="2" AcceptsReturn="True" TextWrapping="Wrap"
-                                         VerticalScrollBarVisibility="Auto" FontFamily="Cascadia Mono, Consolas" FontSize="18" IsEnabled="False" />
-                                <Grid Grid.Row="4">
-                                    <Button x:Name="CheckAnswerButton" Content="{loc:Loc 'Проверить ответ'}" Style="{StaticResource PrimaryButton}"
-                                            Click="CheckAnswerButton_OnClick" IsEnabled="False" HorizontalAlignment="Left" />
-                                    <TextBlock x:Name="ResultDetailsText" Text="{loc:Loc 'Пробелы между группами при проверке не учитываются'}"
-                                               Foreground="{DynamicResource MutedTextBrush}" TextWrapping="Wrap" VerticalAlignment="Center"
-                                               HorizontalAlignment="Right" MaxWidth="430" FontSize="11" />
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock x:Name="PaperHintText" Text="{loc:Loc 'Записывайте на бумаге, затем нажмите «Показать» и сверьте.'}"
+                                               Foreground="{DynamicResource MutedTextBrush}" TextWrapping="Wrap" VerticalAlignment="Center" Margin="0,0,12,0" />
+                                    <Button x:Name="AnswerInputButton" Grid.Column="1" Content="{loc:Loc 'Проверить вводом ▾'}" Click="AnswerInputButton_OnClick"
+                                            Padding="12,6" ToolTip="{loc:Loc 'Поле для ответа с клавиатуры: точность, ошибки и вкладка «Прогресс» с историей. Выбор запоминается.'}" />
+                                </Grid>
+                                <Grid x:Name="AnswerInputPanel" Grid.Row="1" Margin="0,10,0,0" Visibility="Collapsed">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="8" />
+                                        <RowDefinition Height="*" />
+                                        <RowDefinition Height="10" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+                                    <TextBlock Text="{loc:Loc 'Введите то, что услышали'}" Foreground="{DynamicResource MutedTextBrush}" />
+                                    <TextBox x:Name="UserAnswerText" Grid.Row="2" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="60"
+                                             VerticalScrollBarVisibility="Auto" FontFamily="Cascadia Mono, Consolas" FontSize="18" IsEnabled="False" />
+                                    <Grid Grid.Row="4">
+                                        <Button x:Name="CheckAnswerButton" Content="{loc:Loc 'Проверить ответ'}" Style="{StaticResource PrimaryButton}"
+                                                Click="CheckAnswerButton_OnClick" IsEnabled="False" HorizontalAlignment="Left" />
+                                        <TextBlock x:Name="ResultDetailsText" Text="{loc:Loc 'Пробелы между группами при проверке не учитываются'}"
+                                                   Foreground="{DynamicResource MutedTextBrush}" TextWrapping="Wrap" VerticalAlignment="Center"
+                                                   HorizontalAlignment="Right" MaxWidth="430" FontSize="11" />
+                                    </Grid>
                                 </Grid>
                             </Grid>
 
                             <Grid Grid.Row="8">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="10" />
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="10" />
-                                    <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="16" />
                                     <ColumnDefinition Width="Auto" />
                                     <ColumnDefinition Width="8" />
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
-                                <Border Background="{DynamicResource CardAltBrush}" CornerRadius="10" Padding="14,10">
-                                    <StackPanel>
-                                        <TextBlock Text="{loc:Loc 'ТОЧНОСТЬ'}" Foreground="{DynamicResource MutedTextBrush}" FontSize="10" />
-                                        <TextBlock x:Name="AccuracyText" Text="—" FontSize="20" FontWeight="SemiBold" />
-                                    </StackPanel>
-                                </Border>
-                                <Border Grid.Column="2" Background="{DynamicResource CardAltBrush}" CornerRadius="10" Padding="14,10">
-                                    <StackPanel>
-                                        <TextBlock Text="{loc:Loc 'ПОПЫТКИ'}" Foreground="{DynamicResource MutedTextBrush}" FontSize="10" />
-                                        <TextBlock x:Name="AttemptsText" Text="0" FontSize="20" FontWeight="SemiBold" />
-                                    </StackPanel>
-                                </Border>
-                                <Border Grid.Column="4" Background="{DynamicResource CardAltBrush}" CornerRadius="10" Padding="14,10">
-                                    <StackPanel>
-                                        <TextBlock Text="{loc:Loc 'СЛОЖНЫЕ СИМВОЛЫ'}" Foreground="{DynamicResource MutedTextBrush}" FontSize="10" />
-                                        <TextBlock x:Name="ProblemSymbolsText" Text="—" FontSize="16" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                                    </StackPanel>
-                                </Border>
-                                <Button x:Name="SaveTaskButton" Grid.Column="6" Content="{loc:Loc 'Сохранить TXT'}" Click="SaveTaskButton_OnClick" IsEnabled="False" />
-                                <Button x:Name="ExportWavButton" Grid.Column="8" Content="{loc:Loc 'Экспорт WAV'}" Click="ExportWavButton_OnClick" IsEnabled="False" />
+                                <Grid x:Name="AnswerStatsGrid" Visibility="Collapsed">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="10" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="10" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Border Background="{DynamicResource CardAltBrush}" CornerRadius="10" Padding="14,10">
+                                        <StackPanel>
+                                            <TextBlock Text="{loc:Loc 'ТОЧНОСТЬ'}" Foreground="{DynamicResource MutedTextBrush}" FontSize="10" />
+                                            <TextBlock x:Name="AccuracyText" Text="—" FontSize="20" FontWeight="SemiBold" />
+                                        </StackPanel>
+                                    </Border>
+                                    <Border Grid.Column="2" Background="{DynamicResource CardAltBrush}" CornerRadius="10" Padding="14,10">
+                                        <StackPanel>
+                                            <TextBlock Text="{loc:Loc 'ПОПЫТКИ'}" Foreground="{DynamicResource MutedTextBrush}" FontSize="10" />
+                                            <TextBlock x:Name="AttemptsText" Text="0" FontSize="20" FontWeight="SemiBold" />
+                                        </StackPanel>
+                                    </Border>
+                                    <Border Grid.Column="4" Background="{DynamicResource CardAltBrush}" CornerRadius="10" Padding="14,10">
+                                        <StackPanel>
+                                            <TextBlock Text="{loc:Loc 'СЛОЖНЫЕ СИМВОЛЫ'}" Foreground="{DynamicResource MutedTextBrush}" FontSize="10" />
+                                            <TextBlock x:Name="ProblemSymbolsText" Text="—" FontSize="16" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                        </StackPanel>
+                                    </Border>
+                                </Grid>
+                                <Button x:Name="SaveTaskButton" Grid.Column="2" Content="{loc:Loc 'Сохранить TXT'}" Click="SaveTaskButton_OnClick" IsEnabled="False" />
+                                <Button x:Name="ExportWavButton" Grid.Column="4" Content="{loc:Loc 'Экспорт WAV'}" Click="ExportWavButton_OnClick" IsEnabled="False" />
                             </Grid>
                         </Grid>
                     </Border>
@@ -438,33 +475,28 @@
 
                     <Border Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource BorderBrush}"
                             BorderThickness="1" CornerRadius="14" Padding="16">
+                        <!-- Какие символы показать: кнопки вместо выпадающего списка, выбранная подсвечена (как на телефоне) -->
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="12" />
-                                <ColumnDefinition Width="220" />
                                 <ColumnDefinition Width="18" />
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="12" />
-                                <ColumnDefinition Width="280" />
-                                <ColumnDefinition Width="18" />
-                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" MinWidth="120" />
                             </Grid.ColumnDefinitions>
-                            <TextBlock Text="{loc:Loc 'Раздел'}" Foreground="{DynamicResource MutedTextBrush}" VerticalAlignment="Center" />
-                            <ComboBox x:Name="LearningAlphabetCombo" Grid.Column="2" SelectedIndex="0"
-                                      SelectionChanged="LearningFilter_OnSelectionChanged">
-                                <ComboBoxItem Content="{loc:Loc 'Русские буквы'}" />
-                                <ComboBoxItem Content="{loc:Loc 'Латинские буквы'}" />
-                                <ComboBoxItem Content="{loc:Loc 'Русский и латинский'}" />
-                                <ComboBoxItem Content="{loc:Loc 'Цифры'}" />
-                            </ComboBox>
-                            <TextBlock Grid.Column="4" Text="{loc:Loc 'Воспроизведение'}" Foreground="{DynamicResource MutedTextBrush}" VerticalAlignment="Center" />
-                            <ComboBox x:Name="LearningAudioModeCombo" Grid.Column="6" SelectedIndex="0">
-                                <ComboBoxItem Content="{loc:Loc 'Напев на экране + сигнал'}" />
-                                <ComboBoxItem Content="{loc:Loc 'Естественный офлайн-голос + сигнал'}" />
-                            </ComboBox>
-                            <TextBox x:Name="LearningSearchText" Grid.Column="8" TextChanged="LearningFilter_OnTextChanged"
-                                     ToolTip="{loc:Loc 'Поиск по букве или напеву'}" />
+                            <StackPanel Orientation="Horizontal">
+                                <Button x:Name="LearningRussianButton" Content="{loc:Loc 'Русские буквы'}" Tag="0" Click="LearningAlphabetButton_OnClick" Padding="12,7" Margin="0,0,6,0" />
+                                <Button x:Name="LearningLatinButton" Content="{loc:Loc 'Латинские буквы'}" Tag="1" Click="LearningAlphabetButton_OnClick" Padding="12,7" Margin="0,0,6,0" />
+                                <Button x:Name="LearningBothButton" Content="{loc:Loc 'Русские и латинские'}" Tag="2" Click="LearningAlphabetButton_OnClick" Padding="12,7" Margin="0,0,6,0" />
+                                <Button x:Name="LearningDigitsButton" Content="{loc:Loc 'Цифры'}" Tag="3" Click="LearningAlphabetButton_OnClick" Padding="12,7" />
+                            </StackPanel>
+                            <Grid Grid.Column="2">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="🔍" VerticalAlignment="Center" Margin="0,0,8,0" Foreground="{DynamicResource MutedTextBrush}" />
+                                <TextBox x:Name="LearningSearchText" Grid.Column="1" TextChanged="LearningFilter_OnTextChanged"
+                                         ToolTip="{loc:Loc 'Поиск по букве или напеву'}" />
+                            </Grid>
                         </Grid>
                     </Border>
 
@@ -549,14 +581,8 @@
                         </Border>
 
                         <Grid Grid.Column="2">
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="14" />
-                                <RowDefinition Height="*" />
-                            </Grid.RowDefinitions>
-
                             <Border Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource BorderBrush}"
-                                    BorderThickness="1" CornerRadius="14" Padding="20">
+                                    BorderThickness="1" CornerRadius="14" Padding="20" VerticalAlignment="Top">
                                 <StackPanel>
                                     <TextBlock Text="{loc:Loc 'Сейчас изучаем'}" Foreground="{DynamicResource MutedTextBrush}" />
                                     <Grid Margin="0,8,0,4">
@@ -568,6 +594,11 @@
                                                TextWrapping="Wrap" Margin="0,4,0,8" />
                                     <TextBlock x:Name="LearningPlaybackStatusText" Text="{loc:Loc 'Выберите карточку'}"
                                                Foreground="{DynamicResource MutedTextBrush}" FontSize="11" />
+                                    <TextBlock Text="{loc:Loc 'Звучание карточки'}" Foreground="{DynamicResource MutedTextBrush}" Margin="0,14,0,6" />
+                                    <Button x:Name="LearningVoiceModeButton" Content="{loc:Loc 'Голос + сигнал'}" Tag="1" Click="LearningAudioModeButton_OnClick"
+                                            Padding="10,7" Margin="0,0,0,6" ToolTip="{loc:Loc 'Сначала напев голосом, затем сигнал с подсветкой слогов'}" />
+                                    <Button x:Name="LearningChantModeButton" Content="{loc:Loc 'Напев на экране + сигнал'}" Tag="0" Click="LearningAudioModeButton_OnClick"
+                                            Padding="10,7" ToolTip="{loc:Loc 'Только сигнал, слоги напева подсвечиваются на экране'}" />
                                     <TextBlock x:Name="CustomVoiceText" Text=" " Foreground="{DynamicResource MutedTextBrush}" FontSize="11"
                                                TextWrapping="Wrap" Margin="0,10,0,6" />
                                     <WrapPanel>
@@ -580,39 +611,78 @@
                                 </StackPanel>
                             </Border>
 
-                            <Border Grid.Row="2" Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource BorderBrush}"
-                                    BorderThickness="1" CornerRadius="14" Padding="20">
-                                <Grid>
-                                    <Grid.RowDefinitions>
-                                        <RowDefinition Height="Auto" />
-                                        <RowDefinition Height="12" />
-                                        <RowDefinition Height="Auto" />
-                                        <RowDefinition Height="12" />
-                                        <RowDefinition Height="Auto" />
-                                        <RowDefinition Height="*" />
-                                        <RowDefinition Height="Auto" />
-                                    </Grid.RowDefinitions>
-                                    <Grid>
-                                        <StackPanel>
-                                            <TextBlock Text="{loc:Loc 'Проверочное задание'}" FontSize="18" FontWeight="SemiBold" />
-                                            <TextBlock Text="{loc:Loc 'Прослушайте сигнал и выберите символ'}"
-                                                       Foreground="{DynamicResource MutedTextBrush}" FontSize="11" />
-                                        </StackPanel>
-                                        <TextBlock x:Name="QuizScoreText" Text="0 / 0" HorizontalAlignment="Right"
-                                                   Foreground="{DynamicResource PrimaryBrush}" FontSize="18" FontWeight="SemiBold" />
-                                    </Grid>
-                                    <Button x:Name="QuizPlayButton" Grid.Row="2" Content="{loc:Loc '▶  Новое задание'}"
-                                            Style="{StaticResource PrimaryButton}" Click="QuizPlayButton_OnClick" />
-                                    <TextBlock x:Name="QuizPromptText" Grid.Row="4" Text="{loc:Loc 'Нажмите «Новое задание»'}"
-                                               HorizontalAlignment="Center" Foreground="{DynamicResource MutedTextBrush}" />
-                                    <UniformGrid x:Name="QuizAnswersPanel" Grid.Row="5" Columns="2" Margin="-4,8,-4,8" />
-                                    <TextBlock x:Name="QuizResultText" Grid.Row="6" Text=" " HorizontalAlignment="Center"
-                                               FontWeight="SemiBold" TextWrapping="Wrap" />
-                                </Grid>
-                            </Border>
                         </Grid>
                     </Grid>
                 </Grid>
+            </TabItem>
+            <!-- Проверка на слух отдельной вкладкой, как на телефоне: набор, своя скорость, следующий символ сам после ответа -->
+            <TabItem Header="{loc:Loc 'На слух'}">
+                <ScrollViewer Margin="0,12,0,0" VerticalScrollBarVisibility="Auto">
+                    <Border Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="16"
+                            Padding="24,20" MaxWidth="760" HorizontalAlignment="Center" VerticalAlignment="Top">
+                        <StackPanel>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel>
+                                    <TextBlock Text="{loc:Loc 'Проверка на слух'}" FontSize="18" FontWeight="SemiBold" />
+                                    <TextBlock Text="{loc:Loc 'Прослушайте сигнал и выберите символ'}" Foreground="{DynamicResource MutedTextBrush}" FontSize="12" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock x:Name="QuizScoreText" Text="0 / 0" Foreground="{DynamicResource PrimaryBrush}" FontSize="18" FontWeight="SemiBold"
+                                               VerticalAlignment="Center" Margin="0,0,10,0" />
+                                    <Button x:Name="QuizResetButton" Content="{loc:Loc 'Сбросить счёт'}" Click="QuizResetButton_OnClick" Padding="10,5" />
+                                </StackPanel>
+                            </Grid>
+                            <UniformGrid Columns="4" Margin="-3,16,-3,0">
+                                <Button x:Name="QuizRussianButton" Content="{loc:Loc 'Русские буквы'}" Tag="0" Click="QuizAlphabetButton_OnClick" Padding="8,8" Margin="3" />
+                                <Button x:Name="QuizLatinButton" Content="{loc:Loc 'Латинские буквы'}" Tag="1" Click="QuizAlphabetButton_OnClick" Padding="8,8" Margin="3" />
+                                <Button x:Name="QuizBothButton" Content="{loc:Loc 'Русские и латинские'}" Tag="2" Click="QuizAlphabetButton_OnClick" Padding="8,8" Margin="3" />
+                                <Button x:Name="QuizDigitsButton" Content="{loc:Loc 'Цифры'}" Tag="3" Click="QuizAlphabetButton_OnClick" Padding="8,8" Margin="3" />
+                            </UniformGrid>
+                            <Border Background="{DynamicResource CardAltBrush}" CornerRadius="12" Padding="16" Margin="0,14,0,0">
+                                <StackPanel>
+                                    <TextBlock x:Name="QuizStatusText" Text="{loc:Loc 'Нажмите «Новый символ» и слушайте'}" FontSize="16" FontWeight="SemiBold"
+                                               HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" Margin="0,0,0,12" />
+                                    <UniformGrid x:Name="QuizAnswersGrid" Columns="2" Margin="-5,0,-5,0">
+                                        <Button x:Name="QuizAnswer0Button" Content="?" FontSize="32" Height="76" Margin="5" IsEnabled="False" Click="QuizAnswerButton_OnClick" />
+                                        <Button x:Name="QuizAnswer1Button" Content="?" FontSize="32" Height="76" Margin="5" IsEnabled="False" Click="QuizAnswerButton_OnClick" />
+                                        <Button x:Name="QuizAnswer2Button" Content="?" FontSize="32" Height="76" Margin="5" IsEnabled="False" Click="QuizAnswerButton_OnClick" />
+                                        <Button x:Name="QuizAnswer3Button" Content="?" FontSize="32" Height="76" Margin="5" IsEnabled="False" Click="QuizAnswerButton_OnClick" />
+                                    </UniformGrid>
+                                </StackPanel>
+                            </Border>
+                            <Grid Margin="0,14,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="10" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Button x:Name="QuizNewButton" Content="{loc:Loc '▶ Новый символ'}" Style="{StaticResource PrimaryButton}" Click="QuizNewButton_OnClick" />
+                                <Button x:Name="QuizRepeatButton" Grid.Column="2" Content="{loc:Loc '↻ Ещё раз'}" IsEnabled="False" Click="QuizRepeatButton_OnClick" />
+                            </Grid>
+                            <Grid Margin="0,18,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="14" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="14" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="{loc:Loc 'Скорость сигнала'}" Foreground="{DynamicResource MutedTextBrush}" VerticalAlignment="Center" />
+                                <Slider x:Name="QuizSpeedSlider" Grid.Column="2" Minimum="20" Maximum="200" Value="45" TickFrequency="5" IsSnapToTickEnabled="True"
+                                        VerticalAlignment="Center" ValueChanged="QuizSpeedSlider_OnValueChanged" />
+                                <TextBlock x:Name="QuizSpeedValueText" Grid.Column="4" Text=" " MinWidth="110" TextAlignment="Right" VerticalAlignment="Center" />
+                            </Grid>
+                            <CheckBox x:Name="QuizAutoNextCheckBox" Content="{loc:Loc 'Следующий символ — сразу после ответа'}" IsChecked="True" Margin="0,12,0,0"
+                                      Checked="QuizAutoNext_OnChanged" Unchecked="QuizAutoNext_OnChanged" />
+                            <TextBlock Text="{loc:Loc 'С клавиатуры: символ — ответ, пробел — ещё раз, Enter — новый символ'}"
+                                       Foreground="{DynamicResource MutedTextBrush}" FontSize="11" Margin="0,12,0,0" TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
+                </ScrollViewer>
             </TabItem>
             <TabItem Header="{loc:Loc 'Передача'}">
                 <Grid Margin="0,12,0,0">
@@ -680,7 +750,8 @@
                     </Border>
                 </Grid>
             </TabItem>
-            <TabItem Header="{loc:Loc 'Прогресс'}">
+            <!-- «Прогресс» виден только с вводом ответа: при записи на бумаге истории нет -->
+            <TabItem x:Name="ProgressTab" Header="{loc:Loc 'Прогресс'}" Visibility="Collapsed">
                 <Grid Margin="0,12,0,0">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="3*" MinWidth="420" />
@@ -765,19 +836,7 @@
                             </Grid>
                             <TextBlock x:Name="GoalText" Text="—" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,10,0,0" />
                             <ProgressBar x:Name="GoalProgress" Height="6" Minimum="0" Maximum="100" Value="0" Margin="0,6,0,0" />
-                            <TextBlock x:Name="StreakText" Text="—" Foreground="{DynamicResource MutedTextBrush}" TextWrapping="Wrap" Margin="0,6,0,10" />
-                            <Grid Margin="0,0,0,16">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="90" />
-                                </Grid.ColumnDefinitions>
-                                <CheckBox x:Name="ReminderCheckBox" VerticalAlignment="Center" Margin="0,0,8,0"
-                                          Checked="ReminderOption_OnChanged" Unchecked="ReminderOption_OnChanged"
-                                          ToolTip="{loc:Loc 'Каждый день в выбранное время, если вы ещё не занимались. Уведомление приходит, пока программа открыта (можно свернуть).'}">
-                                    <TextBlock Text="{loc:Loc 'Напоминать уведомлением Windows'}" TextWrapping="Wrap" />
-                                </CheckBox>
-                                <ComboBox x:Name="ReminderTimeCombo" Grid.Column="1" SelectionChanged="ReminderOption_OnChanged" />
-                            </Grid>
+                            <TextBlock x:Name="StreakText" Text="—" Foreground="{DynamicResource MutedTextBrush}" TextWrapping="Wrap" Margin="0,6,0,16" />
                             <TextBlock Text="{loc:Loc 'По дням'}" FontSize="18" FontWeight="SemiBold" />
                             <TextBlock Text="{loc:Loc 'точность · заданий · минут; ✓ — цель выполнена'}" Foreground="{DynamicResource MutedTextBrush}" FontSize="11" />
                             <StackPanel x:Name="DailyBarsPanel" Margin="0,10,0,0" />

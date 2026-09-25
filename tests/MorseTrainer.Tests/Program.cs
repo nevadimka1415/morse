@@ -1023,6 +1023,12 @@ static void TestPracticeNudge()
     var longAgo = new[] { new TrainingRecord { CompletedAt = noon.AddDays(-9) }, new TrainingRecord { CompletedAt = noon.AddDays(-5).AddHours(10) } };
     Assert(PracticeNudge.DaysSinceLastPractice(longAgo, today) == 5 && PracticeNudge.Banner(longAgo, today) == "Вы не тренировались 5 дн. Пять минут сегодня сохранят навык.",
         "Banner must count days since the last practice: " + PracticeNudge.Banner(longAgo, today));
+    // Тренировка на бумаге не пишет историю: занятие без неё тоже считается
+    Assert(PracticeNudge.Banner(longAgo, today, noon.AddDays(-1)) is null && PracticeNudge.DaysSinceLastPractice(Array.Empty<TrainingRecord>(), today, noon) == 0,
+        "Practice without history (paper, listening quiz) resets the banner.");
+    Assert(PracticeNudge.DaysSinceLastPractice(yesterday, today, noon.AddDays(-7)) == 1, "An older paper practice does not hide newer history.");
+    Assert(PracticeNudge.PracticedOn(today, Array.Empty<TrainingRecord>(), noon) && !PracticeNudge.PracticedOn(today, yesterday, noon.AddDays(-2))
+           && PracticeNudge.PracticedOn(today.AddDays(-1), yesterday, null), "Practiced today by history or by paper practice.");
 
     var evening = today.ToDateTime(new TimeOnly(19, 0));
     Assert(!PracticeNudge.IsReminderDue(evening.AddMinutes(-1), 19 * 60, null, false), "Not before the reminder time.");
