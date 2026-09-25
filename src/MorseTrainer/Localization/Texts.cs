@@ -294,7 +294,7 @@ public static class Texts
         ["Далее ›"] = "Next ›",
         ["Начать шаг 1"] = "Start step 1",
         ["Курс ведёт от нуля до приёма на слух {0} знаков в минуту — это уверенная скорость, с которой уже можно работать в эфире."] = "The course takes you from zero to copying {0} characters per minute by ear — a confident speed you can already use on the air.",
-        ["В курсе {0} шагов. Каждый шаг — задание из групп по пять знаков: оно звучит, вы записываете услышанное на бумаге и сверяете с текстом задания."] = "The course has {0} steps. Each step is a task of five-character groups: it plays, you write down what you hear on paper and compare it with the task text.",
+        ["В курсе {0} шагов. Каждый шаг — короткое задание: оно звучит, вы записываете услышанное на бумаге и сверяете с текстом задания."] = "The course has {0} steps. Each step is a short task: it plays, you write down what you hear on paper and compare it with the task text.",
         ["Кнопка шага сама ставит всё нужное: какие знаки, скорость, паузы. Настраивать вручную ничего не придётся."] = "The step button sets everything for you: which characters, speed, gaps. Nothing to configure by hand.",
         ["Шаг засчитан, когда в его задании принято {0} % знаков и больше. Чтобы программа это увидела, введите принятое в поле ответа — на шагах курса оно открывается само — и нажмите «Проверить ответ». После зачёта открывается следующий шаг."] = "A step is passed when you copy {0} % of the characters or more in its task. So the app can see it, type what you copied into the answer field — it opens by itself on course steps — and press “Check answer”. After that the next step opens.",
         ["Метод Коха"] = "The Koch method",
