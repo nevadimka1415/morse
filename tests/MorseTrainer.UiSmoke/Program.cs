@@ -390,6 +390,12 @@ public static class Program
             box.Text = "Ать — Даа";
             DoEvents();
             Check(save.IsEnabled, "a valid chant enables Save");
+            // Свой голос: без записи — «Записать» и «Встроенный голос», удалять нечего (микрофон на раннере не трогаем)
+            var buttons = FindChildren<Button>(window).ToArray();
+            Check(buttons.Any(button => button.Content as string == Texts.T("● Записать"))
+                  && buttons.Any(button => button.Content as string == Texts.T("▶ Встроенный голос"))
+                  && buttons.Single(button => button.Content as string == Texts.T("Удалить запись")).IsEnabled == false,
+                "chant editor offers recording own voice");
         }
         finally
         {

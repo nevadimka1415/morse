@@ -175,7 +175,15 @@ public partial class MainWindow
         }
 
         var dialog = new ChantEditorWindow(item) { Owner = this };
-        if (dialog.ShowDialog() != true)
+        var saved = dialog.ShowDialog() == true;
+        // Запись голоса могла появиться или пропасть даже при «Отмене» напева — пометки карточек обновляем всегда
+        if (dialog.VoiceChanged)
+        {
+            RefreshLearningItems();
+            UpdateCustomVoiceText();
+        }
+
+        if (!saved)
         {
             return;
         }
