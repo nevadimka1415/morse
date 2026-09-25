@@ -174,6 +174,12 @@ for (const relativePath of [
   'src/MorseTrainer/Services/VoicePackService.cs',
   'src/MorseTrainer/Services/UpdateService.cs',
   'src/MorseTrainer/MainWindow.xaml.cs',
+  'src/MorseTrainer/MainWindow.Training.cs',
+  'src/MorseTrainer/MainWindow.Learning.cs',
+  'src/MorseTrainer/MainWindow.Quiz.cs',
+  'src/MorseTrainer/MainWindow.Keyer.cs',
+  'src/MorseTrainer/MainWindow.Progress.cs',
+  'src/MorseTrainer/MainWindow.Settings.cs',
   'tests/MorseTrainer.Tests/Program.cs',
   'tests/MorseTrainer.UiSmoke/Program.cs',
   'src/MorseTrainer.Mobile/MauiProgram.cs',
@@ -219,7 +225,7 @@ assert(read('src/MorseTrainer.Mobile/Pages/QuizPage.xaml').includes('x:Name="Spe
   && read('src/MorseTrainer/MainWindow.xaml').includes('x:Name="QuizRepeatButton"'),
   'Listening quiz on both apps: own signal speed, repeat, next symbol right after the answer.');
 assert(/x:Name="AnswerInputPanel"[^>]*Visibility="Collapsed"/.test(read('src/MorseTrainer/MainWindow.xaml')) && /x:Name="ProgressTab"[^>]*Visibility="Collapsed"/.test(read('src/MorseTrainer/MainWindow.xaml'))
-  && read('src/MorseTrainer/MainWindow.xaml.cs').includes('SetAnswerInput(true, remember: false)'),
+  && readMainWindowCode().includes('SetAnswerInput(true, remember: false)'),
   'Windows training like the phone: typing the answer and the Progress tab are optional (collapsed), exams and course steps open the input.');
 assert(!read('src/MorseTrainer/MainWindow.xaml').includes('LearningAlphabetCombo') && read('src/MorseTrainer/MainWindow.xaml').includes('x:Name="LearningLatinButton"')
   && !read('src/MorseTrainer/MainWindow.xaml').includes('QuizAnswersPanel'),
@@ -235,7 +241,7 @@ assert(read('src/MorseTrainer.Mobile/Services/VoicePackService.cs').includes('Ap
   'Phone must cache the built-in voice per app build, otherwise an update keeps playing the old voice.');
 assert(read('src/MorseTrainer/Services/VoicePackService.cs').includes('CustomVoice.Find') && read('src/MorseTrainer.Mobile/Services/VoicePackService.cs').includes('CustomVoice.Find'),
   'Both apps must prefer the custom voice pack.');
-assert(read('src/MorseTrainer/MainWindow.xaml').includes('MinWidth="1000" MinHeight="680"') && read('src/MorseTrainer/MainWindow.xaml.cs').includes('SystemParameters.WorkArea'),
+assert(read('src/MorseTrainer/MainWindow.xaml').includes('MinWidth="1000" MinHeight="680"') && readMainWindowCode().includes('SystemParameters.WorkArea'),
   'Windows window must fit a 1366×768 screen.');
 assert(read('src/MorseTrainer/MainWindow.xaml').includes('x:Name="TogglePanelButton"'), 'Training settings panel must be collapsible.');
 const wpfProject = read('src/MorseTrainer/MorseTrainer.csproj');
@@ -245,9 +251,9 @@ assert(read('src/MorseTrainer/MainWindow.xaml').includes('x:Name="NudgeBanner"')
   'Windows app must show the practice banner and offer the reminder notification.');
 assert(read('src/MorseTrainer/MainWindow.xaml').includes('x:Name="CourseStartButton"') && read('src/MorseTrainer.Mobile/Pages/LearningPage.xaml').includes('x:Name="CourseStartButton"'),
   'Both apps must offer the course from zero to 60 cpm.');
-assert(read('src/MorseTrainer/MainWindow.xaml.cs').includes('e.Key == Key.E') && read('src/MorseTrainer/MainWindow.xaml.cs').includes('e.Key == Key.K'),
+assert(readMainWindowCode().includes('e.Key == Key.E') && readMainWindowCode().includes('e.Key == Key.K'),
   'Windows must offer Ctrl+E (exam) and Ctrl+K (sending tab).');
-assert(read('src/MorseTrainer/MainWindow.xaml.cs').includes('KeyerProgress.MatchedLength') && read('src/MorseTrainer.Mobile/Pages/KeyerPage.xaml.cs').includes('KeyerProgress.MatchedLength'),
+assert(readMainWindowCode().includes('KeyerProgress.MatchedLength') && read('src/MorseTrainer.Mobile/Pages/KeyerPage.xaml.cs').includes('KeyerProgress.MatchedLength'),
   'Both apps must highlight the sending task as it is received.');
 assert(read('tests/MorseTrainer.UiSmoke/Program.cs').includes('ThemeIndex = 1'), 'UI smoke test must take dark theme screenshots.');
 assert(read('src/MorseTrainer.Mobile/Platforms/Android/AndroidManifest.xml').includes('android.permission.RECORD_AUDIO') && read('src/MorseTrainer.Mobile/Platforms/iOS/Info.plist').includes('NSMicrophoneUsageDescription'),
@@ -270,7 +276,7 @@ assert(!read('src/MorseTrainer/App.xaml').includes('<Style TargetType="TextBlock
   'No implicit TextBlock style: it overrides text colour inside buttons, combo boxes and tooltips (unreadable in the dark theme).');
 assert(/<Style TargetType="TabItem">\s*<Setter Property="Foreground" Value="\{DynamicResource TextBrush\}" \/>/.test(read('src/MorseTrainer/App.xaml')),
   'TabItem Foreground must stay TextBrush: tab content inherits it (black from the system theme, green when selected).');
-assert(read('src/MorseTrainer/MainWindow.xaml.cs').includes('DownloadAndRunInstallerAsync'), 'Windows update must download and run the installer.');
+assert(readMainWindowCode().includes('DownloadAndRunInstallerAsync'), 'Windows update must download and run the installer.');
 assert(read('src/MorseTrainer.Mobile/MorseTrainer.Mobile.csproj').includes('<AndroidLinkTool>r8</AndroidLinkTool>'), 'Android release build must use R8.');
 assert(read('README.md').includes('actions/workflows/build.yml/badge.svg'), 'README must show the build status badges.');
 for (const shot of ['training', 'learning', 'quiz', 'keyer', 'progress', 'training-en', 'learning-en', 'training-compact', 'phone-training', 'phone-learning', 'phone-quiz', 'phone-settings']) {
@@ -385,13 +391,21 @@ for (const file of listFiles(resolve(root, 'src'), '.cs').concat(listFiles(resol
 
 console.log(`Static verification passed: ${requiredFiles.length} required files, ${mainWindowVerification.controlCount} named controls, ${mainWindowVerification.eventCount} main-window event handlers.`);
 
+// Код главного окна Windows разложен по частям MainWindow.*.cs (вкладки) — проверяем все части вместе
+function readMainWindowCode() {
+  return readdirSync(resolve(root, 'src/MorseTrainer'))
+    .filter((name) => /^MainWindow(\.[A-Za-z]+)?\.cs$/.test(name) || name === 'MainWindow.xaml.cs')
+    .map((name) => read(`src/MorseTrainer/${name}`))
+    .join('\n');
+}
+
 function read(relativePath) {
   return readFileSync(resolve(root, relativePath), 'utf8');
 }
 
 function verifyXamlCodeBehind(xamlPath, codeBehindPath) {
   const xaml = read(xamlPath);
-  const codeBehind = read(codeBehindPath);
+  const codeBehind = codeBehindPath.endsWith('/MainWindow.xaml.cs') ? readMainWindowCode() : read(codeBehindPath);
   const controlNames = [...xaml.matchAll(/x:Name="([^"]+)"/g)].map((match) => match[1]);
   assert(new Set(controlNames).size === controlNames.length, `${xamlPath} contains duplicate x:Name values.`);
 
