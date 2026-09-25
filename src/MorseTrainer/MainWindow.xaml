@@ -357,6 +357,9 @@
                                     </Grid.RowDefinitions>
                                     <Grid>
                                         <TextBlock Text="{loc:Loc 'Текст задания'}" Foreground="{DynamicResource MutedTextBrush}" />
+                                        <!-- Во время прослушивания: какая группа звучит (для записи на бумаге) -->
+                                        <TextBlock x:Name="GroupCounterText" Text=" " Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                   FontSize="17" FontWeight="SemiBold" Foreground="{DynamicResource PrimaryBrush}" />
                                         <Button x:Name="ToggleAnswerButton" Content="{loc:Loc 'Показать'}" HorizontalAlignment="Right"
                                                 Padding="12,5" Click="ToggleAnswerButton_OnClick" IsEnabled="False" />
                                     </Grid>

@@ -174,11 +174,13 @@ public partial class MainWindow
             SetStatus(Texts.T("СЛУШАЕМ"), isActive: true);
 
             var startedAt = DateTime.UtcNow;
+            ShowPlayingGroup(0);
             while (DateTime.UtcNow - startedAt < _currentClip.Duration)
             {
                 await Task.Delay(50, cancellation.Token);
                 var elapsed = DateTime.UtcNow - startedAt;
                 PlaybackProgress.Value = Math.Min(100, elapsed.TotalMilliseconds / _currentClip.Duration.TotalMilliseconds * 100);
+                ShowPlayingGroup(_currentClip.GroupAt(elapsed));
             }
 
             if (!cancellation.IsCancellationRequested)
@@ -208,6 +210,12 @@ public partial class MainWindow
         }
         finally
         {
+            // Новое прослушивание уже началось — его счётчик групп не трогаем
+            if (_playbackCancellation is null || ReferenceEquals(_playbackCancellation, cancellation))
+            {
+                HidePlayingGroup();
+            }
+
             if (ReferenceEquals(_playbackCancellation, cancellation))
             {
                 PlayButton.IsEnabled = CanPlayNow;
@@ -215,6 +223,38 @@ public partial class MainWindow
                 StopButton.IsEnabled = false;
                 _playbackCancellation = null;
             }
+        }
+    }
+
+    /// <summary>
+    /// «Группа 3 из 10» над текстом задания и подсветка этой группы среди точек (или букв, если текст открыт) —
+    /// чтобы при записи на бумаге не сбиться. 0 — ещё звучит сигнал Ж Ж Ж.
+    /// </summary>
+    internal void ShowPlayingGroup(int group)
+    {
+        if (_currentClip is null || _currentClip.GroupCount == 0)
+        {
+            return;
+        }
+
+        GroupCounterText.Visibility = Visibility.Visible;
+        GroupCounterText.Text = group == 0
+            ? Texts.T("Сигнал начала: Ж Ж Ж")
+            : Texts.F("Группа {0} из {1}", group, _currentClip.GroupCount);
+        if (group != _playingGroup)
+        {
+            _playingGroup = group;
+            UpdateAnswerDisplay();
+        }
+    }
+
+    internal void HidePlayingGroup()
+    {
+        GroupCounterText.Visibility = Visibility.Collapsed;
+        if (_playingGroup != 0)
+        {
+            _playingGroup = 0;
+            UpdateAnswerDisplay();
         }
     }
 
@@ -262,6 +302,11 @@ public partial class MainWindow
     {
         _playbackCancellation?.Cancel();
         _playbackCancellation = null;
+        if (GroupCounterText is not null)
+        {
+            HidePlayingGroup();
+        }
+
         _player?.Stop();
         _player?.Dispose();
         _player = null;
@@ -306,10 +351,35 @@ public partial class MainWindow
             return;
         }
 
-        AnswerDisplayText.Text = _answerVisible
+        var shown = _answerVisible
             ? _currentTask
             : new string(_currentTask.Select(symbol => char.IsWhiteSpace(symbol) ? ' ' : '\u2022').ToArray());
         ToggleAnswerButton.Content = _answerVisible ? Texts.T("Скрыть") : Texts.T("Показать");
+        if (_playingGroup <= 0)
+        {
+            AnswerDisplayText.Text = shown;
+            return;
+        }
+
+        // Во время прослушивания звучащая группа выделена цветом
+        AnswerDisplayText.Inlines.Clear();
+        var groups = shown.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        for (var index = 0; index < groups.Length; index++)
+        {
+            if (index > 0)
+            {
+                AnswerDisplayText.Inlines.Add(new Run(" "));
+            }
+
+            var run = new Run(groups[index]);
+            if (index + 1 == _playingGroup)
+            {
+                run.SetResourceReference(TextElement.ForegroundProperty, "PrimaryBrush");
+                run.FontWeight = FontWeights.ExtraBold;
+            }
+
+            AnswerDisplayText.Inlines.Add(run);
+        }
     }
 
     private void CheckAnswerButton_OnClick(object sender, RoutedEventArgs e) => CheckAnswer();

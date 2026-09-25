@@ -137,6 +137,13 @@ public static class Program
                   && window.PaperHintText.Visibility == Visibility.Visible && window.ProgressTab.Visibility == Visibility.Collapsed
                   && window.AnswerInputButton.Content as string == Texts.T("Проверить вводом ▾"), "typed answer and Progress are hidden by default (paper mode)");
             SaveScreenshot(window, screenshots, "training-" + suffix);
+            // Во время прослушивания: «Группа 3 из 10» и подсветка третьей группы среди точек
+            window.ShowPlayingGroup(3);
+            Check(window.GroupCounterText.Visibility == Visibility.Visible && window.GroupCounterText.Text == Texts.F("Группа {0} из {1}", 3, 10)
+                  && window.AnswerDisplayText.Inlines.Count == 19, "group counter shows group 3 of 10 and highlights it: " + window.GroupCounterText.Text);
+            SaveScreenshot(window, screenshots, "training-group-" + suffix);
+            window.HidePlayingGroup();
+            Check(window.GroupCounterText.Visibility == Visibility.Collapsed && window.AnswerDisplayText.Text.Contains('•'), "group counter hides after playback");
             Click(window.AnswerInputButton);
             Check(window.AnswerInputPanel.Visibility == Visibility.Visible && window.AnswerStatsGrid.Visibility == Visibility.Visible
                   && window.PaperHintText.Visibility == Visibility.Collapsed && window.ProgressTab.Visibility == Visibility.Visible

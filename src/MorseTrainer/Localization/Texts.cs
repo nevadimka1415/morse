@@ -269,6 +269,8 @@ public static class Texts
         ["С клавиатуры: символ — ответ, пробел — ещё раз, Enter — новый символ"] = "Keyboard: type a symbol to answer, Space repeats, Enter plays a new symbol",
         ["СВЕРЬТЕ"] = "COMPARE",
         ["Чаще звучат: {0}"] = "Asked more often: {0}",
+        ["Группа {0} из {1}"] = "Group {0} of {1}",
+        ["Сигнал начала: Ж Ж Ж"] = "Start signal: Ж Ж Ж",
         ["Символы, которые вы путали, звучат чаще, пока не ответите на них верно"] = "Symbols you confused are asked more often until you answer them right",
         ["Готово — сверьте запись с текстом задания"] = "Done — compare your notes with the task text",
         ["Голос недоступен"] = "Voice unavailable",

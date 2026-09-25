@@ -70,6 +70,7 @@ public partial class MainWindow : Window
     private IReadOnlyList<LearningSymbolItem> _visibleLearningItems = Array.Empty<LearningSymbolItem>();
     private LearningSymbolItem? _quizTarget;
     private bool _answerVisible;
+    private int _playingGroup;   // какая группа звучит сейчас (с 1); 0 — не звучит или идёт сигнал Ж Ж Ж
     private bool _windowLoaded;
     private bool _applyingProfile;
     private IReadOnlyList<TrainingProfile> _profiles = Array.Empty<TrainingProfile>();

@@ -4,7 +4,28 @@ using MorseTrainer.Domain;
 
 namespace MorseTrainer.Services;
 
-public sealed record AudioClip(byte[] WavBytes, TimeSpan Duration);
+/// <summary>Звук задания; GroupStarts — когда начинается каждая группа (для «Группа 3 из 10» во время прослушивания).</summary>
+public sealed record AudioClip(byte[] WavBytes, TimeSpan Duration, IReadOnlyList<TimeSpan>? GroupStarts = null)
+{
+    public int GroupCount => GroupStarts?.Count ?? 0;
+
+    /// <summary>Номер группы (с 1), которая звучит к моменту elapsed; 0 — задание ещё не началось (идёт Ж Ж Ж).</summary>
+    public int GroupAt(TimeSpan elapsed)
+    {
+        if (GroupStarts is null)
+        {
+            return 0;
+        }
+
+        var group = 0;
+        while (group < GroupStarts.Count && GroupStarts[group] <= elapsed)
+        {
+            group++;
+        }
+
+        return group;
+    }
+}
 
 /// <summary>
 /// Помехи эфира: белый шум приёмника (QRN), медленные замирания (QSB) и уход частоты тона.
@@ -86,13 +107,16 @@ public static class MorseAudioService
             builder.WriteSilence(dotDurationSeconds * startPauseUnits);
         }
 
+        builder.GroupStarts = new List<TimeSpan>();
         builder.WriteGroupedText(groupedText, dotDurationSeconds, characterGapUnits, groupGapUnits);
+        var groupStarts = builder.GroupStarts;
+        builder.GroupStarts = null;
         builder.WriteSilence(dotDurationSeconds * 2);
 
         var pcmBytes = builder.ToPcm(volumePercent, profile);
         var wavBytes = CreateWaveFile(pcmBytes);
         var durationSeconds = pcmBytes.Length / (double)(SampleRate * ChannelCount * (BitsPerSample / 8));
-        return new AudioClip(wavBytes, TimeSpan.FromSeconds(durationSeconds));
+        return new AudioClip(wavBytes, TimeSpan.FromSeconds(durationSeconds), groupStarts);
     }
 
     /// <summary>
@@ -136,6 +160,9 @@ public static class MorseAudioService
     private sealed class SignalBuilder
     {
         private readonly List<float> _samples = new(SampleRate * 30);
+
+        /// <summary>Не null — отмечать момент начала каждой группы (сигнал Ж Ж Ж не отмечается).</summary>
+        public List<TimeSpan>? GroupStarts;
         private readonly int _frequencyHz;
         private readonly int _driftHz;
         private double _phase;
@@ -148,17 +175,25 @@ public static class MorseAudioService
 
         public void WriteGroupedText(string groupedText, double dotDurationSeconds, int characterGapUnits, int groupGapUnits)
         {
+            var groupStarts = true;
             for (var index = 0; index < groupedText.Length; index++)
             {
                 var symbol = groupedText[index];
                 if (char.IsWhiteSpace(symbol))
                 {
+                    groupStarts = true;
                     continue;
                 }
 
                 if (!MorseAlphabet.TryGetCode(symbol, out var code))
                 {
                     continue;
+                }
+
+                if (groupStarts)
+                {
+                    GroupStarts?.Add(TimeSpan.FromSeconds(_samples.Count / (double)SampleRate));
+                    groupStarts = false;
                 }
 
                 for (var codeIndex = 0; codeIndex < code.Length; codeIndex++)

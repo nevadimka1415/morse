@@ -24,6 +24,7 @@ public partial class TrainingPage : ContentPage, IDisposable
     private AudioClip? _currentClip;
     private string _currentTask = string.Empty;
     private bool _answerVisible;
+    private int _playingGroup;   // какая группа звучит (с 1); 0 — не звучит или идёт сигнал Ж Ж Ж
     private const string AnswerPanelKey = "training.typed_answer";
     private const string ParamsPanelKey = "training.params_open";
 
@@ -207,9 +208,24 @@ public partial class TrainingPage : ContentPage, IDisposable
         RepeatButton.IsEnabled = false;
         StopButton.IsEnabled = true;
         PlaybackStatusLabel.Text = Texts.T("Сначала Ж Ж Ж, затем начнётся задание…");
+        var clip = _currentClip;
+        var playing = true;
         try
         {
             var path = await AudioFileService.SaveClipAsync(_currentClip, "current-training.wav", _playbackCancellation.Token);
+            // Счётчик групп по времени от начала воспроизведения: «Группа 3 из 10» и подсветка группы в тексте задания
+            var clock = System.Diagnostics.Stopwatch.StartNew();
+            ShowPlayingGroup(clip, 0);
+            Dispatcher.StartTimer(TimeSpan.FromMilliseconds(200), () =>
+            {
+                if (!playing)
+                {
+                    return false;
+                }
+
+                ShowPlayingGroup(clip, clip.GroupAt(clock.Elapsed));
+                return true;
+            });
             await _audioPlayback.PlayAsync(path, _playbackCancellation.Token);
             // Клавиатура нужна только при вводе ответа; при записи на бумаге она закрыла бы полэкрана
             if (AnswerPanel.IsVisible)
@@ -234,6 +250,8 @@ public partial class TrainingPage : ContentPage, IDisposable
         }
         finally
         {
+            playing = false;
+            HidePlayingGroup();
             _playbackCancellation?.Dispose();
             _playbackCancellation = null;
             PlayButton.IsEnabled = CanPlayNow;
@@ -275,10 +293,60 @@ public partial class TrainingPage : ContentPage, IDisposable
 
     private void UpdateTaskLabel()
     {
-        TaskLabel.Text = _answerVisible
+        var shown = _answerVisible
             ? _currentTask
             : new string(_currentTask.Select(symbol => char.IsWhiteSpace(symbol) ? ' ' : '•').ToArray());
         ToggleAnswerButton.Text = _answerVisible ? Texts.T("Скрыть") : Texts.T("Показать");
+        if (_playingGroup <= 0)
+        {
+            TaskLabel.FormattedText = null;
+            TaskLabel.Text = shown;
+            return;
+        }
+
+        // Во время прослушивания звучащая группа выделена цветом
+        var text = new FormattedString();
+        var groups = shown.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        for (var index = 0; index < groups.Length; index++)
+        {
+            var span = new Span { Text = (index > 0 ? " " : string.Empty) + groups[index] };
+            if (index + 1 == _playingGroup)
+            {
+                span.TextColor = (Color)Application.Current!.Resources["PrimaryDark"];
+                span.FontAttributes = FontAttributes.Bold;
+            }
+
+            text.Spans.Add(span);
+        }
+
+        TaskLabel.FormattedText = text;
+    }
+
+    /// <summary>«Группа 3 из 10» над кнопками и подсветка группы в тексте задания; 0 — ещё звучит сигнал Ж Ж Ж.</summary>
+    private void ShowPlayingGroup(AudioClip clip, int group)
+    {
+        if (clip.GroupCount == 0)
+        {
+            return;
+        }
+
+        GroupCounterLabel.IsVisible = true;
+        GroupCounterLabel.Text = group == 0 ? Texts.T("Сигнал начала: Ж Ж Ж") : Texts.F("Группа {0} из {1}", group, clip.GroupCount);
+        if (group != _playingGroup)
+        {
+            _playingGroup = group;
+            UpdateTaskLabel();
+        }
+    }
+
+    private void HidePlayingGroup()
+    {
+        GroupCounterLabel.IsVisible = false;
+        if (_playingGroup != 0)
+        {
+            _playingGroup = 0;
+            UpdateTaskLabel();
+        }
     }
 
     private void CheckButton_OnClicked(object sender, EventArgs e)

@@ -43,6 +43,9 @@
                 </VerticalStackLayout>
             </Border>
 
+            <!-- Во время прослушивания: какая группа звучит — чтобы не сбиться при записи на бумаге -->
+            <Label x:Name="GroupCounterLabel" Text="" IsVisible="False" FontSize="22" FontAttributes="Bold" HorizontalTextAlignment="Center"
+                   TextColor="{StaticResource PrimaryDark}" />
             <Grid ColumnDefinitions="*,12,*,12,*">
                 <Button x:Name="PlayButton" Grid.Column="0" Text="{loc:Loc '▶ Слушать'}"
                         BackgroundColor="{StaticResource Primary}" TextColor="#06231C"

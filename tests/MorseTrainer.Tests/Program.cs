@@ -46,7 +46,8 @@ var tests = new (string Name, Action Run)[]
     ("Course from zero to 60 cpm", TestCourse),
     ("Keyer target highlight", TestKeyerProgress),
     ("Listening quiz", TestEarQuiz),
-    ("Easter egg", TestEasterEgg)
+    ("Easter egg", TestEasterEgg),
+    ("Group counter", TestGroupCounter)
 };
 
 var failures = new List<string>();
@@ -1166,6 +1167,21 @@ static void TestEasterEgg()
     Assert(EasterEgg.Text.All(symbol => MorseAlphabet.TryGetCode(symbol, out _)), "every easter egg letter has a Morse code");
     var clip = MorseAudioService.Render(EasterEgg.Text, EasterEgg.Speed, 700, 70, 3, 7);
     Assert(clip.Duration > TimeSpan.FromSeconds(1) && clip.Duration < TimeSpan.FromSeconds(4), "easter egg sounds 1–4 s: " + clip.Duration);
+}
+
+static void TestGroupCounter()
+{
+    // Без сигнала старта первая группа начинается сразу; моменты групп растут, последняя — до конца звука
+    var clip = MorseAudioService.Render("АБВГД ЕЖЗИК ЛМНОП", 60, 700, 70, 3, 7);
+    Assert(clip.GroupCount == 3 && clip.GroupStarts![0] == TimeSpan.Zero, "three groups, the first starts at once");
+    Assert(clip.GroupStarts[1] > clip.GroupStarts[0] && clip.GroupStarts[2] > clip.GroupStarts[1] && clip.GroupStarts[2] < clip.Duration, "group starts grow inside the clip");
+    Assert(clip.GroupAt(TimeSpan.Zero) == 1 && clip.GroupAt(clip.GroupStarts[1]) == 2 && clip.GroupAt(clip.Duration) == 3, "group index follows the time");
+    // С Ж Ж Ж: пока звучит сигнал старта — группа 0, группы считаются только в задании
+    var withStart = MorseAudioService.Render("АБВГД ЕЖЗИК", 60, 700, 70, 3, 7, playStartSignal: true);
+    Assert(withStart.GroupCount == 2 && withStart.GroupStarts![0] > TimeSpan.FromSeconds(2) && withStart.GroupAt(TimeSpan.FromSeconds(1)) == 0,
+        "start signal is not a group: " + withStart.GroupStarts[0]);
+    // Лишние пробелы и слова — те же группы
+    Assert(MorseAudioService.Render("  ДОМ   ЛЕС ", 60, 700, 70, 3, 7).GroupCount == 2, "extra spaces do not add groups");
 }
 
 static void Assert(bool condition, string message)
