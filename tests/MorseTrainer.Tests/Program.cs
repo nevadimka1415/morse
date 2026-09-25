@@ -1202,7 +1202,7 @@ static void TestCourseBook()
         var steps = Course.Steps(AlphabetMode.Russian);
         var path = pages[3].Paragraphs;
         Assert(path.Count == steps.Count && path[0] == "1. К М" && path[1] == "2. + Р С У А", $"{language}: the path lists every course step: " + string.Join(" | ", path.Take(3)));
-        Assert(pages[1].Paragraphs.Any(p => p.Contains("К М")), $"{language}: the Koch page names the first characters");
+        Assert(pages[1].Paragraphs.Any(p => p.Contains("К\u00A0М")), $"{language}: the Koch page names the first characters");
     }
 
     Texts.Apply(AppLanguage.Russian);

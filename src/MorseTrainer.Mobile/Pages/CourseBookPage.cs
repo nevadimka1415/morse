@@ -49,6 +49,7 @@ public sealed class CourseBookPage : ContentPage
 
         // Страница — «бумага» с корешком слева
         _titleLabel = new Label { FontSize = 24, FontAttributes = FontAttributes.Bold, Margin = new Thickness(0, 0, 0, 12) };
+        SetInk(_titleLabel);
         _paragraphs = new VerticalStackLayout { Spacing = 12 };
         _scroll = new ScrollView { Content = new VerticalStackLayout { Children = { _titleLabel, _paragraphs } } };
         var pageGrid = new Grid { ColumnDefinitions = { new ColumnDefinition(GridLength.Auto), new ColumnDefinition(GridLength.Star) }, ColumnSpacing = 14 };
@@ -148,7 +149,9 @@ public sealed class CourseBookPage : ContentPage
         _paragraphs.Children.Clear();
         foreach (var paragraph in page.Paragraphs)
         {
-            _paragraphs.Children.Add(new Label { Text = paragraph, FontSize = 16, LineHeight = 1.3, LineBreakMode = LineBreakMode.WordWrap });
+            var label = new Label { Text = paragraph, FontSize = 16, LineHeight = 1.3, LineBreakMode = LineBreakMode.WordWrap };
+            SetInk(label);
+            _paragraphs.Children.Add(label);
         }
 
         _ = _scroll.ScrollToAsync(0, 0, false);
@@ -157,6 +160,10 @@ public sealed class CourseBookPage : ContentPage
         var last = index == _pages.Count - 1;
         _nextButton.Text = !last ? Texts.T("Далее ›") : _startMode ? Texts.T("Начать шаг 1") : Texts.T("Закрыть");
     }
+
+    // Текст на «бумаге» — тёмный, как в книге (системный серый Android на светлой странице бледный)
+    private static void SetInk(Label label) =>
+        label.SetAppThemeColor(Label.TextColorProperty, Color.FromArgb("#2A2430"), Color.FromArgb("#EEE8F2"));
 
     private Border BuildCover()
     {

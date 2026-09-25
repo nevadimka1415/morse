@@ -14,7 +14,8 @@ public static class CourseBook
     public static IReadOnlyList<BookPage> Pages(AlphabetMode alphabet)
     {
         var steps = Course.Steps(alphabet);
-        var first = string.Join(' ', KochMethod.Pool(Course.AlphabetFor((int)alphabet), KochMethod.MinLevel));
+        // Неразрывный пробел: «К М» не должны разъезжаться по строкам
+        var first = string.Join('\u00A0', KochMethod.Pool(Course.AlphabetFor((int)alphabet), KochMethod.MinLevel));
         return new[]
         {
             new BookPage(Texts.T("Как устроен курс"), new[]
