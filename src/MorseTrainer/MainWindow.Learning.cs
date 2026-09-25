@@ -23,6 +23,8 @@ namespace MorseTrainer;
 /// <summary>Главное окно: вкладка «Обучение»: курс «С нуля до 60 зн/мин», карточки символов, свои напевы и голос.</summary>
 public partial class MainWindow
 {
+    private static readonly string[] OwnVoiceExtensions = { ".wav" };
+
     // ---------- Курс «С нуля до 60 зн/мин» ----------
 
     private IReadOnlyList<CourseStep> CourseSteps => Course.Steps(Course.AlphabetFor(AlphabetCombo.SelectedIndex));
@@ -152,7 +154,10 @@ public partial class MainWindow
     private void RefreshLearningItems()
     {
         var search = LearningSearchText?.Text?.Trim() ?? string.Empty;
-        var items = LearningCatalog.GetItems(_learningAlphabet);
+        // Символы со своей записью голоса (папка голоса) — с пометкой «ваш голос» в подписи карточки
+        var items = LearningCatalog.GetItems(_learningAlphabet)
+            .Select(item => CustomVoice.Find(AppPaths.VoiceDirectory, item.Symbol, OwnVoiceExtensions) is null ? item : item with { HasOwnVoice = true })
+            .ToArray();
         _visibleLearningItems = string.IsNullOrEmpty(search)
             ? items
             : items.Where(item => item.Symbol.ToString().Contains(search, StringComparison.OrdinalIgnoreCase)

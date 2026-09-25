@@ -1171,6 +1171,12 @@ static void TestEasterEgg()
 
 static void TestGroupCounter()
 {
+    // Пометки карточки обучения: свой напев и свой голос
+    Texts.Apply(AppLanguage.Russian);
+    var card = LearningCatalog.GetItems(0)[0];
+    Assert(!card.CategoryLabel.Contains("ваш голос"), "no own voice mark by default");
+    Assert((card with { HasOwnVoice = true }).CategoryLabel.EndsWith(" · ваш голос", StringComparison.Ordinal), "own voice mark in the card label");
+
     // Без сигнала старта первая группа начинается сразу; моменты групп растут, последняя — до конца звука
     var clip = MorseAudioService.Render("АБВГД ЕЖЗИК ЛМНОП", 60, 700, 70, 3, 7);
     Assert(clip.GroupCount == 3 && clip.GroupStarts![0] == TimeSpan.Zero, "three groups, the first starts at once");

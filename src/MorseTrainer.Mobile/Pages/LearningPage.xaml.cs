@@ -156,7 +156,10 @@ public partial class LearningPage : ContentPage
 
     private void RefreshItems()
     {
-        var items = LearningCatalog.GetItems(_alphabet);
+        // Символы со своей записью голоса помечаются «🎙 ваш голос»
+        var items = LearningCatalog.GetItems(_alphabet)
+            .Select(item => CustomRecording(item.Symbol) is null ? item : item with { HasOwnVoice = true })
+            .ToArray();
         var search = SearchBox.Text?.Trim() ?? string.Empty;
         CardsView.ItemsSource = string.IsNullOrWhiteSpace(search)
             ? items

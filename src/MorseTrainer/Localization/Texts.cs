@@ -270,6 +270,8 @@ public static class Texts
         ["СВЕРЬТЕ"] = "COMPARE",
         ["Чаще звучат: {0}"] = "Asked more often: {0}",
         ["Группа {0} из {1}"] = "Group {0} of {1}",
+        ["ваш голос"] = "your voice",
+        ["🎙 ваш голос"] = "🎙 your voice",
         ["Сигнал начала: Ж Ж Ж"] = "Start signal: Ж Ж Ж",
         ["Символы, которые вы путали, звучат чаще, пока не ответите на них верно"] = "Symbols you confused are asked more often until you answer them right",
         ["Готово — сверьте запись с текстом задания"] = "Done — compare your notes with the task text",

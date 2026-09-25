@@ -2,11 +2,16 @@ using MorseTrainer.Localization;
 
 namespace MorseTrainer.Domain;
 
-/// <summary>Карточка обучения; IsCustom — напев задан пользователем вместо встроенного.</summary>
-public sealed record LearningSymbolItem(char Symbol, string Code, string Chant, string Category, bool IsCustom = false)
+/// <summary>
+/// Карточка обучения; IsCustom — напев задан пользователем вместо встроенного; HasOwnVoice — у символа своя запись голоса
+/// (записана в приложении или положена файлом в папку голоса).
+/// </summary>
+public sealed record LearningSymbolItem(char Symbol, string Code, string Chant, string Category, bool IsCustom = false, bool HasOwnVoice = false)
 {
-    /// <summary>Подпись под напевом: раздел и пометка своего напева.</summary>
-    public string CategoryLabel => IsCustom ? Texts.T(Category) + " · " + Texts.T("свой напев") : Texts.T(Category);
+    /// <summary>Подпись под напевом: раздел, пометки своего напева и своего голоса.</summary>
+    public string CategoryLabel => Texts.T(Category)
+                                   + (IsCustom ? " · " + Texts.T("свой напев") : string.Empty)
+                                   + (HasOwnVoice ? " · " + Texts.T("ваш голос") : string.Empty);
 }
 
 public static class LearningCatalog
