@@ -403,7 +403,7 @@
                                     <TextBlock x:Name="AnswerPromptText" Text="{loc:Loc 'Введите то, что услышали'}" Foreground="{DynamicResource MutedTextBrush}"
                                                VerticalAlignment="Center" Visibility="Collapsed" />
                                     <Button x:Name="AnswerInputButton" Grid.Column="1" Content="{loc:Loc 'Проверить вводом ▾'}" Click="AnswerInputButton_OnClick"
-                                            Padding="10,4" ToolTip="{loc:Loc 'Поле для ответа с клавиатуры: точность, ошибки и вкладка «Прогресс» с историей. Выбор запоминается.'}" />
+                                            Padding="10,2" FontSize="12" ToolTip="{loc:Loc 'Поле для ответа с клавиатуры: точность, ошибки и вкладка «Прогресс» с историей. Выбор запоминается.'}" />
                                 </Grid>
                                 <Grid x:Name="AnswerInputPanel" Grid.Row="1" Margin="0,8,0,0" Visibility="Collapsed">
                                     <Grid.RowDefinitions>
@@ -411,7 +411,7 @@
                                         <RowDefinition Height="10" />
                                         <RowDefinition Height="Auto" />
                                     </Grid.RowDefinitions>
-                                    <TextBox x:Name="UserAnswerText" AcceptsReturn="True" TextWrapping="Wrap"
+                                    <TextBox x:Name="UserAnswerText" AcceptsReturn="True" TextWrapping="Wrap" Padding="10,4"
                                              VerticalScrollBarVisibility="Auto" FontFamily="Cascadia Mono, Consolas" FontSize="18" IsEnabled="False" />
                                     <Grid Grid.Row="2">
                                         <Button x:Name="CheckAnswerButton" Content="{loc:Loc 'Проверить ответ'}" Style="{StaticResource PrimaryButton}"
