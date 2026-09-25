@@ -7,7 +7,7 @@
      с паузами до 250 мс сливаются, короткие отдельные звуки по краям (щелчок кнопки, вдох) отбрасываются;
   2. вырезается напев с запасом 60 мс до и 120 мс после, края плавно затухают (без щелчков), гул ниже 80 Гц срезается;
   3. громкость выравнивается в два прохода loudnorm (линейно, без сжатия) до −20 LUFS, как у встроенного голоса.
-Выход: src/MorseTrainer/Assets/Voice/code_XXXX.wav (Windows, PCM 16 бит 44,1 кГц моно) и
+Выход: src/MorseTrainer/Assets/Voice/code_XXXX.wav (Windows, PCM 16 бит 22,05 кГц моно — для голоса хватает, файл вдвое меньше) и
        src/MorseTrainer.Mobile/Resources/Raw/voice/code_XXXX.m4a (телефон, AAC 128 кбит/с 44,1 кГц моно).
 Коды без записи остаются прежними. Запуск: scripts/import-voice.py <папка> [--dry-run]
 """
@@ -22,6 +22,7 @@ import sys
 from pathlib import Path
 
 RATE = 16000
+WINDOWS_RATE = 22050   # голос в Windows-сборке: 22,05 кГц моно — на слух как 44,1 кГц, файлы вдвое меньше
 WINDOW = 0.02
 MERGE_GAP = 0.25
 MIN_RUN = 0.08
@@ -105,10 +106,14 @@ def import_file(path, code, dry_run):
                 f"offset={measured['target_offset']}:linear=true")
     wav = WAV_DIR / f"code_{code}.wav"
     m4a = M4A_DIR / f"code_{code}.m4a"
+    master = wav.with_suffix(".master.wav")   # 44,1 кГц: из него телефонный m4a, затем Windows-WAV в 22,05 кГц
     subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", str(path), "-af", f"{base},{loudnorm}", "-ac", "1", "-ar", "44100",
-                    "-c:a", "pcm_s16le", str(wav)], check=True)
-    subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", str(wav), "-ac", "1", "-ar", "44100", "-c:a", "aac", "-b:a", "128k",
+                    "-c:a", "pcm_s16le", str(master)], check=True)
+    subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", str(master), "-ac", "1", "-ar", "44100", "-c:a", "aac", "-b:a", "128k",
                     "-movflags", "+faststart", str(m4a)], check=True)
+    subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", str(master), "-ac", "1", "-ar", str(WINDOWS_RATE),
+                    "-c:a", "pcm_s16le", str(wav)], check=True)
+    master.unlink()
     final = float(subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "default=nw=1:nk=1", str(wav)],
                                  capture_output=True, text=True, check=True).stdout)
     return (f"встроен: {path.name:18} {SYMBOLS.get(code, '?'):2} запись {duration:5.2f} с → напев {final:4.2f} с "
