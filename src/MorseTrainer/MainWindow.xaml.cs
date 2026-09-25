@@ -2228,6 +2228,25 @@ public partial class MainWindow : Window
         button.ClearValue(ForegroundProperty);
     }
 
+    // Пасхалка: щелчок по значку «· — —» в шапке — «НЕВАДИМКА» азбукой на 200 знаков/мин
+    private void Logo_OnMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        StopPlayback();
+        StopLearningPlayback();
+        try
+        {
+            var clip = MorseAudioService.Render(EasterEgg.Text, EasterEgg.Speed, (int)FrequencySlider.Value, (int)VolumeSlider.Value, 3, 7);
+            _learningAudioStream = new MemoryStream(clip.WavBytes, writable: false);
+            _learningPlayer = new SoundPlayer(_learningAudioStream);
+            _learningPlayer.Load();
+            _learningPlayer.Play();
+        }
+        catch (Exception exception) when (exception is InvalidOperationException or IOException or TimeoutException)
+        {
+            // Нет звука — пасхалка просто молчит
+        }
+    }
+
     private void StopLearningPlayback()
     {
         _learningCancellation?.Cancel();

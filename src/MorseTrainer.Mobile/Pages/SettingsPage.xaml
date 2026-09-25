@@ -198,7 +198,12 @@
             <Border>
                 <VerticalStackLayout Spacing="10">
                     <Label Text="{loc:Loc 'О программе'}" FontSize="18" FontAttributes="Bold" />
-                    <Label x:Name="VersionLabel" Text="Morse Trainer" />
+                    <!-- Пасхалка: нажатие на строку версии — «НЕВАДИМКА» азбукой -->
+                    <Label x:Name="VersionLabel" Text="Morse Trainer">
+                        <Label.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="VersionLabel_OnTapped" />
+                        </Label.GestureRecognizers>
+                    </Label>
                     <Button Text="{loc:Loc 'Проверить обновления'}" Clicked="CheckUpdatesButton_OnClicked" />
                     <Label Text="{loc:Loc 'Интернет нужен только для этой проверки, всё остальное работает без сети.'}"
                            Opacity="0.65" FontSize="13" />

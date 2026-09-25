@@ -30,7 +30,7 @@
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
-            <Border Width="48" Height="48" CornerRadius="15" Background="{DynamicResource PrimaryBrush}">
+            <Border Width="48" Height="48" CornerRadius="15" Background="{DynamicResource PrimaryBrush}" MouseLeftButtonUp="Logo_OnMouseLeftButtonUp">
                 <!-- Знак «· — —» (буква В), как на иконке; фигурами — символы тире в шрифте сливаются в одну черту -->
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
                     <Ellipse Width="6" Height="6" Fill="#10251D" />

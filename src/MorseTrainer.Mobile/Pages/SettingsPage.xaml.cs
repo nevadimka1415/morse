@@ -16,16 +16,18 @@ public partial class SettingsPage : ContentPage
     private readonly MobileSettingsService _settingsService;
     private readonly IReminderService _reminders;
     private readonly ChantStore _chantStore;
+    private readonly IAudioPlaybackService _audioPlayback;
     private AppSettings _settings = new();
     private readonly HashSet<char> _selectedSymbols = new();
     private bool _ready;
 
-    public SettingsPage(MobileSettingsService settingsService, IReminderService reminders, ChantStore chantStore)
+    public SettingsPage(MobileSettingsService settingsService, IReminderService reminders, ChantStore chantStore, IAudioPlaybackService audioPlayback)
     {
         InitializeComponent();
         _settingsService = settingsService;
         _reminders = reminders;
         _chantStore = chantStore;
+        _audioPlayback = audioPlayback;
         // Списки пикеров задаются кодом, чтобы переводиться вместе с интерфейсом
         ThemePicker.ItemsSource = new[] { Texts.T("Системная"), Texts.T("Тёмная"), Texts.T("Светлая") };
         LanguagePicker.ItemsSource = new[] { Texts.T("Системный"), Texts.T("Русский (Russian)"), Texts.T("English") };
@@ -513,6 +515,23 @@ public partial class SettingsPage : ContentPage
         if (width > 0)
         {
             RootLayout.Padding = TabletLayout.PaddingFor(width);
+        }
+    }
+
+    // Пасхалка: нажатие на строку версии — «НЕВАДИМКА» азбукой на 200 знаков/мин
+    private async void VersionLabel_OnTapped(object? sender, TappedEventArgs e)
+    {
+        try
+        {
+            var settings = _settingsService.LoadSettings();
+            var clip = MorseAudioService.Render(EasterEgg.Text, EasterEgg.Speed, settings.FrequencyHz, settings.VolumePercent, 3, 7);
+            var path = await AudioFileService.SaveClipAsync(clip, "easter-egg.wav");
+            _audioPlayback.Stop();
+            await _audioPlayback.PlayAsync(path);
+        }
+        catch (Exception)
+        {
+            // Нет звука или другой звук прервал этот — пасхалка просто молчит
         }
     }
 }

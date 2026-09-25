@@ -45,7 +45,8 @@ var tests = new (string Name, Action Run)[]
     ("Windows practice nudge", TestPracticeNudge),
     ("Course from zero to 60 cpm", TestCourse),
     ("Keyer target highlight", TestKeyerProgress),
-    ("Listening quiz", TestEarQuiz)
+    ("Listening quiz", TestEarQuiz),
+    ("Easter egg", TestEasterEgg)
 };
 
 var failures = new List<string>();
@@ -1119,13 +1120,34 @@ static void TestEarQuiz()
             Assert(question.Answers.Count(item => item.Symbol == question.Target.Symbol) == 1, $"alphabet {alphabet}: the target is among the answers once");
             Assert(question.Answers.Select(item => item.Code).Distinct().Count() == question.Answers.Count, $"alphabet {alphabet}: answers never share a code (А and A)");
             Assert(question.Target.Symbol != previous, $"alphabet {alphabet}: the same symbol does not repeat twice in a row");
+            // Варианты — ближайшие по коду: любой не выбранный символ не ближе самого далёкого из выбранных
+            var target = question.Target.Code;
+            var chosen = question.Answers.Where(item => item.Symbol != question.Target.Symbol).Select(item => ProblemDrill.EditDistance(target, item.Code)).ToArray();
+            var shownCodes = question.Answers.Select(item => item.Code).ToHashSet();
+            var rest = pool.Where(item => !shownCodes.Contains(item.Code)).Select(item => ProblemDrill.EditDistance(target, item.Code)).ToArray();
+            Assert(rest.Length == 0 || chosen.Max() <= rest.Min(),
+                $"alphabet {alphabet}: answers for {question.Target.Symbol} ({target}) are the most similar: {string.Join(' ', question.Answers.Select(a => a.Symbol))}");
             previous = question.Target.Symbol;
         }
     }
 
+    // Пример: к И (··) — только отличающиеся на один элемент (Е, А, Н, С, У…); random → 0 выбирает первый символ набора
+    var russian = LearningCatalog.GetItems(0);
+    var forI = EarQuiz.Next(russian.OrderBy(item => item.Symbol == 'И' ? 0 : 1).ToArray(), null, _ => 0);
+    Assert(forI.Target.Symbol == 'И' && forI.Answers.Where(a => a.Symbol != 'И').All(a => ProblemDrill.EditDistance("..", a.Code) == 1),
+        "similar answers for И are one element away: " + string.Join(' ', forI.Answers.Select(a => a.Symbol)));
+
     var single = LearningCatalog.GetItems(3).Take(1).ToArray();
     var only = EarQuiz.Next(single, single[0].Symbol);
     Assert(only.Target.Symbol == single[0].Symbol && only.Answers.Count == 1, "a one-symbol pool still asks its only symbol");
+}
+
+static void TestEasterEgg()
+{
+    Assert(EasterEgg.Text == "НЕВАДИМКА" && EasterEgg.Speed == 200, "easter egg: НЕВАДИМКА at 200 cpm");
+    Assert(EasterEgg.Text.All(symbol => MorseAlphabet.TryGetCode(symbol, out _)), "every easter egg letter has a Morse code");
+    var clip = MorseAudioService.Render(EasterEgg.Text, EasterEgg.Speed, 700, 70, 3, 7);
+    Assert(clip.Duration > TimeSpan.FromSeconds(1) && clip.Duration < TimeSpan.FromSeconds(4), "easter egg sounds 1–4 s: " + clip.Duration);
 }
 
 static void Assert(bool condition, string message)
