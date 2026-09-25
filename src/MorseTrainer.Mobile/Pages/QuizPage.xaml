@@ -30,6 +30,8 @@
                         <Button x:Name="Answer3Button" Grid.Row="2" Grid.Column="2" Text="?" FontSize="30" HeightRequest="76" IsEnabled="False" Clicked="AnswerButton_OnClicked" />
                     </Grid>
                     <Label x:Name="QuizScoreLabel" Text="{loc:Loc 'Результат: 0 / 0'}" HorizontalTextAlignment="Center" />
+                    <!-- Символы, которые путали: звучат чаще, пока не ответите на них верно -->
+                    <Label x:Name="QuizFrequentLabel" Text="" IsVisible="False" HorizontalTextAlignment="Center" FontSize="13" Opacity="0.7" />
                 </VerticalStackLayout>
             </Border>
 

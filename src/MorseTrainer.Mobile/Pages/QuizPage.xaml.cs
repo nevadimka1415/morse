@@ -1,5 +1,6 @@
 using MorseTrainer.Domain;
 using MorseTrainer.Localization;
+using MorseTrainer.Models;
 using MorseTrainer.Mobile.Services;
 using MorseTrainer.Services;
 
@@ -98,7 +99,8 @@ public partial class QuizPage : ContentPage, IDisposable
     private async Task AskNextAsync()
     {
         CancelScheduledNext();
-        var question = EarQuiz.Next(LearningCatalog.GetItems(_alphabet), _target?.Symbol);
+        // Символы, которые путали, звучат чаще
+        var question = EarQuiz.Next(LearningCatalog.GetItems(_alphabet), _target?.Symbol, null, _settingsService.LoadSettings().QuizMisses);
         _target = question.Target;
         for (var index = 0; index < _answerButtons.Length; index++)
         {
@@ -186,7 +188,7 @@ public partial class QuizPage : ContentPage, IDisposable
             button.TextColor = Color.FromArgb("#06231C");
         }
 
-        SaveScore();
+        SaveScore(_target.Symbol, correct);
         await ScheduleNextAsync(correct);
     }
 
@@ -274,19 +276,34 @@ public partial class QuizPage : ContentPage, IDisposable
     {
         _correct = 0;
         _total = 0;
+        var settings = _settingsService.LoadSettings();
+        settings.QuizMisses.Clear();   // сброс счёта — и все символы снова звучат одинаково часто
+        _settingsService.SaveSettings(settings);
         SaveScore();
     }
 
-    private void SaveScore()
+    /// <summary>Счёт и учёт ошибок; answered — прозвучавший символ, если только что ответили.</summary>
+    private void SaveScore(char? answered = null, bool correct = false)
     {
         var settings = _settingsService.LoadSettings();
         settings.QuizCorrect = _correct;
         settings.QuizTotal = _total;
+        if (answered is { } symbol)
+        {
+            EarQuiz.Record(settings.QuizMisses, symbol, correct);
+        }
+
         _settingsService.SaveSettings(settings);
-        UpdateScore();
+        UpdateScore(settings);
     }
 
-    private void UpdateScore() => QuizScoreLabel.Text = Texts.F("Результат: {0} / {1}", _correct, _total);
+    private void UpdateScore(AppSettings? settings = null)
+    {
+        QuizScoreLabel.Text = Texts.F("Результат: {0} / {1}", _correct, _total);
+        var frequent = EarQuiz.Frequent((settings ?? _settingsService.LoadSettings()).QuizMisses);
+        QuizFrequentLabel.Text = frequent.Count == 0 ? string.Empty : Texts.F("Чаще звучат: {0}", string.Join(' ', frequent));
+        QuizFrequentLabel.IsVisible = frequent.Count > 0;
+    }
 
     private static void ClearMark(Button button)
     {

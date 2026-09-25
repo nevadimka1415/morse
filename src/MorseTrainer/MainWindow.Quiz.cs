@@ -65,7 +65,8 @@ public partial class MainWindow
     private async Task AskQuizAsync()
     {
         CancelQuizNext();
-        var question = EarQuiz.Next(LearningCatalog.GetItems(_quizAlphabet), _quizTarget?.Symbol);
+        // Символы, которые путали, звучат чаще
+        var question = EarQuiz.Next(LearningCatalog.GetItems(_quizAlphabet), _quizTarget?.Symbol, null, _quizMisses);
         _quizTarget = question.Target;
         var buttons = QuizAnswerButtons;
         for (var index = 0; index < buttons.Length; index++)
@@ -199,6 +200,7 @@ public partial class MainWindow
             button.Foreground = QuizMarkTextBrush;
         }
 
+        EarQuiz.Record(_quizMisses, _quizTarget.Symbol, correct);
         MarkPracticed();
         UpdateQuizScore();
         SaveSettingsIfLoaded();
@@ -280,6 +282,7 @@ public partial class MainWindow
     {
         _quizCorrect = 0;
         _quizTotal = 0;
+        _quizMisses.Clear();   // сброс счёта — и все символы снова звучат одинаково часто
         UpdateQuizScore();
         SaveSettingsIfLoaded();
     }
@@ -287,6 +290,9 @@ public partial class MainWindow
     private void UpdateQuizScore()
     {
         QuizScoreText.Text = Texts.F("Результат: {0} / {1}", _quizCorrect, _quizTotal);
+        var frequent = EarQuiz.Frequent(_quizMisses);
+        QuizFrequentText.Text = frequent.Count == 0 ? string.Empty : Texts.F("Чаще звучат: {0}", string.Join(' ', frequent));
+        QuizFrequentText.Visibility = frequent.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
     }
 
     private static void ClearQuizMark(Button button)

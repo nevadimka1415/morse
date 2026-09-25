@@ -1137,6 +1137,24 @@ static void TestEarQuiz()
     Assert(forI.Target.Symbol == 'И' && forI.Answers.Where(a => a.Symbol != 'И').All(a => ProblemDrill.EditDistance("..", a.Code) == 1),
         "similar answers for И are one element away: " + string.Join(' ', forI.Answers.Select(a => a.Symbol)));
 
+    // Ошибки: ошибка +1 (не больше 5), верный ответ −1, на нуле символ убирается; путаный символ звучит чаще
+    var misses = new Dictionary<string, int>();
+    EarQuiz.Record(misses, 'Б', false);
+    EarQuiz.Record(misses, 'Б', false);
+    EarQuiz.Record(misses, 'Д', false);
+    EarQuiz.Record(misses, 'Д', true);
+    Assert(misses.Count == 1 && misses["Б"] == 2, "misses: Б twice, Д forgiven after a right answer");
+    for (var n = 0; n < 10; n++) EarQuiz.Record(misses, 'Б', false);
+    Assert(misses["Б"] == EarQuiz.MaxMisses && EarQuiz.Weight(misses, 'Б') == 11 && EarQuiz.Weight(misses, 'А') == 1, "miss weight is capped");
+    Assert(EarQuiz.Frequent(misses).SequenceEqual(new[] { 'Б' }), "frequent symbols list the confused ones");
+    var hits = 0;
+    for (var n = 0; n < 2000; n++)
+    {
+        if (EarQuiz.Next(russian, null, null, misses).Target.Symbol == 'Б') hits++;
+    }
+    // Вес Б = 11 при 31 символе с весом 1: ожидаемо ~26 % вопросов, без ошибок было бы ~3 %
+    Assert(hits is > 350 and < 750, $"confused symbol Б is asked much more often: {hits} of 2000");
+
     var single = LearningCatalog.GetItems(3).Take(1).ToArray();
     var only = EarQuiz.Next(single, single[0].Symbol);
     Assert(only.Target.Symbol == single[0].Symbol && only.Answers.Count == 1, "a one-symbol pool still asks its only symbol");

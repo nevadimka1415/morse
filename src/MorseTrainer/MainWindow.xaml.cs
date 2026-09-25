@@ -79,6 +79,7 @@ public partial class MainWindow : Window
     private int _quizAlphabet;
     private int _quizSpeed = EarQuiz.DefaultSpeed;
     private bool _quizAnswered = true;
+    private Dictionary<string, int> _quizMisses = new();   // «На слух»: сколько раз путали символ — такие звучат чаще
     private CancellationTokenSource? _quizNextCancellation;
     private int _learningAlphabet;
     private int _learningAudioMode = 1;

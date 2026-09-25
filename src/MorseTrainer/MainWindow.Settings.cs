@@ -277,6 +277,7 @@ public partial class MainWindow
             QuizAlphabetIndex = _quizAlphabet,
             QuizSpeed = _quizSpeed,
             QuizAutoNext = QuizAutoNextCheckBox.IsChecked == true,
+            QuizMisses = new Dictionary<string, int>(_quizMisses),
             ShowAnswerInput = _answerInputPreferred,
             LastPracticeAt = _lastPracticeAt,
             ActiveProfileName = string.IsNullOrWhiteSpace(ProfileCombo.Text) ? "Основной" : ProfileCombo.Text.Trim(),
@@ -325,6 +326,7 @@ public partial class MainWindow
         QuizSpeedSlider.Value = _quizSpeed;
         UpdateQuizSpeedText();
         QuizAutoNextCheckBox.IsChecked = settings.QuizAutoNext;
+        _quizMisses = new Dictionary<string, int>(settings.QuizMisses ?? new Dictionary<string, int>());
         _lastPracticeAt = settings.LastPracticeAt;
         _courseStep = Math.Max(0, settings.CourseStep);
         UpdateKochSummary();

@@ -268,6 +268,8 @@ public static class Texts
         ["Поле для ответа с клавиатуры: точность, ошибки и вкладка «Прогресс» с историей. Выбор запоминается."] = "A field to type the answer: accuracy, mistakes and the Progress tab with the history. The choice is remembered.",
         ["С клавиатуры: символ — ответ, пробел — ещё раз, Enter — новый символ"] = "Keyboard: type a symbol to answer, Space repeats, Enter plays a new symbol",
         ["СВЕРЬТЕ"] = "COMPARE",
+        ["Чаще звучат: {0}"] = "Asked more often: {0}",
+        ["Символы, которые вы путали, звучат чаще, пока не ответите на них верно"] = "Symbols you confused are asked more often until you answer them right",
         ["Готово — сверьте запись с текстом задания"] = "Done — compare your notes with the task text",
         ["Голос недоступен"] = "Voice unavailable",
         ["Для этого символа не найден встроенный напев."] = "No built-in chant for this symbol.",
