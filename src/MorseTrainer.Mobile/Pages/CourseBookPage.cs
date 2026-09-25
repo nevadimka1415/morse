@@ -13,7 +13,7 @@ public sealed class CourseBookPage : ContentPage
 {
     private readonly IReadOnlyList<BookPage> _pages;
     private readonly bool _startMode;
-    private readonly TaskCompletionSource<bool> _result = new();
+    private readonly TaskCompletionSource<bool> _result = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly Label _titleLabel;
     private readonly VerticalStackLayout _paragraphs;
     private readonly ScrollView _scroll;
@@ -24,6 +24,7 @@ public sealed class CourseBookPage : ContentPage
     private readonly Border _cover;
     private int _index;
     private bool _finished;
+    private bool _start;
     private bool _coverOpened;
 
     public CourseBookPage(IReadOnlyList<BookPage> pages, bool startMode)
@@ -121,7 +122,7 @@ public sealed class CourseBookPage : ContentPage
     protected override void OnDisappearing()
     {
         base.OnDisappearing();
-        _result.TrySetResult(false);
+        _result.TrySetResult(_start);
     }
 
     private async Task ShowPageAsync(int index)
@@ -188,7 +189,14 @@ public sealed class CourseBookPage : ContentPage
         }
 
         _finished = true;
+        _start = start;
+        // Сначала закрываем книжку, потом отдаём результат: курс сразу переключает вкладку Shell, модальный стек
+        // пустеет, и закрытие после этого падало («PopModalAsync failed because modal stack is currently empty»)
+        if (Navigation.ModalStack.Contains(this))
+        {
+            await Navigation.PopModalAsync();
+        }
+
         _result.TrySetResult(start);
-        await Navigation.PopModalAsync();
     }
 }
