@@ -25,6 +25,8 @@
                             Clicked="CourseDetailsButton_OnClicked" />
                 </Grid>
                 <Label x:Name="CourseDetailsLabel" Text="" FontSize="13" Opacity="0.75" LineBreakMode="WordWrap" IsVisible="False" />
+                <Button x:Name="CourseBookButton" Text="{loc:Loc '📖 Как устроен курс'}" IsVisible="False" HorizontalOptions="Start" Padding="0,4"
+                        BackgroundColor="Transparent" TextColor="{StaticResource PrimaryDark}" Clicked="CourseBookButton_OnClicked" />
                 <Label x:Name="CourseStatusLabel" Text="" FontSize="12" LineBreakMode="WordWrap" />
                 <Grid ColumnDefinitions="*,6,*,6,Auto">
                     <Button x:Name="CourseStartButton" Text="{loc:Loc 'Начать курс'}" BackgroundColor="{StaticResource Primary}" TextColor="#06231C"

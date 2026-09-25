@@ -81,6 +81,7 @@ public static class Program
             });
             Run("Symbol selection window", ExerciseSymbolSelection);
             Run("Chant editor window", ExerciseChantEditor);
+            Run("Course book window", () => ExerciseCourseBook(screenshots));
         }
         catch (Exception exception)
         {
@@ -400,6 +401,44 @@ public static class Program
         finally
         {
             window.Close();
+            DoEvents();
+        }
+    }
+
+    private static void ExerciseCourseBook(string? screenshots)
+    {
+        Texts.Apply(AppLanguage.Russian);
+        var pages = Domain.CourseBook.Pages(Domain.AlphabetMode.Russian);
+        var window = new CourseBookWindow(pages, startMode: true);
+        try
+        {
+            window.Show();
+            DoEvents();
+            var next = FindChildren<Button>(window).Single(button => button.Content as string == Texts.T("Далее ›"));
+            Check(window.PageIndex == 0 && FindChildren<TextBlock>(window).Any(block => block.Text == Texts.T("Как устроен курс")), "book opens on the first page");
+            Click(next);
+            Check(window.PageIndex == 1 && FindChildren<TextBlock>(window).Any(block => block.Text == Texts.T("Метод Коха")), "Next turns to the Koch method page");
+            // Ждём, пока раскроется обложка, — снимок страницы для README
+            var until = DateTime.UtcNow.AddSeconds(2);
+            while (DateTime.UtcNow < until)
+            {
+                DoEvents();
+                Thread.Sleep(30);
+            }
+            SaveScreenshot(window, screenshots, "course-book");
+            window.ShowPage(pages.Count - 1);
+            DoEvents();
+            var start = FindChildren<Button>(window).Single(button => button.Content as string == Texts.T("Начать шаг 1"));
+            Click(start);
+            Check(window.Started && !window.IsVisible, "last page starts the course");
+        }
+        finally
+        {
+            if (window.IsVisible)
+            {
+                window.Close();
+            }
+
             DoEvents();
         }
     }

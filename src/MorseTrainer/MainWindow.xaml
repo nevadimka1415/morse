@@ -524,6 +524,8 @@
                                         Style="{StaticResource PrimaryButton}" Padding="12,7" Margin="0,4,8,4" />
                                 <Button x:Name="CourseNextButton" Content="{loc:Loc 'Следующий шаг'}" Click="CourseNextButton_OnClick"
                                         Padding="12,7" Margin="0,4,8,4" />
+                                <Button x:Name="CourseBookButton" Content="{loc:Loc '📖 Как устроен курс'}" Click="CourseBookButton_OnClick"
+                                        Padding="12,7" Margin="0,4,8,4" />
                                 <Button x:Name="CourseResetButton" Content="{loc:Loc 'Сбросить курс'}" Click="CourseResetButton_OnClick"
                                         Padding="12,7" Margin="0,4,0,4" />
                             </WrapPanel>

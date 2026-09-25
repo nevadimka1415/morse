@@ -47,7 +47,8 @@ var tests = new (string Name, Action Run)[]
     ("Keyer target highlight", TestKeyerProgress),
     ("Listening quiz", TestEarQuiz),
     ("Easter egg", TestEasterEgg),
-    ("Group counter", TestGroupCounter)
+    ("Group counter", TestGroupCounter),
+    ("Course book", TestCourseBook)
 };
 
 var failures = new List<string>();
@@ -1188,6 +1189,25 @@ static void TestGroupCounter()
         "start signal is not a group: " + withStart.GroupStarts[0]);
     // Лишние пробелы и слова — те же группы
     Assert(MorseAudioService.Render("  ДОМ   ЛЕС ", 60, 700, 70, 3, 7).GroupCount == 2, "extra spaces do not add groups");
+}
+
+static void TestCourseBook()
+{
+    foreach (var language in new[] { AppLanguage.Russian, AppLanguage.English })
+    {
+        Texts.Apply(language);
+        var pages = CourseBook.Pages(AlphabetMode.Russian);
+        Assert(pages.Count == 5 && pages.All(page => page.Title.Length > 0 && page.Paragraphs.Count > 0 && page.Paragraphs.All(p => p.Length > 0)),
+            $"{language}: five filled pages");
+        var steps = Course.Steps(AlphabetMode.Russian);
+        var path = pages[3].Paragraphs;
+        Assert(path.Count == steps.Count && path[0] == "1. К М" && path[1] == "2. + Р С У А", $"{language}: the path lists every course step: " + string.Join(" | ", path.Take(3)));
+        Assert(pages[1].Paragraphs.Any(p => p.Contains("К М")), $"{language}: the Koch page names the first characters");
+    }
+
+    Texts.Apply(AppLanguage.Russian);
+    var latin = CourseBook.Pages(AlphabetMode.Latin);
+    Assert(latin[3].Paragraphs[0] == "1. K M" && latin[3].Paragraphs.Count == Course.Steps(AlphabetMode.Latin).Count, "latin course book follows the latin course");
 }
 
 static void Assert(bool condition, string message)

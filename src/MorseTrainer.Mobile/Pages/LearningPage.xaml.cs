@@ -85,8 +85,25 @@ public partial class LearningPage : ContentPage
     private async void CourseStartButton_OnClicked(object sender, EventArgs e)
     {
         var settings = _settingsService.LoadSettings();
+        // Первый запуск курса — сначала «книжка»: как устроен курс и метод Коха (можно пропустить)
+        if (settings.CourseStep == 0 && !await OpenCourseBookAsync(settings, startMode: true))
+        {
+            return;
+        }
+
         settings.CourseStep = Math.Max(1, settings.CourseStep);
         await StartCourseStepAsync(settings);
+    }
+
+    // «📖 Как устроен курс» — перечитать книжку в любой момент
+    private async void CourseBookButton_OnClicked(object sender, EventArgs e) => await OpenCourseBookAsync(_settingsService.LoadSettings(), startMode: false);
+
+    /// <summary>Открывает книжку курса; true — курс нужно начать (дочитали или пропустили).</summary>
+    private async Task<bool> OpenCourseBookAsync(AppSettings settings, bool startMode)
+    {
+        var book = new CourseBookPage(CourseBook.Pages(Course.AlphabetFor(settings.AlphabetIndex)), startMode);
+        await Navigation.PushModalAsync(book);
+        return await book.Result;
     }
 
     private async void CourseNextButton_OnClicked(object sender, EventArgs e)
@@ -122,6 +139,7 @@ public partial class LearningPage : ContentPage
     private void CourseDetailsButton_OnClicked(object sender, EventArgs e)
     {
         CourseDetailsLabel.IsVisible = !CourseDetailsLabel.IsVisible;
+        CourseBookButton.IsVisible = CourseDetailsLabel.IsVisible;
         CourseDetailsButton.Text = CourseDetailsLabel.IsVisible ? "▴" : "▾";
     }
 

@@ -60,8 +60,25 @@ public partial class MainWindow
 
     private async void CourseStartButton_OnClick(object sender, RoutedEventArgs e)
     {
+        // Первый запуск курса — сначала «книжка»: как устроен курс и метод Коха (можно пропустить)
+        if (_courseStep == 0 && !App.HeadlessMode)
+        {
+            var book = new CourseBookWindow(CourseBook.Pages(Course.AlphabetFor(AlphabetCombo.SelectedIndex)), startMode: true) { Owner = this };
+            book.ShowDialog();
+            if (!book.Started)
+            {
+                return;
+            }
+        }
+
         _courseStep = Math.Max(1, _courseStep);
         await StartCourseStepAsync();
+    }
+
+    // «📖 Как устроен курс» — перечитать книжку в любой момент
+    private void CourseBookButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        new CourseBookWindow(CourseBook.Pages(Course.AlphabetFor(AlphabetCombo.SelectedIndex)), startMode: false) { Owner = this }.ShowDialog();
     }
 
     private async void CourseNextButton_OnClick(object sender, RoutedEventArgs e)

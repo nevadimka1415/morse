@@ -2,7 +2,8 @@
 """Дымовой тест APK на Android-эмуляторе (job android-smoke в .github/workflows/mobile.yml).
 
 Ставит APK, запускает главную активность, ждёт первое задание на вкладке «Тренировка»,
-нажимает «Слушать»/«Стоп», раскрывает и сворачивает «Параметры», проходит по пяти вкладкам нижней панели
+нажимает «Слушать»/«Стоп», раскрывает и сворачивает «Параметры», проходит по пяти вкладкам нижней панели,
+открывает книжку курса («Начать курс»), листает её до «Начать шаг 1» и получает задание шага 1
 (на «На слух» — ответ и автопереход к следующему символу, затем раунд с выключенным автопереходом) и на каждом шаге
 снимает скриншот, проверяет, что процесс жив и в logcat нет падений приложения. Затем пересоздаёт
 активность и повторяет проход на русском (язык приложения ru-RU) — скриншоты android-ru-* идут в README.
@@ -379,6 +380,32 @@ def training_params():
     return "раскрыты и свёрнуты"
 
 
+def course_book():
+    """«Обучение» → «Начать курс»: раскрывается книжка, листается до конца, «Начать шаг 1» открывает задание курса."""
+    root, _ = dump_ui()
+    start = nodes_with_text(root, ("Начать курс", "Start the course"))
+    if not start:
+        raise RuntimeError("Нет кнопки «Начать курс»")
+    tap(start[0])
+    wait_for(("Как устроен курс", "How the course works"), 20)
+    time.sleep(2.5)   # обложка раскрывается ~1,2 с
+    screenshot("course-book")
+    for page in range(2, 6):
+        root, _ = dump_ui()
+        nxt = nodes_with_text(root, ("Далее ›", "Next ›"))
+        if not nxt:
+            raise RuntimeError(f"Нет кнопки «Далее» перед страницей {page}")
+        tap(nxt[0])
+        time.sleep(1)
+    found = wait_for(("Начать шаг 1", "Start step 1"), 10)
+    screenshot("course-book-last")
+    tap(found[0])
+    wait_for(READY_PREFIXES, 60, prefix=True)
+    ensure_alive()
+    screenshot("course-step-1")
+    return "книжка пролистана до конца, шаг 1 курса создан"
+
+
 def activity_creations():
     log = adb("logcat", "-d", "-b", "events", check=False, timeout=60)
     return sum(1 for line in log.splitlines() if "wm_on_create_called" in line and "MainActivity" in line)
@@ -442,6 +469,8 @@ def main():
             if key == "quiz":
                 step("На слух: ответ и следующий символ сам", quiz_round())
                 step("На слух: без автоперехода", quiz_manual_round())
+        step("Вкладка «Обучение» для курса", open_tab("learning-course", ("Обучение", "Learning")))
+        step("Книжка курса и шаг 1", course_book)
         # Пересоздание активности: страницы старого окна не должны ронять приложение при переключении вкладок
         step("Пересоздание активности (шрифт 1.15)", recreate_activity)
         for key, russian, english in [("learning-after-recreate",) + TABS[1][1:], ("training-after-recreate",) + TABS[0][1:]]:
