@@ -611,6 +611,18 @@
                                             Padding="10,7" Margin="0,0,0,6" ToolTip="{loc:Loc 'Сначала напев голосом, затем сигнал с подсветкой слогов'}" />
                                     <Button x:Name="LearningChantModeButton" Content="{loc:Loc 'Напев на экране + сигнал'}" Tag="0" Click="LearningAudioModeButton_OnClick"
                                             Padding="10,7" ToolTip="{loc:Loc 'Только сигнал, слоги напева подсвечиваются на экране'}" />
+                                    <!-- Скорость сигнала карточек (по умолчанию 45): можно быстрее — потренировать знаки на рабочей скорости -->
+                                    <TextBlock Text="{loc:Loc 'Скорость сигнала'}" Foreground="{DynamicResource MutedTextBrush}" Margin="0,14,0,4" />
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="8" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <Slider x:Name="LearningSpeedSlider" Minimum="20" Maximum="200" Value="45" TickFrequency="5" IsSnapToTickEnabled="True"
+                                                VerticalAlignment="Center" ValueChanged="LearningSpeedSlider_OnValueChanged" />
+                                        <TextBlock x:Name="LearningSpeedValueText" Grid.Column="2" Text=" " MinWidth="92" VerticalAlignment="Center" />
+                                    </Grid>
                                     <TextBlock x:Name="CustomVoiceText" Text=" " Foreground="{DynamicResource MutedTextBrush}" FontSize="11"
                                                TextWrapping="Wrap" Margin="0,10,0,6" />
                                     <WrapPanel>

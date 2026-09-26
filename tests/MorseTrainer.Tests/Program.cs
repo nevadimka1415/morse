@@ -49,7 +49,8 @@ var tests = new (string Name, Action Run)[]
     ("Easter egg", TestEasterEgg),
     ("Group counter", TestGroupCounter),
     ("Course book", TestCourseBook),
-    ("Course step choice and marks", TestCourseStepChoice)
+    ("Course step choice and marks", TestCourseStepChoice),
+    ("Learning signal speed", TestLearningSignalSpeed)
 };
 
 var failures = new List<string>();
@@ -1240,6 +1241,16 @@ static void TestCourseStepChoice()
     Assert(marks.Count == steps.Count && marks[0] == CourseMark.Passed && marks[1] == CourseMark.Current && marks[2] == CourseMark.Passed
            && marks.Skip(3).All(mark => mark == CourseMark.Ahead), "progress marks: passed, current, ahead");
     Assert(Course.Marks(steps, new List<TrainingRecord>(), current: 0).All(mark => mark == CourseMark.Ahead), "a course not started has no passed or current step");
+}
+
+static void TestLearningSignalSpeed()
+{
+    // Скорость сигнала карточек «Обучения»: по умолчанию 45, как раньше; пределы и шаг — как у «На слух»
+    Assert(new AppSettings().LearningSignalSpeed == 45, "learning signal speed defaults to 45 cpm");
+    Assert(EarQuiz.ClampSpeed(5) == 20 && EarQuiz.ClampSpeed(999) == 200 && EarQuiz.ClampSpeed(122) == 120, "learning signal speed is 20–200 in steps of 5");
+    var slow = MorseAudioService.Render("Б", 45, 700, 70, 3, 7).Duration;
+    var fast = MorseAudioService.Render("Б", 150, 700, 70, 3, 7).Duration;
+    Assert(fast < slow, $"a faster learning signal is shorter: {fast} vs {slow}");
 }
 
 static void Assert(bool condition, string message)

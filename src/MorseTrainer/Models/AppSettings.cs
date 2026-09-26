@@ -39,6 +39,8 @@ public sealed class AppSettings
     public int QuizTotal { get; set; }
     // Проверка на слух: своя скорость сигнала и следующий символ сразу после ответа
     public int QuizSpeed { get; set; } = 45;
+    /// <summary>Скорость сигнала на карточках «Обучения» (20–200 зн/мин, шаг 5): можно потренировать знаки быстрее.</summary>
+    public int LearningSignalSpeed { get; set; } = 45;
     public bool QuizAutoNext { get; set; } = true;
     // «На слух»: сколько раз путали символ (ключ — символ); такие звучат чаще, верный ответ счётчик уменьшает
     public Dictionary<string, int> QuizMisses { get; set; } = new();

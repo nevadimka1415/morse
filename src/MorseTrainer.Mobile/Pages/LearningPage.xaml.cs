@@ -20,6 +20,8 @@ public partial class LearningPage : ContentPage
     private readonly Button[] _alphabetButtons;
     private int _alphabet;
     private bool _bookOpen;
+    private int _signalSpeed;
+    private bool _ready;
 
     public LearningPage(
         IAudioPlaybackService audioPlayback,
@@ -41,8 +43,30 @@ public partial class LearningPage : ContentPage
         _alphabetButtons = new[] { AlphabetRussianButton, AlphabetLatinButton, AlphabetBothButton, AlphabetDigitsButton };
         _alphabet = ChoiceButtons.LoadAlphabet(AlphabetKey);
         ChoiceButtons.Highlight(_alphabetButtons, _alphabet);
+        _signalSpeed = EarQuiz.ClampSpeed(_settingsService.LoadSettings().LearningSignalSpeed);
+        SignalSpeedSlider.Value = _signalSpeed;
+        UpdateSignalSpeedLabel();
         RefreshItems();
+        // Ползунок срабатывает ещё при InitializeComponent и установке значения — сохранять только после загрузки
+        _ready = true;
     }
+
+    private void SignalSpeedSlider_OnValueChanged(object? sender, ValueChangedEventArgs e)
+    {
+        var speed = EarQuiz.ClampSpeed((int)Math.Round(e.NewValue));
+        if (!_ready || speed == _signalSpeed)
+        {
+            return;
+        }
+
+        _signalSpeed = speed;
+        UpdateSignalSpeedLabel();
+        var settings = _settingsService.LoadSettings();
+        settings.LearningSignalSpeed = _signalSpeed;
+        _settingsService.SaveSettings(settings);
+    }
+
+    private void UpdateSignalSpeedLabel() => SignalSpeedLabel.Text = Texts.F("{0} зн/мин", _signalSpeed);
 
     protected override void OnAppearing()
     {
@@ -550,7 +574,7 @@ public partial class LearningPage : ContentPage
     private async Task PlayMorseAsync(char symbol)
     {
         var settings = _settingsService.LoadSettings();
-        var clip = MorseAudioService.Render(symbol.ToString(), 45, settings.FrequencyHz, settings.VolumePercent, 3, 7);
+        var clip = MorseAudioService.Render(symbol.ToString(), EarQuiz.ClampSpeed(settings.LearningSignalSpeed), settings.FrequencyHz, settings.VolumePercent, 3, 7);
         var path = await AudioFileService.SaveClipAsync(clip, "learning-signal.wav");
         await PlayFileSafelyAsync(path);
     }

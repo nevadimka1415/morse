@@ -310,6 +310,21 @@ public partial class MainWindow
         UpdateCustomVoiceText();
     }
 
+    // Скорость сигнала карточек: по умолчанию 45, можно быстрее — потренировать знаки на рабочей скорости
+    private void LearningSpeedSlider_OnValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        _learningSpeed = EarQuiz.ClampSpeed((int)Math.Round(e.NewValue));
+        UpdateLearningSpeedText();
+    }
+
+    private void UpdateLearningSpeedText()
+    {
+        if (LearningSpeedValueText is not null)
+        {
+            LearningSpeedValueText.Text = Texts.F("{0} знаков/мин", _learningSpeed);
+        }
+    }
+
     private void ResetChantsButton_OnClick(object sender, RoutedEventArgs e)
     {
         var count = LearningCatalog.CustomChants.Count;
@@ -393,7 +408,7 @@ public partial class MainWindow
             }
 
             cancellation.Token.ThrowIfCancellationRequested();
-            const int learningSpeed = 45;
+            var learningSpeed = _learningSpeed;
             var clip = MorseAudioService.Render(item.Symbol.ToString(), learningSpeed, (int)FrequencySlider.Value,
                 (int)VolumeSlider.Value, 3, 7);
             _learningAudioStream = new MemoryStream(clip.WavBytes, writable: false);

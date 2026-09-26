@@ -5,7 +5,7 @@
              xmlns:domain="clr-namespace:MorseTrainer.Domain;assembly=MorseTrainer.Core"
              x:Class="MorseTrainer.Mobile.Pages.LearningPage"
              Title="{loc:Loc 'Обучение'}">
-    <Grid x:Name="RootLayout" Padding="14" RowDefinitions="Auto,Auto,Auto,Auto,*" RowSpacing="10">
+    <Grid x:Name="RootLayout" Padding="14" RowDefinitions="Auto,Auto,Auto,Auto,Auto,*" RowSpacing="10">
         <!-- Шапка в одну строку: карточкам остаётся больше места -->
         <Grid ColumnDefinitions="*,Auto,6,Auto">
             <Label Text="{loc:Loc 'Обучение'}" FontSize="26" FontAttributes="Bold" VerticalOptions="Center" />
@@ -52,9 +52,16 @@
             <Button x:Name="AlphabetDigitsButton" Grid.Row="2" Grid.Column="2" Text="{loc:Loc 'Цифры'}" Padding="6,10" LineBreakMode="WordWrap" CommandParameter="3"
                     Clicked="AlphabetButton_OnClicked" />
         </Grid>
-        <SearchBar x:Name="SearchBox" Grid.Row="3" Placeholder="{loc:Loc 'Найти'}" IsVisible="False" TextChanged="SearchBox_OnTextChanged" />
+        <!-- Скорость сигнала карточек (по умолчанию 45): можно быстрее — потренировать знаки на рабочей скорости -->
+        <Grid Grid.Row="3" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+            <Label Text="{loc:Loc 'Скорость сигнала'}" VerticalOptions="Center" />
+            <Slider x:Name="SignalSpeedSlider" Grid.Column="1" Minimum="20" Maximum="200" Value="45" VerticalOptions="Center"
+                    ValueChanged="SignalSpeedSlider_OnValueChanged" />
+            <Label x:Name="SignalSpeedLabel" Grid.Column="2" Text="" FontAttributes="Bold" VerticalOptions="Center" />
+        </Grid>
+        <SearchBar x:Name="SearchBox" Grid.Row="4" Placeholder="{loc:Loc 'Найти'}" IsVisible="False" TextChanged="SearchBox_OnTextChanged" />
 
-        <CollectionView x:Name="CardsView" Grid.Row="4" SelectionMode="None">
+        <CollectionView x:Name="CardsView" Grid.Row="5" SelectionMode="None">
             <CollectionView.ItemsLayout>
                 <GridItemsLayout x:Name="CardsLayout" Orientation="Vertical" Span="2" HorizontalItemSpacing="8" VerticalItemSpacing="8" />
             </CollectionView.ItemsLayout>

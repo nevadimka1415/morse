@@ -276,6 +276,7 @@ public partial class MainWindow
             QuizTotal = _quizTotal,
             QuizAlphabetIndex = _quizAlphabet,
             QuizSpeed = _quizSpeed,
+            LearningSignalSpeed = _learningSpeed,
             QuizAutoNext = QuizAutoNextCheckBox.IsChecked == true,
             QuizMisses = new Dictionary<string, int>(_quizMisses),
             ShowAnswerInput = _answerInputPreferred,
@@ -324,6 +325,9 @@ public partial class MainWindow
         HighlightChoice(QuizAlphabetButtons, _quizAlphabet);
         _quizSpeed = EarQuiz.ClampSpeed(settings.QuizSpeed);
         QuizSpeedSlider.Value = _quizSpeed;
+        _learningSpeed = EarQuiz.ClampSpeed(settings.LearningSignalSpeed);
+        LearningSpeedSlider.Value = _learningSpeed;
+        UpdateLearningSpeedText();
         UpdateQuizSpeedText();
         QuizAutoNextCheckBox.IsChecked = settings.QuizAutoNext;
         _quizMisses = new Dictionary<string, int>(settings.QuizMisses ?? new Dictionary<string, int>());

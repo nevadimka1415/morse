@@ -244,6 +244,13 @@ public static class Program
             Check(window.LearningChantModeButton.Style == window.FindResource("PrimaryButton") && new SettingsService().Load().LearningAudioModeIndex == 0,
                 "playback mode button switches and is saved");
             Click(window.LearningVoiceModeButton);
+            // Скорость сигнала карточек: по умолчанию 45, ползунок меняет её (шаг 5)
+            Check(window.LearningSpeedValueText.Text == Texts.F("{0} знаков/мин", 45), "learning signal speed starts at 45: " + window.LearningSpeedValueText.Text);
+            window.LearningSpeedSlider.Value = 120;
+            DoEvents();
+            Check(window.LearningSpeedValueText.Text == Texts.F("{0} знаков/мин", 120), "learning signal speed follows the slider: " + window.LearningSpeedValueText.Text);
+            window.LearningSpeedSlider.Value = 45;
+            DoEvents();
             Click(window.LearningRussianButton);
             Check(FindChildren<Button>(window.LearningItemsControl).Count(button => button.Content as string == "✎") == 32, "every learning card has the chant edit button");
             Check(window.CustomVoiceText.Text.StartsWith(Texts.T("Свой голос не добавлен: звучат встроенные напевы."), StringComparison.Ordinal),

@@ -50,6 +50,7 @@ NEXT_STEP_TEXTS = ("Следующий шаг", "Next step")
 COURSE_MENU_TEXTS = ("Меню курса", "Course menu")
 CHOOSE_STEP_TEXTS = ("Выбрать шаг…", "Choose step…")
 RESET_COURSE_TEXTS = ("Сбросить курс", "Reset the course")
+SIGNAL_SPEED_TEXTS = ("Скорость сигнала", "Signal speed")
 STEP3_TITLE_PREFIXES = ("Курс «С нуля до 60 зн/мин» · шаг 3 из", "Course “From zero to 60 cpm” · step 3 of")
 rustore_apk_arg = sys.argv[3] if len(sys.argv) > 3 else None
 
@@ -513,6 +514,33 @@ def choose_course_step_3():
     return found[0].get("text", "")
 
 
+def learning_signal_speed():
+    """«Обучение»: ползунок скорости сигнала — касание у правого края ставит быструю скорость, у левого — медленную."""
+    wait_for(SIGNAL_SPEED_TEXTS, 10)
+
+    def slider_and_value():
+        root, _ = dump_ui()
+        sliders = [node for node in root.iter("node") if node.get("class", "") == "android.widget.SeekBar"]
+        values = [node.get("text", "") for node in root.iter("node") if re.fullmatch(r"\d+ (зн/мин|cpm)", node.get("text", ""))]
+        if not sliders or not values:
+            raise RuntimeError(f"Нет ползунка или подписи скорости: ползунков {len(sliders)}, подписи {values}")
+        return sliders[0], int(values[0].split()[0])
+
+    slider, before = slider_and_value()
+    x1, y1, x2, y2 = bounds(slider)
+    adb("shell", "input", "tap", str(x1 + (x2 - x1) * 9 // 10), str((y1 + y2) // 2))
+    time.sleep(1.5)
+    _, fast = slider_and_value()
+    screenshot("learning-signal-fast")
+    adb("shell", "input", "tap", str(x1 + (x2 - x1) * 14 // 100), str((y1 + y2) // 2))
+    time.sleep(1.5)
+    _, slow = slider_and_value()
+    if not fast >= 150 > slow:
+        raise RuntimeError(f"Скорость не меняется ползунком: было {before}, у правого края {fast}, у левого {slow}")
+    ensure_alive()
+    return f"было {before}, у правого края {fast}, у левого {slow} зн/мин"
+
+
 def updates_button_visible():
     """Обычная сборка: внизу «Настроек» есть «Проверить обновления» — контроль для проверки сборки RuStore."""
     scroll_to_bottom()
@@ -653,6 +681,7 @@ def main():
         step("Книжка: свайп по тексту и «Назад»", course_book_swipe_and_back)
         step("Книжка курса и шаг 1", course_book)
         step("Вкладка «Обучение»: выбор шага", open_tab("learning-choose", ("Обучение", "Learning")))
+        step("Обучение: скорость сигнала ползунком", learning_signal_speed)
         step("Курс: «⋯» → «Выбрать шаг…» → шаг 3", choose_course_step_3)
         # Пересоздание активности: страницы старого окна не должны ронять приложение при переключении вкладок
         step("Пересоздание активности (шрифт 1.15)", recreate_activity)
