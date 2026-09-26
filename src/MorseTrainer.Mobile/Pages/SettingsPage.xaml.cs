@@ -524,7 +524,7 @@ public partial class SettingsPage : ContentPage
         }
     }
 
-    // Пасхалка: нажатие на строку версии — «НЕВАДИМКА» азбукой на 200 знаков/мин
+    // Пасхалка: нажатие на строку версии — «НЕВАДИМКА» азбукой на 175 знаков/мин
     private async void VersionLabel_OnTapped(object? sender, TappedEventArgs e)
     {
         // Пасхалка не перебивает другой звук — например, единственное прослушивание экзамена

@@ -7,5 +7,5 @@ namespace MorseTrainer.Domain;
 public static class EasterEgg
 {
     public const string Text = "НЕВАДИМКА";
-    public const int Speed = 200;
+    public const int Speed = 175;
 }

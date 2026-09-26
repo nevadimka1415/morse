@@ -1170,7 +1170,7 @@ static void TestEarQuiz()
 
 static void TestEasterEgg()
 {
-    Assert(EasterEgg.Text == "НЕВАДИМКА" && EasterEgg.Speed == 200, "easter egg: НЕВАДИМКА at 200 cpm");
+    Assert(EasterEgg.Text == "НЕВАДИМКА" && EasterEgg.Speed == 175, "easter egg: НЕВАДИМКА at 175 cpm");
     Assert(EasterEgg.Text.All(symbol => MorseAlphabet.TryGetCode(symbol, out _)), "every easter egg letter has a Morse code");
     var clip = MorseAudioService.Render(EasterEgg.Text, EasterEgg.Speed, 700, 70, 3, 7);
     Assert(clip.Duration > TimeSpan.FromSeconds(1) && clip.Duration < TimeSpan.FromSeconds(4), "easter egg sounds 1–4 s: " + clip.Duration);

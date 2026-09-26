@@ -408,7 +408,7 @@ public partial class MainWindow : Window
     private static int ChoiceIndex(object sender, int max) =>
         sender is Button { Tag: string tag } && int.TryParse(tag, out var index) ? Math.Clamp(index, 0, max) : -1;
 
-    // Пасхалка: щелчок по значку «· — —» в шапке — «НЕВАДИМКА» азбукой на 200 знаков/мин
+    // Пасхалка: щелчок по значку «· — —» в шапке — «НЕВАДИМКА» азбукой на 175 знаков/мин
     private void Logo_OnMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
         // Пасхалка не перебивает прослушивание задания — на экзамене оно может быть единственным
