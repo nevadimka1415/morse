@@ -524,8 +524,12 @@ public partial class SettingsPage : ContentPage
         }
     }
 
-    // Пасхалка: нажатие на строку версии — «НЕВАДИМКА» азбукой на 175 знаков/мин
-    private async void VersionLabel_OnTapped(object? sender, TappedEventArgs e)
+    // Пасхалка: нажатие на значок в шапке или на строку версии — «НЕВАДИМКА» азбукой на 175 знаков/мин
+    private async void LogoMarkView_OnTapped(object? sender, EventArgs e) => await PlayEasterEggAsync();
+
+    private async void VersionLabel_OnTapped(object? sender, TappedEventArgs e) => await PlayEasterEggAsync();
+
+    private async Task PlayEasterEggAsync()
     {
         // Пасхалка не перебивает другой звук — например, единственное прослушивание экзамена
         if (_audioPlayback.IsPlaying)

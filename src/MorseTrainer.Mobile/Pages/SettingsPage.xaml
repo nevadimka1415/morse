@@ -2,11 +2,16 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:loc="clr-namespace:MorseTrainer.Mobile.Localization"
+             xmlns:controls="clr-namespace:MorseTrainer.Mobile.Controls"
              x:Class="MorseTrainer.Mobile.Pages.SettingsPage"
              Title="{loc:Loc 'Настройки'}">
     <ScrollView>
         <VerticalStackLayout x:Name="RootLayout" Padding="16" Spacing="14">
-            <Label Text="{loc:Loc 'Настройки'}" FontSize="26" FontAttributes="Bold" />
+            <!-- Шапка: заголовок и значок приложения; нажатие на значок — пасхалка, как на строку версии внизу -->
+            <Grid ColumnDefinitions="*,Auto">
+                <Label Text="{loc:Loc 'Настройки'}" FontSize="26" FontAttributes="Bold" VerticalOptions="Center" />
+                <controls:LogoMark x:Name="LogoMarkView" Grid.Column="1" VerticalOptions="Center" Tapped="LogoMarkView_OnTapped" />
+            </Grid>
 
             <!-- Самое главное — что тренировать: четыре крупные кнопки -->
             <Border>
