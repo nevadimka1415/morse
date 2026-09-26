@@ -62,7 +62,7 @@
 - горячие клавиши Windows: F5 — слушать, Esc — стоп, Ctrl+G — новое задание, Ctrl+E — экзамен, Ctrl+K — вкладка «Передача»; на «На слух» — символ, пробел, Enter;
 - Windows запоминает размер окна и открытую вкладку между запусками; окно помещается на экран 1366×768 (минимум 1000×680), панель параметров тренировки сворачивается кнопкой «◀ Параметры», таблица истории подстраивается под ширину без горизонтальной прокрутки.
 
-Публикация: [docs/WINGET.md](docs/WINGET.md) — пакет `Nevadimka1415.MorseTrainer` для `winget install` (первый раз руками, дальше обновляется с каждым релизом); [docs/RUSTORE.md](docs/RUSTORE.md) — RuStore и Obtainium для Android.
+Публикация: [docs/WINGET.md](docs/WINGET.md) — пакет `Nevadimka1415.MorseTrainer` для `winget install` (первый раз руками, дальше обновляется с каждым релизом); [docs/RUSTORE.md](docs/RUSTORE.md) — RuStore (тексты карточки, разрешения, порядок публикации) и Obtainium для Android; [docs/privacy.md](docs/privacy.md) — политика конфиденциальности: приложение ничего не собирает и не передаёт.
 
 Мобильная версия использует тот же алгоритм и офлайн-пакет напевов. Android устанавливается из APK, а iPhone-версия собирается из той же кодовой базы и требует подписи Apple. Подробности: [MOBILE.md](MOBILE.md).
 
@@ -102,8 +102,9 @@
 
 - `MorseTrainer-Setup-x64.exe` — обычная установка с ярлыком;
 - `MorseTrainer-Windows-x64.zip` — переносная версия без установки;
-- `MorseTrainer-Android.apk` — приложение для Android: откройте страницу Releases в браузере телефона и нажмите на файл, затем разрешите установку;
-- `MorseTrainer-Android-arm64.apk` — то же для современных телефонов (arm64, почти все последних лет), примерно вдвое меньше; если не ставится — берите универсальный `MorseTrainer-Android.apk`;
+- `MorseTrainer-Android.apk` — приложение для Android 7.0 и новее: откройте страницу Releases в браузере телефона и нажмите на файл, затем разрешите установку;
+- `MorseTrainer-Android-arm64.apk` — то же только для arm64 — это почти все телефоны последних лет; примерно на 40 % меньше универсального (17 МБ против 28). Универсальный нужен лишь эмулятору и редким устройствам на x86_64; 32-битные телефоны (armeabi-v7a) не поддерживает ни одна сборка;
+- `MorseTrainer-Android-RuStore.apk` — APK для публикации в RuStore: без кнопки «Проверить обновления», обновления приходят через RuStore ([docs/RUSTORE.md](docs/RUSTORE.md)); ставить его вручную не нужно;
 - `MorseTrainer-iOS-unsigned.ipa` — сборка для iPhone без подписи Apple: ставится через Sideloadly или AltStore со своим Apple ID, подробности в [MOBILE.md](MOBILE.md).
 
 Прямая ссылка на последний APK для телефона: <https://github.com/nevadimka1415/morse/releases/latest/download/MorseTrainer-Android.apk> (для arm64 — <https://github.com/nevadimka1415/morse/releases/latest/download/MorseTrainer-Android-arm64.apk>)

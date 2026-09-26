@@ -87,7 +87,9 @@ const requiredFiles = [
   '.github/dependabot.yml',
   'docs/RUSTORE.md',
   'docs/WINGET.md',
+  'docs/privacy.md',
   'scripts/import-voice.py',
+  'scripts/rustore-assets.py',
   'scripts/winget-manifests.ps1',
   '.github/workflows/winget.yml',
   'tests/android-smoke.py'
@@ -362,6 +364,8 @@ for (const [name, workflow] of [['mobile', mobileWorkflow], ['release', releaseW
     `The ${name} workflow must build MorseTrainer-Android-RuStore.apk.`);
 }
 assert(mobileWorkflow.includes('tests/android-smoke.py apk android-smoke apk-rustore'), 'Android smoke test must also check the RuStore APK.');
+assert(read('docs/RUSTORE.md').includes('https://github.com/nevadimka1415/morse/blob/main/docs/privacy.md'),
+  'docs/RUSTORE.md must give the privacy policy link for the RuStore card.');
 assert(releaseWorkflow.includes('wingetcreate.exe update Nevadimka1415.MorseTrainer') && releaseWorkflow.includes('WINGET_TOKEN'),
   'Release workflow must update the winget package when the token is set.');
 assert(read('scripts/winget-manifests.ps1').includes('F5BA0D4D-BED2-4C8D-8963-42CE7B70C3AD') && read('installer/MorseTrainer.iss').includes('F5BA0D4D-BED2-4C8D-8963-42CE7B70C3AD'),
