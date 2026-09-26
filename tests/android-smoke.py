@@ -52,6 +52,8 @@ CHOOSE_STEP_TEXTS = ("Выбрать шаг…", "Choose step…")
 RESET_COURSE_TEXTS = ("Сбросить курс", "Reset the course")
 SHARE_AUDIO_TEXTS = ("Поделиться звуком задания", "Share task audio")
 GROUP_REPLAY_TEXTS = ("Повтор группы 1", "Replaying group 1")
+ADVANCED_OPEN_TEXTS = ("Дополнительные настройки ▾", "More settings ▾")
+ADVANCED_CLOSE_TEXTS = ("Дополнительные настройки ▴", "More settings ▴")
 SAVE_PROGRESS_TEXTS = ("Сохранить прогресс…", "Save progress…")
 NOTHING_TO_SAVE_PREFIXES = ("Пока нечего сохранять", "Nothing to save yet")
 SIGNAL_SPEED_TEXTS = ("Скорость сигнала", "Signal speed")
@@ -523,23 +525,40 @@ def logo_easter_egg():
     return f"значок вверху ({x1},{y1}), нажатие — процесс жив"
 
 
-def save_progress_empty():
-    """«Настройки» → «Сохранить прогресс…»: без занятий (в тесте ответы не проверяются) — сообщение, а не падение."""
+def scroll_until(texts, what):
+    """Листает страницу вниз, пока кнопка с таким текстом не окажется на экране (не у самого низа)."""
     _, height = screen_size()
-    for _ in range(8):
+    for _ in range(10):
         root, _ = dump_ui()
-        found = nodes_with_text(root, SAVE_PROGRESS_TEXTS)
+        found = nodes_with_text(root, texts)
         if found and bounds(found[0])[3] < height - 250:
-            break
+            return found[0]
         swipe(20, height * 2 // 3, 20, height // 3, 300)
         time.sleep(0.8)
-    else:
-        raise RuntimeError("Не долистал до «Сохранить прогресс…»")
-    tap(found[0])
+    raise RuntimeError(f"Не долистал до {what}")
+
+
+def save_progress_empty():
+    """«Настройки» → «Дополнительные настройки ▾» → «Сохранить прогресс…»: без занятий (в тесте ответы не проверяются)
+    — сообщение, а не падение; потом раздел сворачивается обратно."""
+    tap(scroll_until(ADVANCED_OPEN_TEXTS, "«Дополнительные настройки ▾»"))
+    time.sleep(1)
+    tap(scroll_until(SAVE_PROGRESS_TEXTS, "«Сохранить прогресс…»"))
     wait_for(NOTHING_TO_SAVE_PREFIXES, 10, prefix=True)
     screenshot("settings-save-progress")
     adb("shell", "input", "keyevent", "4")   # закрыть сообщение
     time.sleep(1)
+    ensure_alive()
+    # Свернуть раздел: он над кнопкой, листаем вверх до него
+    _, height = screen_size()
+    for _ in range(10):
+        root, _ = dump_ui()
+        collapse = nodes_with_text(root, ADVANCED_CLOSE_TEXTS)
+        if collapse:
+            tap(collapse[0])
+            break
+        swipe(20, height // 3, 20, height * 2 // 3, 300)
+        time.sleep(0.8)
     ensure_alive()
     return "пустая история — сообщение «Пока нечего сохранять», процесс жив"
 
