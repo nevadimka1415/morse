@@ -264,6 +264,22 @@ public static class Program
             Check(window.CourseNextButton.Visibility == Visibility.Visible && window.CourseNextButton.IsEnabled && window.CourseStatusText.Text.Contains('✓'),
                 "a correct answer passes course step 1: " + window.CourseStatusText.Text);
 
+            // «Выбрать шаг…»: в меню все шаги, пройденный шаг 1 — с ✓; выбор шага 3 делает его текущим; полоса прогресса видна
+            var courseSteps = Domain.Course.Steps(Domain.Course.AlphabetFor(window.AlphabetCombo.SelectedIndex));
+            var stepMenu = window.BuildCourseStepMenu();
+            Check(stepMenu.Items.Count == courseSteps.Count
+                  && ((stepMenu.Items[0] as MenuItem)?.Header as TextBlock)?.Text.StartsWith("✓ 1.", StringComparison.Ordinal) == true,
+                "step menu lists every course step with step 1 ticked");
+            window.ChooseCourseStep(3);
+            DoEvents();
+            Check(window.CourseTitleText.Text == Texts.F("Курс «С нуля до 60 зн/мин» · шаг {0} из {1}: {2}", 3, courseSteps.Count, courseSteps[2].Title)
+                  && window.CourseProgressText.Visibility == Visibility.Visible && window.CourseProgressText.Inlines.Count == courseSteps.Count
+                  && window.CourseChooseButton.Visibility == Visibility.Visible,
+                "choosing step 3 makes it current and shows the progress marks: " + window.CourseTitleText.Text);
+            SaveScreenshot(window, screenshots, "learning-course-" + suffix);
+            window.ChooseCourseStep(1);
+            DoEvents();
+
             // На слух: вопрос, ответ, следующий символ сам; скорость, клавиатура, без автоперехода
             window.MainTabs.SelectedIndex = 2;
             DoEvents();

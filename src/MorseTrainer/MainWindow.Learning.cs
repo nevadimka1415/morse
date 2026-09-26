@@ -43,6 +43,9 @@ public partial class MainWindow
             CourseStartButton.Content = Texts.T("Начать курс");
             CourseNextButton.Visibility = Visibility.Collapsed;
             CourseResetButton.Visibility = Visibility.Collapsed;
+            // После сброса с пройденными шагами можно продолжить с нужного — «Выбрать шаг…»
+            CourseChooseButton.Visibility = passed > 0 ? Visibility.Visible : Visibility.Collapsed;
+            UpdateCourseMarks(steps, 0, visible: passed > 0);
             return;
         }
 
@@ -56,6 +59,34 @@ public partial class MainWindow
         CourseNextButton.IsEnabled = stepPassed;
         CourseNextButton.ToolTip = stepPassed ? null : Texts.F("Откроется, когда в задании этого шага будет точность от {0} %.", Course.PassAccuracy);
         CourseResetButton.Visibility = Visibility.Visible;
+        CourseChooseButton.Visibility = Visibility.Visible;
+        UpdateCourseMarks(steps, step.Number, visible: true);
+    }
+
+    /// <summary>Полоса прогресса курса: ● пройден (цвет акцента), янтарный ● — текущий шаг, ○ — впереди.</summary>
+    private void UpdateCourseMarks(IReadOnlyList<CourseStep> steps, int current, bool visible)
+    {
+        CourseProgressText.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+        CourseProgressText.Inlines.Clear();
+        if (!visible)
+        {
+            return;
+        }
+
+        foreach (var mark in Course.Marks(steps, _history, current))
+        {
+            var run = new Run(mark == CourseMark.Ahead ? "○ " : "● ");
+            if (mark == CourseMark.Current)
+            {
+                run.Foreground = new SolidColorBrush(Color.FromRgb(0xF5, 0x9E, 0x0B));
+            }
+            else
+            {
+                run.SetResourceReference(TextElement.ForegroundProperty, mark == CourseMark.Passed ? "PrimaryBrush" : "MutedTextBrush");
+            }
+
+            CourseProgressText.Inlines.Add(run);
+        }
     }
 
     private async void CourseStartButton_OnClick(object sender, RoutedEventArgs e)
@@ -87,8 +118,49 @@ public partial class MainWindow
         await StartCourseStepAsync();
     }
 
+    // «Выбрать шаг…»: меню всех шагов с ✓ у пройденных — после случайного сброса продолжить с нужного, а не с первого
+    private void CourseChooseButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        var menu = BuildCourseStepMenu();
+        menu.PlacementTarget = CourseChooseButton;
+        menu.Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom;
+        menu.IsOpen = true;
+    }
+
+    /// <summary>Меню «Выбрать шаг…»: по пункту на шаг, пройденные с ✓, текущий отмечен галочкой меню.</summary>
+    internal ContextMenu BuildCourseStepMenu()
+    {
+        var menu = new ContextMenu();
+        foreach (var choice in Course.StepChoices(CourseSteps, _history))
+        {
+            // Header — TextBlock, а не строка: в строке «_» стал бы клавишей доступа
+            var item = new MenuItem { Header = new TextBlock { Text = choice.Label }, IsChecked = choice.Number == _courseStep, Tag = choice.Number };
+            var number = choice.Number;
+            item.Click += (_, _) => ChooseCourseStep(number);
+            menu.Items.Add(item);
+        }
+
+        return menu;
+    }
+
+    /// <summary>Делает шаг текущим (без создания задания — его создаёт «Начать шаг»).</summary>
+    internal void ChooseCourseStep(int number)
+    {
+        _courseStep = Math.Clamp(number, 1, CourseSteps.Count);
+        _settingsService.Save(ReadSettings());
+        RefreshCourse();
+    }
+
     private void CourseResetButton_OnClick(object sender, RoutedEventArgs e)
     {
+        // Сброс — с подтверждением: пройденные шаги остаются отмечены, вернуться к нужному — «Выбрать шаг…»
+        if (!App.HeadlessMode && MessageBox.Show(this,
+                Texts.T("Курс начнётся с первого шага. Пройденные шаги останутся отмечены ✓ — вернуться к нужному можно кнопкой «Выбрать шаг…»."),
+                Texts.T("Сбросить курс?"), MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes)
+        {
+            return;
+        }
+
         _courseStep = 0;
         _settingsService.Save(ReadSettings());
         RefreshCourse();

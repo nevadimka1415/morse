@@ -17,6 +17,17 @@ public sealed record CourseStep(
     int GroupGapUnits,
     bool IsExam);
 
+/// <summary>Пункт списка «Выбрать шаг…»: номер шага, подпись («✓ 3. + П Т Л О») и пройден ли он.</summary>
+public sealed record CourseStepChoice(int Number, string Label, bool Passed);
+
+/// <summary>Отметка шага в полосе прогресса курса: пройден, текущий или впереди.</summary>
+public enum CourseMark
+{
+    Ahead,
+    Current,
+    Passed
+}
+
 /// <summary>
 /// Курс «С нуля до 60 зн/мин»: метод Коха по 4 новых символа на шаг (скорость знака сразу 60, в начале паузы
 /// растянуты), затем слова на 50 и 60 зн/мин и итоговый экзамен. Шаг засчитан, когда в истории есть задание
@@ -133,6 +144,52 @@ public static class Course
 
     public static int PassedCount(IReadOnlyList<TrainingRecord> history, IReadOnlyList<CourseStep> steps) =>
         steps.Count(step => IsPassed(history, step));
+
+    /// <summary>«1. К М», «2. + Р С У А», … затем шаги со словами и экзамен — для книжки и списка «Выбрать шаг…».</summary>
+    public static IReadOnlyList<string> StepLines(IReadOnlyList<CourseStep> steps)
+    {
+        var lines = new List<string>();
+        var previous = 0;
+        foreach (var step in steps)
+        {
+            if (step.Content == ContentMode.Koch)
+            {
+                var added = string.Join(' ', KochMethod.Pool(step.Alphabet, step.KochLevel).Skip(previous));
+                lines.Add(previous == 0 ? $"{step.Number}. {added}" : $"{step.Number}. + {added}");
+                previous = step.KochLevel;
+            }
+            else
+            {
+                lines.Add($"{step.Number}. {step.Title}");
+            }
+        }
+
+        return lines;
+    }
+
+    /// <summary>
+    /// Список для «Выбрать шаг…» (телефон и Windows): все шаги, пройденные по истории отмечены ✓. После случайного
+    /// сброса курса видно, где остановились, и можно продолжить с нужного шага, а не проходить всё с первого.
+    /// </summary>
+    public static IReadOnlyList<CourseStepChoice> StepChoices(IReadOnlyList<CourseStep> steps, IReadOnlyList<TrainingRecord> history)
+    {
+        ArgumentNullException.ThrowIfNull(steps);
+        ArgumentNullException.ThrowIfNull(history);
+        var lines = StepLines(steps);
+        return steps.Select((step, index) =>
+        {
+            var passed = IsPassed(history, step);
+            return new CourseStepChoice(step.Number, (passed ? "✓ " : "") + lines[index], passed);
+        }).ToArray();
+    }
+
+    /// <summary>Полоса прогресса курса: по отметке на шаг — пройден (по истории), текущий (current) или впереди.</summary>
+    public static IReadOnlyList<CourseMark> Marks(IReadOnlyList<CourseStep> steps, IReadOnlyList<TrainingRecord> history, int current)
+    {
+        ArgumentNullException.ThrowIfNull(steps);
+        ArgumentNullException.ThrowIfNull(history);
+        return steps.Select(step => IsPassed(history, step) ? CourseMark.Passed : step.Number == current ? CourseMark.Current : CourseMark.Ahead).ToArray();
+    }
 
     /// <summary>Строка состояния шага: зачтён или какой лучший результат.</summary>
     public static string Status(IReadOnlyList<TrainingRecord> history, CourseStep step)

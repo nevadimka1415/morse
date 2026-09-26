@@ -4,11 +4,12 @@
 Ставит APK, запускает главную активность, ждёт первое задание на вкладке «Тренировка»,
 нажимает «Слушать»/«Стоп», раскрывает и сворачивает «Параметры», проходит по пяти вкладкам нижней панели,
 открывает книжку курса («Начать курс»): свайп по тексту листает её в обе стороны, системная «Назад» закрывает без
-старта курса; затем листает кнопками до «Начать шаг 1» и получает задание шага 1
+старта курса; затем листает кнопками до «Начать шаг 1» и получает задание шага 1, а через «⋯» → «Выбрать шаг…»
+делает текущим шаг 3; в «Настройках» нажимает значок вверху (пасхалка)
 (на «На слух» — ответ и автопереход к следующему символу, затем раунд с выключенным автопереходом) и на каждом шаге
 снимает скриншот, проверяет, что процесс жив и в logcat нет падений приложения. Затем пересоздаёт
 активность и повторяет проход на русском (язык приложения ru-RU) — скриншоты android-ru-* идут в README:
-там же внизу «Настроек» должна быть «Проверить обновления», а сброс курса «✕» → «Начать курс» → «Пропустить»
+там же внизу «Настроек» должна быть «Проверить обновления», а сброс курса «⋯» → «Сбросить курс» → «Начать курс» → «Пропустить»
 снова даёт шаг 1 (книжка по-русски — скриншоты для карточки RuStore).
 Если передан APK для RuStore, он ставится поверх: в его «Настройках» кнопки «Проверить обновления» быть не должно.
 
@@ -44,6 +45,12 @@ BOOK_TITLE_TEXTS = ("Как устроен курс", "How the course works")
 KOCH_TITLE_TEXTS = ("Метод Коха", "Koch method")
 UPDATES_TEXTS = ("Проверить обновления", "Check for updates")
 RUSTORE_NOTE_PREFIXES = ("Обновления приходят через RuStore", "Updates come through RuStore")
+LOGO_TEXTS = ("Morse Trainer",)   # описание значка для TalkBack (content-desc)
+NEXT_STEP_TEXTS = ("Следующий шаг", "Next step")
+COURSE_MENU_TEXTS = ("Меню курса", "Course menu")
+CHOOSE_STEP_TEXTS = ("Выбрать шаг…", "Choose step…")
+RESET_COURSE_TEXTS = ("Сбросить курс", "Reset the course")
+STEP3_TITLE_PREFIXES = ("Курс «С нуля до 60 зн/мин» · шаг 3 из", "Course “From zero to 60 cpm” · step 3 of")
 rustore_apk_arg = sys.argv[3] if len(sys.argv) > 3 else None
 
 out_dir = Path(sys.argv[2] if len(sys.argv) > 2 else "android-smoke")
@@ -461,6 +468,51 @@ def course_book_swipe_and_back():
     return "свайп по тексту листает туда и обратно, «Назад» закрыла книжку без старта курса"
 
 
+def logo_easter_egg():
+    """«Настройки»: значок «· — —» вверху — нажатие играет пасхалку; приложение не падает."""
+    found = wait_for(LOGO_TEXTS, 10)
+    x1, y1, x2, y2 = bounds(found[0])
+    if y1 > 900:
+        raise RuntimeError(f"Значок не вверху страницы: {bounds(found[0])}")
+    tap(found[0])
+    time.sleep(2)
+    ensure_alive()
+    screenshot("settings-logo")
+    return f"значок вверху ({x1},{y1}), нажатие — процесс жив"
+
+
+def course_menu_button(root):
+    """«⋯» курса: по описанию для TalkBack, а если его нет — кнопка в том же ряду правее «Следующий шаг»."""
+    found = nodes_with_text(root, COURSE_MENU_TEXTS)
+    if found:
+        return found[0]
+    following = nodes_with_text(root, NEXT_STEP_TEXTS)
+    if not following:
+        return None
+    _, top, right, bottom = bounds(following[0])
+    middle = (top + bottom) // 2
+    row = [node for node in root.iter("node") if node.get("class", "").endswith("Button")
+           and bounds(node)[0] >= right - 5 and bounds(node)[1] < middle < bounds(node)[3]]
+    return row[0] if row else None
+
+
+def choose_course_step_3():
+    """«⋯» → «Выбрать шаг…» → «3. …»: шаг 3 становится текущим (видно в заголовке курса), задание не создаётся."""
+    root, _ = dump_ui()
+    menu = course_menu_button(root)
+    if menu is None:
+        raise RuntimeError("Нет кнопки «⋯» курса")
+    tap(menu)
+    tap(wait_for(CHOOSE_STEP_TEXTS, 10)[0])
+    item = wait_for(("3.",), 10, prefix=True)
+    screenshot("course-choose-step")
+    tap(item[0])
+    found = wait_for(STEP3_TITLE_PREFIXES, 10, prefix=True)
+    ensure_alive()
+    screenshot("learning-step-3")
+    return found[0].get("text", "")
+
+
 def updates_button_visible():
     """Обычная сборка: внизу «Настроек» есть «Проверить обновления» — контроль для проверки сборки RuStore."""
     scroll_to_bottom()
@@ -470,19 +522,14 @@ def updates_button_visible():
 
 
 def reset_course_and_skip_book():
-    """«✕» сбрасывает курс, «Начать курс» снова открывает книжку (по-русски), «Пропустить» сразу даёт шаг 1."""
+    """«⋯» → «Сбросить курс», «Начать курс» снова открывает книжку (по-русски), «Пропустить» сразу даёт шаг 1."""
     root, _ = dump_ui()
-    following = nodes_with_text(root, ("Следующий шаг",))
-    if not following:
-        raise RuntimeError("Нет кнопки «Следующий шаг» — курс не начат?")
-    _, top, right, bottom = bounds(following[0])
-    middle = (top + bottom) // 2
-    # «✕» — кнопка в том же ряду правее «Следующий шаг» (текста для поиска у неё нет)
-    reset = [node for node in root.iter("node") if node.get("class", "").endswith("Button")
-             and bounds(node)[0] >= right - 5 and bounds(node)[1] < middle < bounds(node)[3]]
-    if not reset:
-        raise RuntimeError("Не найдена кнопка «✕» справа от «Следующий шаг»")
-    tap(reset[0])
+    menu = course_menu_button(root)
+    if menu is None:
+        raise RuntimeError("Нет кнопки «⋯» курса — курс не начат?")
+    tap(menu)
+    # Сброс — пунктом меню «⋯», одним касанием его не нажать
+    tap(wait_for(("Сбросить курс",), 10)[0])
     start = wait_for(("Начать курс",), 15)
     tap(start[0])
     wait_for(("Как устроен курс",), 20)
@@ -600,9 +647,13 @@ def main():
             if key == "quiz":
                 step("На слух: ответ и следующий символ сам", quiz_round())
                 step("На слух: без автоперехода", quiz_manual_round())
+            if key == "settings":
+                step("Настройки: значок вверху — пасхалка", logo_easter_egg)
         step("Вкладка «Обучение» для курса", open_tab("learning-course", ("Обучение", "Learning")))
         step("Книжка: свайп по тексту и «Назад»", course_book_swipe_and_back)
         step("Книжка курса и шаг 1", course_book)
+        step("Вкладка «Обучение»: выбор шага", open_tab("learning-choose", ("Обучение", "Learning")))
+        step("Курс: «⋯» → «Выбрать шаг…» → шаг 3", choose_course_step_3)
         # Пересоздание активности: страницы старого окна не должны ронять приложение при переключении вкладок
         step("Пересоздание активности (шрифт 1.15)", recreate_activity)
         for key, russian, english in [("learning-after-recreate",) + TABS[1][1:], ("training-after-recreate",) + TABS[0][1:]]:

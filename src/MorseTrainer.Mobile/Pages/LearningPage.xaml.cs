@@ -68,7 +68,9 @@ public partial class LearningPage : ContentPage
             CourseStatusLabel.IsVisible = passed > 0;
             CourseStartButton.Text = Texts.T("Начать курс");
             CourseNextButton.IsVisible = false;
-            CourseResetButton.IsVisible = false;
+            // После сброса с пройденными шагами меню остаётся: через «Выбрать шаг…» можно продолжить с нужного
+            CourseMenuButton.IsVisible = passed > 0;
+            UpdateCourseMarks(steps, history, 0, visible: passed > 0);
             return;
         }
 
@@ -80,7 +82,37 @@ public partial class LearningPage : ContentPage
         CourseStartButton.Text = step.IsExam ? Texts.T("Начать экзамен") : Texts.T("Начать шаг");
         CourseNextButton.IsVisible = step.Number < steps.Count;
         CourseNextButton.IsEnabled = stepPassed;
-        CourseResetButton.IsVisible = true;
+        CourseMenuButton.IsVisible = true;
+        UpdateCourseMarks(steps, history, step.Number, visible: true);
+    }
+
+    /// <summary>Полоса прогресса курса: ● пройден, янтарный ● — текущий шаг, ○ — впереди.</summary>
+    private void UpdateCourseMarks(IReadOnlyList<CourseStep> steps, IReadOnlyList<TrainingRecord> history, int current, bool visible)
+    {
+        CourseProgressLabel.IsVisible = visible;
+        if (!visible)
+        {
+            return;
+        }
+
+        var dark = Application.Current?.RequestedTheme == AppTheme.Dark;
+        var passedColor = (Color)Application.Current!.Resources[dark ? "Primary" : "PrimaryDark"];
+        var text = new FormattedString();
+        foreach (var mark in Course.Marks(steps, history, current))
+        {
+            text.Spans.Add(new Span
+            {
+                Text = mark == CourseMark.Ahead ? "○" : "●",
+                TextColor = mark switch
+                {
+                    CourseMark.Passed => passedColor,
+                    CourseMark.Current => Color.FromArgb("#F59E0B"),
+                    _ => Color.FromArgb("#94A3B8")
+                }
+            });
+        }
+
+        CourseProgressLabel.FormattedText = text;
     }
 
     private async void CourseStartButton_OnClicked(object sender, EventArgs e)
@@ -128,10 +160,46 @@ public partial class LearningPage : ContentPage
         await StartCourseStepAsync(settings);
     }
 
-    private void CourseResetButton_OnClicked(object sender, EventArgs e)
+    // «⋯»: выбрать шаг, перечитать книжку, сбросить курс. Сброс — отдельным пунктом меню, случайно одним касанием не нажать
+    private async void CourseMenuButton_OnClicked(object sender, EventArgs e)
     {
         var settings = _settingsService.LoadSettings();
-        settings.CourseStep = 0;
+        var choose = Texts.T("Выбрать шаг…");
+        var book = Texts.T("📖 Как устроен курс");
+        var reset = settings.CourseStep > 0 ? Texts.T("Сбросить курс") : null;
+        var action = await DisplayActionSheetAsync(Texts.T("Курс «С нуля до 60 зн/мин»"), Texts.T("Отмена"), reset, choose, book);
+        if (action == choose)
+        {
+            await ChooseCourseStepAsync(settings);
+        }
+        else if (action == book)
+        {
+            await OpenCourseBookAsync(settings, startMode: false);
+        }
+        else if (reset is not null && action == reset)
+        {
+            settings.CourseStep = 0;
+            _settingsService.SaveSettings(settings);
+            RefreshCourse();
+        }
+    }
+
+    /// <summary>
+    /// «Выбрать шаг…»: все шаги курса, пройденные (по истории) отмечены ✓. После случайного сброса можно продолжить
+    /// с нужного шага, а не проходить всё с первого. Шаг только выбирается — задание создаёт «Начать шаг».
+    /// </summary>
+    private async Task ChooseCourseStepAsync(AppSettings settings)
+    {
+        var steps = Course.Steps(Course.AlphabetFor(settings.AlphabetIndex));
+        var choices = Course.StepChoices(steps, _historyStore.Load());
+        var picked = await DisplayActionSheetAsync(Texts.T("С какого шага продолжить?"), Texts.T("Отмена"), null,
+            choices.Select(choice => choice.Label).ToArray());
+        if (choices.FirstOrDefault(choice => choice.Label == picked) is not { } chosen)
+        {
+            return;
+        }
+
+        settings.CourseStep = chosen.Number;
         _settingsService.SaveSettings(settings);
         RefreshCourse();
     }

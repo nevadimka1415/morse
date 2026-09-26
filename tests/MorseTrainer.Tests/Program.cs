@@ -48,7 +48,8 @@ var tests = new (string Name, Action Run)[]
     ("Listening quiz", TestEarQuiz),
     ("Easter egg", TestEasterEgg),
     ("Group counter", TestGroupCounter),
-    ("Course book", TestCourseBook)
+    ("Course book", TestCourseBook),
+    ("Course step choice and marks", TestCourseStepChoice)
 };
 
 var failures = new List<string>();
@@ -1214,6 +1215,31 @@ static void TestCourseBook()
     Texts.Apply(AppLanguage.Russian);
     var latin = CourseBook.Pages(AlphabetMode.Latin);
     Assert(latin[3].Paragraphs[0] == "1. K M" && latin[3].Paragraphs.Count == Course.Steps(AlphabetMode.Latin).Count, "latin course book follows the latin course");
+}
+
+static void TestCourseStepChoice()
+{
+    Texts.Apply(AppLanguage.Russian);
+    var steps = Course.Steps(AlphabetMode.Russian);
+    // Шаги 1 и 3 пройдены (от 90 %), шаг 2 — нет: после сброса курса это видно в списке и в полосе прогресса
+    var history = new List<TrainingRecord>
+    {
+        new() { CourseStep = 1, AccuracyPercent = 95 },
+        new() { CourseStep = 2, AccuracyPercent = 80 },
+        new() { CourseStep = 3, AccuracyPercent = 92 }
+    };
+    var choices = Course.StepChoices(steps, history);
+    Assert(choices.Count == steps.Count && choices.Select(choice => choice.Number).SequenceEqual(steps.Select(step => step.Number)),
+        "every course step is in the choice list");
+    Assert(choices[0].Passed && choices[0].Label == "✓ 1. К М" && !choices[1].Passed && choices[1].Label == "2. + Р С У А"
+           && choices[2].Passed && choices[2].Label.StartsWith("✓ 3. + ", StringComparison.Ordinal),
+        "passed steps are ticked: " + string.Join(" | ", choices.Take(3).Select(choice => choice.Label)));
+    Assert(choices.Select(choice => choice.Label).Distinct().Count() == choices.Count, "step labels are unique (the phone maps the picked label back to a step)");
+    Assert(choices[^1].Label.StartsWith($"{steps.Count}. ", StringComparison.Ordinal), "the exam is the last choice: " + choices[^1].Label);
+    var marks = Course.Marks(steps, history, current: 2);
+    Assert(marks.Count == steps.Count && marks[0] == CourseMark.Passed && marks[1] == CourseMark.Current && marks[2] == CourseMark.Passed
+           && marks.Skip(3).All(mark => mark == CourseMark.Ahead), "progress marks: passed, current, ahead");
+    Assert(Course.Marks(steps, new List<TrainingRecord>(), current: 0).All(mark => mark == CourseMark.Ahead), "a course not started has no passed or current step");
 }
 
 static void Assert(bool condition, string message)

@@ -24,6 +24,8 @@
                             VerticalOptions="Start" BackgroundColor="Transparent" TextColor="{StaticResource PrimaryDark}"
                             Clicked="CourseDetailsButton_OnClicked" />
                 </Grid>
+                <!-- Полоса прогресса курса: по отметке на шаг — пройден, текущий, впереди -->
+                <Label x:Name="CourseProgressLabel" FontSize="15" CharacterSpacing="2" IsVisible="False" />
                 <Label x:Name="CourseDetailsLabel" Text="" FontSize="13" Opacity="0.75" LineBreakMode="WordWrap" IsVisible="False" />
                 <Button x:Name="CourseBookButton" Text="{loc:Loc '📖 Как устроен курс'}" IsVisible="False" HorizontalOptions="Start" Padding="0,4"
                         BackgroundColor="Transparent" TextColor="{StaticResource PrimaryDark}" Clicked="CourseBookButton_OnClicked" />
@@ -32,7 +34,9 @@
                     <Button x:Name="CourseStartButton" Text="{loc:Loc 'Начать курс'}" BackgroundColor="{StaticResource Primary}" TextColor="#06231C"
                             Padding="8,7" Clicked="CourseStartButton_OnClicked" />
                     <Button x:Name="CourseNextButton" Grid.Column="2" Text="{loc:Loc 'Следующий шаг'}" Padding="8,7" Clicked="CourseNextButton_OnClicked" />
-                    <Button x:Name="CourseResetButton" Grid.Column="4" Text="✕" Padding="10,7" Clicked="CourseResetButton_OnClicked" />
+                    <!-- «⋯»: выбрать шаг, книжка, сбросить курс — сброс в два касания, случайно не нажать -->
+                    <Button x:Name="CourseMenuButton" Grid.Column="4" Text="⋯" FontSize="18" Padding="12,4"
+                            SemanticProperties.Description="{loc:Loc 'Меню курса'}" Clicked="CourseMenuButton_OnClicked" />
                 </Grid>
             </VerticalStackLayout>
         </Border>

@@ -516,6 +516,8 @@
                             </Grid.ColumnDefinitions>
                             <StackPanel VerticalAlignment="Center">
                                 <TextBlock x:Name="CourseTitleText" Text="{loc:Loc 'Курс «С нуля до 60 зн/мин»'}" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                <!-- Полоса прогресса курса: по отметке на шаг — пройден, текущий, впереди -->
+                                <TextBlock x:Name="CourseProgressText" FontSize="15" Margin="0,3,0,0" Visibility="Collapsed" />
                                 <TextBlock x:Name="CourseDetailsText" Text=" " Foreground="{DynamicResource MutedTextBrush}" TextWrapping="Wrap" Margin="0,3,0,0" />
                                 <TextBlock x:Name="CourseStatusText" Text=" " FontSize="11" TextWrapping="Wrap" Margin="0,3,0,0" />
                             </StackPanel>
@@ -523,6 +525,8 @@
                                 <Button x:Name="CourseStartButton" Content="{loc:Loc 'Начать курс'}" Click="CourseStartButton_OnClick"
                                         Style="{StaticResource PrimaryButton}" Padding="12,7" Margin="0,4,8,4" />
                                 <Button x:Name="CourseNextButton" Content="{loc:Loc 'Следующий шаг'}" Click="CourseNextButton_OnClick"
+                                        Padding="12,7" Margin="0,4,8,4" />
+                                <Button x:Name="CourseChooseButton" Content="{loc:Loc 'Выбрать шаг…'}" Click="CourseChooseButton_OnClick"
                                         Padding="12,7" Margin="0,4,8,4" />
                                 <Button x:Name="CourseBookButton" Content="{loc:Loc '📖 Как устроен курс'}" Click="CourseBookButton_OnClick"
                                         Padding="12,7" Margin="0,4,8,4" />

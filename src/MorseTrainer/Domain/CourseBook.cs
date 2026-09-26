@@ -39,7 +39,7 @@ public static class CourseBook
                 Texts.T("Последний добавленный знак звучит чаще остальных — так он быстрее запоминается."),
                 Texts.T("Перед заданием звучит Ж Ж Ж и пауза: это сигнал «приготовиться». Во время прослушивания над текстом задания видно, какая группа звучит, — на бумаге легко не сбиться.")
             }),
-            new BookPage(Texts.T("Путь по шагам"), StepLines(steps)),
+            new BookPage(Texts.T("Путь по шагам"), Course.StepLines(steps)),
             new BookPage(Texts.T("Как заниматься"), new[]
             {
                 Texts.T("10–15 минут каждый день дают больше, чем час раз в неделю."),
@@ -49,27 +49,5 @@ public static class CourseBook
                 Texts.F("Готовы? Первый шаг — всего два знака: {0}.", first)
             })
         };
-    }
-
-    /// <summary>«1. К М», «2. + Р С У А», … затем шаги со словами и экзамен — как в самом курсе.</summary>
-    private static IReadOnlyList<string> StepLines(IReadOnlyList<CourseStep> steps)
-    {
-        var lines = new List<string>();
-        var previous = 0;
-        foreach (var step in steps)
-        {
-            if (step.Content == ContentMode.Koch)
-            {
-                var added = string.Join(' ', KochMethod.Pool(step.Alphabet, step.KochLevel).Skip(previous));
-                lines.Add(previous == 0 ? $"{step.Number}. {added}" : $"{step.Number}. + {added}");
-                previous = step.KochLevel;
-            }
-            else
-            {
-                lines.Add($"{step.Number}. {step.Title}");
-            }
-        }
-
-        return lines;
     }
 }
