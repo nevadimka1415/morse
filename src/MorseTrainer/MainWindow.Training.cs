@@ -265,6 +265,8 @@ public partial class MainWindow
     private void MarkPracticed()
     {
         _lastPracticeAt = DateTime.Now;
+        // День занятия — для серии «дней подряд» в напоминании (занятия на бумаге в историю не пишутся)
+        PracticeNudge.MarkPracticeDay(_practiceDays, _lastPracticeAt.Value);
         NudgeBanner.Visibility = Visibility.Collapsed;
     }
 
@@ -352,19 +354,11 @@ public partial class MainWindow
             return;
         }
 
-        var shown = _answerVisible
-            ? _currentTask
-            : new string(_currentTask.Select(symbol => char.IsWhiteSpace(symbol) ? ' ' : '\u2022').ToArray());
         ToggleAnswerButton.Content = _answerVisible ? Texts.T("Скрыть") : Texts.T("Показать");
-        if (_playingGroup <= 0)
-        {
-            AnswerDisplayText.Text = shown;
-            return;
-        }
-
-        // Во время прослушивания звучащая группа выделена цветом
+        // Группы — отдельными кусками текста: звучащая выделена цветом, щелчок по группе повторяет только её
         AnswerDisplayText.Inlines.Clear();
-        var groups = shown.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var groups = MorseAudioService.SplitGroups(_currentTask);
+        var replay = CanReplayGroup;
         for (var index = 0; index < groups.Length; index++)
         {
             if (index > 0)
@@ -372,14 +366,52 @@ public partial class MainWindow
                 AnswerDisplayText.Inlines.Add(new Run(" "));
             }
 
-            var run = new Run(groups[index]);
+            var run = new Run(_answerVisible ? groups[index] : new string('\u2022', groups[index].Length));
             if (index + 1 == _playingGroup)
             {
                 run.SetResourceReference(TextElement.ForegroundProperty, "PrimaryBrush");
                 run.FontWeight = FontWeights.ExtraBold;
             }
 
+            if (replay)
+            {
+                var group = index;
+                run.Cursor = Cursors.Hand;
+                run.ToolTip = Texts.T("Щелчок — прозвучит только эта группа");
+                run.MouseLeftButtonUp += (_, _) => PlayGroup(group);
+            }
+
             AnswerDisplayText.Inlines.Add(run);
+        }
+    }
+
+    /// <summary>Повтор одной группы можно везде, кроме идущего экзамена: там прослушивания ограничены правилами.</summary>
+    private bool CanReplayGroup => _currentClip is not null && _currentSettings is not null && _exam is not { IsFinished: false };
+
+    /// <summary>Щелчок по группе в тексте задания — звучит только она, с теми же скоростью, тоном, паузами и помехами.</summary>
+    internal void PlayGroup(int index)
+    {
+        var groups = MorseAudioService.SplitGroups(_currentTask);
+        if (!CanReplayGroup || _currentSettings is not { } settings || index < 0 || index >= groups.Length)
+        {
+            return;
+        }
+
+        StopPlayback();
+        StopLearningPlayback();
+        try
+        {
+            var clip = MorseAudioService.Render(groups[index], settings.CharactersPerMinute, settings.FrequencyHz, settings.VolumePercent,
+                settings.CharacterGapUnits, settings.GroupGapUnits, false, noise: new NoiseProfile(settings.NoisePercent, settings.QsbPercent, settings.DriftHz));
+            _learningAudioStream = new MemoryStream(clip.WavBytes, writable: false);
+            _learningPlayer = new SoundPlayer(_learningAudioStream);
+            _learningPlayer.Load();
+            _learningPlayer.Play();
+            PlaybackStatusText.Text = Texts.F("Повтор группы {0}", index + 1);
+        }
+        catch (Exception exception) when (exception is InvalidOperationException or IOException or TimeoutException)
+        {
+            PlaybackStatusText.Text = Texts.T("Не удалось воспроизвести");
         }
     }
 

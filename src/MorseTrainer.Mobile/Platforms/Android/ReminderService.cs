@@ -2,6 +2,7 @@ using Android.App;
 using Android.Content;
 using MorseTrainer.Domain;
 using MorseTrainer.Mobile.Services;
+using MorseTrainer.Services;
 
 namespace MorseTrainer.Mobile.Platforms.Android;
 
@@ -135,11 +136,18 @@ public sealed class ReminderReceiver : BroadcastReceiver
             return;
         }
 
+        // Сегодня уже занимались (в том числе на бумаге) — не напоминаем, как на Windows
+        var history = new TrainingHistoryStore(MobilePaths.HistoryFile).Load();
+        if (PracticeNudge.PracticedOn(DateOnly.FromDateTime(DateTime.Now), history, settings.LastPracticeAt))
+        {
+            return;
+        }
+
+        // Текст считается в момент срабатывания: серия «дней подряд» — на сегодня, а не на день, когда ставили будильник
         var title = intent?.GetStringExtra(ReminderService.TitleExtra);
-        var message = intent?.GetStringExtra(ReminderService.MessageExtra);
         ReminderService.ShowNotification(context,
             string.IsNullOrWhiteSpace(title) ? ReminderTexts.Title : title,
-            string.IsNullOrWhiteSpace(message) ? ReminderTexts.Body(settings) : message);
+            ReminderTexts.Body(settings, history));
     }
 }
 
@@ -158,7 +166,8 @@ public sealed class BootReceiver : BroadcastReceiver
         var settings = new MobileSettingsService().LoadSettings();
         if (settings.ReminderEnabled)
         {
-            ReminderService.Schedule(context, ReminderSchedule.ToTime(settings.ReminderMinutes), ReminderTexts.Title, ReminderTexts.Body(settings));
+            ReminderService.Schedule(context, ReminderSchedule.ToTime(settings.ReminderMinutes), ReminderTexts.Title,
+                ReminderTexts.Body(settings, new TrainingHistoryStore(MobilePaths.HistoryFile).Load()));
         }
     }
 }

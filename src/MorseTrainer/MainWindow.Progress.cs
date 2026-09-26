@@ -80,7 +80,8 @@ public partial class MainWindow
         try
         {
             _trayReminder ??= new TrayReminder(this, ActivateFromReminder);
-            _trayReminder.Show("Morse Trainer", Texts.T("Пора потренироваться: пять минут азбуки Морзе."));
+            // С серией от двух дней подряд — чтобы её не хотелось прерывать
+            _trayReminder.Show("Morse Trainer", PracticeNudge.ReminderText(PracticeNudge.Streak(_history, _practiceDays, today).Current));
         }
         catch (Exception exception) when (exception is InvalidOperationException or System.Runtime.InteropServices.ExternalException)
         {

@@ -12,6 +12,7 @@ public partial class QuizPage : ContentPage, IDisposable
     private const string AlphabetKey = "quiz.alphabet";
 
     private readonly IAudioPlaybackService _audioPlayback;
+    private readonly PracticeTracker _practice;
     private readonly MobileSettingsService _settingsService;
     private readonly Button[] _alphabetButtons;
     private readonly Button[] _answerButtons;
@@ -26,9 +27,10 @@ public partial class QuizPage : ContentPage, IDisposable
     private bool _ready;
     private CancellationTokenSource? _nextCancellation;
 
-    public QuizPage(IAudioPlaybackService audioPlayback, MobileSettingsService settingsService)
+    public QuizPage(IAudioPlaybackService audioPlayback, MobileSettingsService settingsService, PracticeTracker practice)
     {
         InitializeComponent();
+        _practice = practice;
         _audioPlayback = audioPlayback;
         _settingsService = settingsService;
         _alphabetButtons = new[] { AlphabetRussianButton, AlphabetLatinButton, AlphabetBothButton, AlphabetDigitsButton };
@@ -292,6 +294,7 @@ public partial class QuizPage : ContentPage, IDisposable
         if (answered is { } symbol)
         {
             EarQuiz.Record(settings.QuizMisses, symbol, correct);
+            _practice.Mark(settings);
         }
 
         _settingsService.SaveSettings(settings);

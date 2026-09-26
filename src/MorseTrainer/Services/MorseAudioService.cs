@@ -55,6 +55,9 @@ public static class MorseAudioService
     private const double QsbPeriodSeconds = 8;
     private const double DriftPeriodSeconds = 20;
 
+    /// <summary>Группы задания — как их считает звук (разделитель — любые пробелы): для подсветки и повтора одной группы.</summary>
+    public static string[] SplitGroups(string text) => text.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
+
     public static AudioClip Render(
         string groupedText,
         int charactersPerMinute,

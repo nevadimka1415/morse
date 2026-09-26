@@ -39,6 +39,7 @@ public static class MauiProgram
         builder.Services.AddSingleton(chantStore);
         builder.Services.AddSingleton<VoicePackService>();
         // Страницы и оболочка живут в области окна (см. App.CreateWindow), сервисы данных — одни на приложение
+        builder.Services.AddSingleton<PracticeTracker>();
         builder.Services.AddScoped<TrainingPage>();
         builder.Services.AddScoped<LearningPage>();
         builder.Services.AddScoped<QuizPage>();

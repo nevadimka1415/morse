@@ -114,6 +114,14 @@ public static class Program
 
             WaitUntil(() => window.StatusBadgeText.Text == Texts.T("ГОТОВО") && window.GenerateButton.IsEnabled, "task generated on load");
 
+            // Повтор одной группы: щелчок по группе в тексте задания — звучит только она
+            Check(window.AnswerDisplayText.Inlines.OfType<System.Windows.Documents.Run>().Count(run => run.Text.Trim().Length > 0) == int.Parse(window.GroupCountText.Text),
+                "task text shows every group as its own clickable piece");
+            window.PlayGroup(0);
+            DoEvents();
+            Check(window.PlaybackStatusText.Text == Texts.F("Повтор группы {0}", 1) || window.PlaybackStatusText.Text == Texts.T("Не удалось воспроизвести"),
+                "clicking a group replays just that group: " + window.PlaybackStatusText.Text);
+
             var version = typeof(App).Assembly.GetName().Version!;
             Check(window.SubtitleText.Text.Contains($"{version.Major}.{version.Minor}.{version.Build}"), "subtitle shows the version: " + window.SubtitleText.Text);
             Check(window.MainTabs.Items.Count == 5, "window has five tabs (Progress is hidden without typed answers)");

@@ -87,6 +87,7 @@ public partial class MainWindow : Window
     private int _learningAudioMode = 1;
     private bool _answerInputPreferred;
     private DateTime? _lastPracticeAt;
+    private List<string> _practiceDays = new();
     private static readonly Brush QuizMarkTextBrush = CreateFrozenBrush("#10251D");
 
     public MainWindow()

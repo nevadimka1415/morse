@@ -50,6 +50,8 @@ public sealed class AppSettings
     public bool ShowAnswerInput { get; set; }
     // Когда последний раз занимались без ввода ответа (прослушано задание, ответ «На слух»): для плашки и напоминания
     public DateTime? LastPracticeAt { get; set; }
+    /// <summary>Дни занятий («yyyy-MM-dd»), в том числе без записи в истории: для серии «дней подряд» в напоминании.</summary>
+    public List<string> PracticeDays { get; set; } = new();
     public string ActiveProfileName { get; set; } = "Основной";
     // Windows: размер окна и открытая вкладка между запусками (0 — не сохранялось)
     public double WindowWidth { get; set; }

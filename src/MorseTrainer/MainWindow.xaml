@@ -401,7 +401,7 @@
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock x:Name="PaperHintText" Text="{loc:Loc 'Записывайте на бумаге, затем нажмите «Показать» и сверьте.'}"
+                                    <TextBlock x:Name="PaperHintText" Text="{loc:Loc 'Записывайте на бумаге, затем нажмите «Показать» и сверьте. Нажатие на группу в тексте задания повторяет только её.'}"
                                                Foreground="{DynamicResource MutedTextBrush}" TextWrapping="Wrap" VerticalAlignment="Center" Margin="0,0,12,0" />
                                     <TextBlock x:Name="AnswerPromptText" Text="{loc:Loc 'Введите то, что услышали'}" Foreground="{DynamicResource MutedTextBrush}"
                                                VerticalAlignment="Center" Visibility="Collapsed" />

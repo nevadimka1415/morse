@@ -295,7 +295,14 @@ public static class TrainingStatistics
     public static PracticeStreak Streak(IReadOnlyList<TrainingRecord> records, DateOnly today)
     {
         ArgumentNullException.ThrowIfNull(records);
-        var days = records.Select(item => DateOnly.FromDateTime(item.CompletedAt)).ToHashSet();
+        return Streak(records.Select(item => DateOnly.FromDateTime(item.CompletedAt)), today);
+    }
+
+    /// <summary>Серия по дням занятий (история и занятия без записи в ней — на бумаге, «На слух»).</summary>
+    public static PracticeStreak Streak(IEnumerable<DateOnly> practiceDays, DateOnly today)
+    {
+        ArgumentNullException.ThrowIfNull(practiceDays);
+        var days = practiceDays.ToHashSet();
         var best = 0;
         foreach (var day in days)
         {

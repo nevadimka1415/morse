@@ -50,7 +50,8 @@ var tests = new (string Name, Action Run)[]
     ("Group counter", TestGroupCounter),
     ("Course book", TestCourseBook),
     ("Course step choice and marks", TestCourseStepChoice),
-    ("Learning signal speed", TestLearningSignalSpeed)
+    ("Learning signal speed", TestLearningSignalSpeed),
+    ("Practice days and reminder streak", TestPracticeStreak)
 };
 
 var failures = new List<string>();
@@ -1197,6 +1198,11 @@ static void TestGroupCounter()
         "start signal is not a group: " + withStart.GroupStarts[0]);
     // Лишние пробелы и слова — те же группы
     Assert(MorseAudioService.Render("  ДОМ   ЛЕС ", 60, 700, 70, 3, 7).GroupCount == 2, "extra spaces do not add groups");
+    // Повтор одной группы: группы текста совпадают с группами звука (подсветка и нажатие попадают в ту же группу)
+    Assert(MorseAudioService.SplitGroups("  ДОМ   ЛЕС \n МИР").SequenceEqual(new[] { "ДОМ", "ЛЕС", "МИР" }), "task groups split on any whitespace");
+    const string task = "КМКМК МККМК ККМММ";
+    Assert(MorseAudioService.SplitGroups(task).Length == MorseAudioService.Render(task, 60, 700, 70, 3, 7, true).GroupCount,
+        "text groups match the audio groups");
 }
 
 static void TestCourseBook()
@@ -1251,6 +1257,30 @@ static void TestLearningSignalSpeed()
     var slow = MorseAudioService.Render("Б", 45, 700, 70, 3, 7).Duration;
     var fast = MorseAudioService.Render("Б", 150, 700, 70, 3, 7).Duration;
     Assert(fast < slow, $"a faster learning signal is shorter: {fast} vs {slow}");
+}
+
+static void TestPracticeStreak()
+{
+    Texts.Apply(AppLanguage.Russian);
+    // Дни занятий без повторов, по порядку, не больше MaxPracticeDays
+    var days = new List<string>();
+    PracticeNudge.MarkPracticeDay(days, new DateTime(2026, 9, 26, 20, 0, 0));
+    PracticeNudge.MarkPracticeDay(days, new DateTime(2026, 9, 26, 21, 0, 0));
+    PracticeNudge.MarkPracticeDay(days, new DateTime(2026, 9, 24, 9, 0, 0));
+    Assert(days.SequenceEqual(new[] { "2026-09-24", "2026-09-26" }), "practice days are unique and sorted: " + string.Join(", ", days));
+    var many = Enumerable.Range(0, PracticeNudge.MaxPracticeDays + 5).Select(n => new DateOnly(2025, 1, 1).AddDays(n).ToString("yyyy-MM-dd")).ToList();
+    PracticeNudge.MarkPracticeDay(many, new DateTime(2027, 6, 1));
+    Assert(many.Count == PracticeNudge.MaxPracticeDays && many[^1] == "2027-06-01", "old practice days are trimmed");
+
+    // Серия: 24.09 — задание в истории, 25.09 — занятие на бумаге (только день), сегодня 26.09 ещё не занимались → 2 дня
+    var today = new DateOnly(2026, 9, 26);
+    var history = new List<TrainingRecord> { new() { CompletedAt = new DateTime(2026, 9, 24, 10, 0, 0) } };
+    var streak = PracticeNudge.Streak(history, new[] { "2026-09-25", "не дата" }, today);
+    Assert(streak.Current == 2 && !streak.TrainedToday, $"paper practice counts towards the streak: {streak.Current}");
+    Assert(PracticeNudge.Streak(history, null, today).Current == 0, "without the paper day the streak is broken");
+    Assert(PracticeNudge.ReminderText(1) == Texts.T("Пора потренироваться: пять минут азбуки Морзе.")
+           && PracticeNudge.ReminderText(5).Contains("Дней подряд: 5", StringComparison.Ordinal), "the reminder shows a streak from two days");
+    Assert(new AppSettings().PracticeDays.Count == 0, "no practice days by default");
 }
 
 static void Assert(bool condition, string message)

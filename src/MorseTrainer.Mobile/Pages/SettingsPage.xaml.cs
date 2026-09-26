@@ -113,7 +113,7 @@ public partial class SettingsPage : ContentPage
                 }
                 else
                 {
-                    await _reminders.ScheduleDailyAsync(ReminderSchedule.ToTime(_settings.ReminderMinutes), ReminderTexts.Title, ReminderTexts.Body(_settings));
+                    await _reminders.ScheduleDailyAsync(ReminderSchedule.ToTime(_settings.ReminderMinutes), ReminderTexts.Title, ReminderTexts.Body(_settings, _historyStore.Load()));
                 }
             }
             else

@@ -57,8 +57,10 @@
             </Grid>
             <Label x:Name="PlaybackStatusLabel" Text="{loc:Loc 'Подготовьте задание'}" HorizontalTextAlignment="Center" Opacity="0.65" />
             <!-- Обычно группы записывают на бумаге и сверяют с текстом задания; ввод в приложении — по желанию -->
-            <Label x:Name="PaperHintLabel" Text="{loc:Loc 'Записывайте на бумаге, затем нажмите «Показать» и сверьте.'}"
+            <Label x:Name="PaperHintLabel" Text="{loc:Loc 'Записывайте на бумаге, затем нажмите «Показать» и сверьте. Нажатие на группу в тексте задания повторяет только её.'}"
                    HorizontalTextAlignment="Center" FontSize="13" Opacity="0.65" LineBreakMode="WordWrap" />
+            <!-- Задание аудиофайлом: слушать в любом плеере или отправить другу вместе с текстом для сверки (не на экзамене) -->
+            <Button x:Name="ShareAudioButton" Text="{loc:Loc 'Поделиться звуком задания'}" IsEnabled="False" Clicked="ShareAudioButton_OnClicked" />
             <Button x:Name="AnswerPanelButton" Text="{loc:Loc 'Проверить вводом ▾'}" Clicked="AnswerPanelButton_OnClicked" />
 
             <VerticalStackLayout x:Name="AnswerPanel" Spacing="14" IsVisible="False">

@@ -1,4 +1,5 @@
 using Microsoft.Maui.ApplicationModel.DataTransfer;
+using Microsoft.Maui.Devices;
 using MorseTrainer.Domain;
 using MorseTrainer.Models;
 using MorseTrainer.Mobile.Services;
@@ -22,15 +23,20 @@ public partial class TrainingPage : ContentPage, IDisposable
     private int _currentGroupCount;
     private CancellationTokenSource? _playbackCancellation;
     private AudioClip? _currentClip;
+    // Настройки, по которым отрисовано текущее задание: повтор одной группы звучит так же (скорость, тон, паузы, помехи)
+    private AppSettings? _renderSettings;
+    private readonly PracticeTracker _practice;
     private string _currentTask = string.Empty;
     private bool _answerVisible;
     private int _playingGroup;   // какая группа звучит (с 1); 0 — не звучит или идёт сигнал Ж Ж Ж
     private const string AnswerPanelKey = "training.typed_answer";
     private const string ParamsPanelKey = "training.params_open";
 
-    public TrainingPage(IAudioPlaybackService audioPlayback, MobileSettingsService settingsService, TrainingHistoryStore historyStore)
+    public TrainingPage(IAudioPlaybackService audioPlayback, MobileSettingsService settingsService, TrainingHistoryStore historyStore,
+        PracticeTracker practice)
     {
         InitializeComponent();
+        _practice = practice;
         _audioPlayback = audioPlayback;
         _settingsService = settingsService;
         _historyStore = historyStore;
@@ -164,6 +170,7 @@ public partial class TrainingPage : ContentPage, IDisposable
                 new NoiseProfile(settings.NoisePercent, settings.QsbPercent, settings.DriftHz)));
             _currentTask = task;
             _currentClip = clip;
+            _renderSettings = settings;
             _currentDrill = drill;
             _currentTaskRecorded = false;
             _currentTaskStartedAt = DateTime.Now;
@@ -178,6 +185,7 @@ public partial class TrainingPage : ContentPage, IDisposable
             RepeatButton.IsEnabled = true;
             CheckButton.IsEnabled = true;
             PlaybackStatusLabel.Text = Texts.F("Готово · {0:mm\\:ss}", _currentClip.Duration);
+            UpdateShareAudioButton();
         }
         catch (Exception exception)
         {
@@ -213,6 +221,8 @@ public partial class TrainingPage : ContentPage, IDisposable
         RepeatButton.IsEnabled = false;
         StopButton.IsEnabled = true;
         var clip = _currentClip;
+        // Пока звучит задание, экран не гаснет: при записи на бумаге смотрят на «Группа N из M»
+        DeviceDisplay.Current.KeepScreenOn = true;
         // «Сначала Ж Ж Ж» — только когда сигнал начала действительно звучит
         PlaybackStatusLabel.Text = clip.GroupAt(TimeSpan.Zero) == 0
             ? Texts.T("Сначала Ж Ж Ж, затем начнётся задание…")
@@ -236,6 +246,10 @@ public partial class TrainingPage : ContentPage, IDisposable
                 return true;
             });
             await _audioPlayback.PlayAsync(path, cancellation.Token);
+            // Задание дослушано — занятие (на бумаге в историю ничего не пишется): для серии дней и напоминания
+            var practiced = _settingsService.LoadSettings();
+            _practice.Mark(practiced);
+            _settingsService.SaveSettings(practiced);
             // Клавиатура нужна только при вводе ответа; при записи на бумаге она закрыла бы полэкрана
             if (AnswerPanel.IsVisible)
             {
@@ -270,6 +284,7 @@ public partial class TrainingPage : ContentPage, IDisposable
             // Новое прослушивание уже началось — его счётчик, кнопки и отмену не трогаем
             if (ReferenceEquals(_playbackCancellation, cancellation))
             {
+                DeviceDisplay.Current.KeepScreenOn = false;
                 HidePlayingGroup();
                 _playbackCancellation = null;
                 PlayButton.IsEnabled = CanPlayNow;
@@ -314,33 +329,106 @@ public partial class TrainingPage : ContentPage, IDisposable
 
     private void UpdateTaskLabel()
     {
-        var shown = _answerVisible
-            ? _currentTask
-            : new string(_currentTask.Select(symbol => char.IsWhiteSpace(symbol) ? ' ' : '•').ToArray());
         ToggleAnswerButton.Text = _answerVisible ? Texts.T("Скрыть") : Texts.T("Показать");
-        if (_playingGroup <= 0)
-        {
-            TaskLabel.FormattedText = null;
-            TaskLabel.Text = shown;
-            return;
-        }
-
-        // Во время прослушивания звучащая группа выделена цветом
+        // Группы — отдельными кусками текста: звучащая выделена цветом, нажатие на группу повторяет только её
         var text = new FormattedString();
-        var groups = shown.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var groups = MorseAudioService.SplitGroups(_currentTask);
         for (var index = 0; index < groups.Length; index++)
         {
-            var span = new Span { Text = (index > 0 ? " " : string.Empty) + groups[index] };
+            if (index > 0)
+            {
+                text.Spans.Add(new Span { Text = " " });
+            }
+
+            var span = new Span { Text = _answerVisible ? groups[index] : new string('•', groups[index].Length) };
             if (index + 1 == _playingGroup)
             {
                 span.TextColor = (Color)Application.Current!.Resources["PrimaryDark"];
                 span.FontAttributes = FontAttributes.Bold;
             }
 
+            if (CanReplayGroup)
+            {
+                var group = index;
+                var tap = new TapGestureRecognizer();
+                tap.Tapped += async (_, _) => await PlayGroupAsync(group);
+                span.GestureRecognizers.Add(tap);
+            }
+
             text.Spans.Add(span);
         }
 
         TaskLabel.FormattedText = text;
+    }
+
+    /// <summary>Повтор одной группы можно везде, кроме идущего экзамена: там прослушивания ограничены правилами.</summary>
+    private bool CanReplayGroup => _currentClip is not null && _renderSettings is not null && _exam is not { IsFinished: false };
+
+    /// <summary>Нажатие на группу в тексте задания — звучит только она, с теми же скоростью, тоном, паузами и помехами.</summary>
+    private async Task PlayGroupAsync(int index)
+    {
+        var groups = MorseAudioService.SplitGroups(_currentTask);
+        if (!CanReplayGroup || _renderSettings is not { } settings || index < 0 || index >= groups.Length)
+        {
+            return;
+        }
+
+        StopPlayback();
+        try
+        {
+            var group = groups[index];
+            var clip = await Task.Run(() => MorseAudioService.Render(
+                group,
+                Math.Clamp(settings.CharactersPerMinute, 20, 300),
+                Math.Clamp(settings.FrequencyHz, 300, 1200),
+                Math.Clamp(settings.VolumePercent, 0, 100),
+                Math.Clamp(settings.CharacterGapUnits, 3, 20),
+                Math.Clamp(settings.GroupGapUnits, 7, 30),
+                false,
+                noise: new NoiseProfile(settings.NoisePercent, settings.QsbPercent, settings.DriftHz)));
+            var path = await AudioFileService.SaveClipAsync(clip, "current-group.wav");
+            PlaybackStatusLabel.Text = Texts.F("Повтор группы {0}", index + 1);
+            await _audioPlayback.PlayAsync(path);
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception)
+        {
+            // Сбой звука не должен ронять приложение из обработчика нажатия
+            PlaybackStatusLabel.Text = Texts.T("Не удалось воспроизвести");
+        }
+    }
+
+    /// <summary>«Поделиться звуком задания» — только для готового задания и не во время экзамена.</summary>
+    private void UpdateShareAudioButton() => ShareAudioButton.IsEnabled = _currentClip is not null && _exam is not { IsFinished: false };
+
+    // Задание аудиофайлом: слушать в любом плеере, в машине, в наушниках или отправить другу; текст для сверки — рядом файлом
+    private async void ShareAudioButton_OnClicked(object sender, EventArgs e)
+    {
+        if (_currentClip is not { } clip || _exam is { IsFinished: false })
+        {
+            return;
+        }
+
+        try
+        {
+            var stamp = DateTime.Now.ToString("yyyy-MM-dd-HHmm");
+            var audio = Path.Combine(FileSystem.CacheDirectory, $"morse-task-{stamp}.wav");
+            await File.WriteAllBytesAsync(audio, clip.WavBytes);
+            var text = Path.Combine(FileSystem.CacheDirectory, $"morse-task-{stamp}.txt");
+            await File.WriteAllTextAsync(text,
+                Texts.T("Текст задания — откройте после прослушивания:") + Environment.NewLine + Environment.NewLine + _currentTask + Environment.NewLine);
+            await Share.Default.RequestAsync(new ShareMultipleFilesRequest
+            {
+                Title = Texts.T("Задание Morse Trainer"),
+                Files = new List<ShareFile> { new(audio, "audio/wav"), new(text, "text/plain") }
+            });
+        }
+        catch (Exception exception)
+        {
+            await DisplayAlertAsync(Texts.T("Не удалось поделиться"), exception.Message, Texts.T("Закрыть"));
+        }
     }
 
     /// <summary>«Группа 3 из 10» над кнопками и подсветка группы в тексте задания; 0 — ещё звучит сигнал Ж Ж Ж.</summary>
@@ -384,6 +472,7 @@ public partial class TrainingPage : ContentPage, IDisposable
         if (_exam is not null && !_exam.IsFinished)
         {
             examResult = _exam.Finish(AnswerEditor.Text ?? string.Empty, DateTime.Now);
+            UpdateShareAudioButton();
             _examReport = ExamReport.Format(examResult);
             ExamLabel.Text = Texts.F("Экзамен завершён · {0}", ExamReport.FormatDuration(examResult.Duration));
             ExamShareButton.IsVisible = true;
@@ -500,6 +589,7 @@ public partial class TrainingPage : ContentPage, IDisposable
         RepeatButton.IsEnabled = false;
         ExamShareButton.IsVisible = false;
         ExamLabel.IsVisible = true;
+        UpdateShareAudioButton();
         UpdateExamLabel();
         ResultLabel.Text = Texts.F("Правила экзамена: {0}", ExamReport.Rules(_exam.MaxPlaybacks, _exam.TimeLimit));
         if (!_examTimerRunning)

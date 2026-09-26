@@ -281,6 +281,7 @@ public partial class MainWindow
             QuizMisses = new Dictionary<string, int>(_quizMisses),
             ShowAnswerInput = _answerInputPreferred,
             LastPracticeAt = _lastPracticeAt,
+            PracticeDays = new List<string>(_practiceDays),
             ActiveProfileName = string.IsNullOrWhiteSpace(ProfileCombo.Text) ? "Основной" : ProfileCombo.Text.Trim(),
             WindowWidth = WindowState == WindowState.Normal ? ActualWidth : RestoreBounds.Width,
             WindowHeight = WindowState == WindowState.Normal ? ActualHeight : RestoreBounds.Height,
@@ -332,6 +333,7 @@ public partial class MainWindow
         QuizAutoNextCheckBox.IsChecked = settings.QuizAutoNext;
         _quizMisses = new Dictionary<string, int>(settings.QuizMisses ?? new Dictionary<string, int>());
         _lastPracticeAt = settings.LastPracticeAt;
+        _practiceDays = new List<string>(settings.PracticeDays ?? new List<string>());
         _courseStep = Math.Max(0, settings.CourseStep);
         UpdateKochSummary();
     }

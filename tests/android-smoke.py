@@ -50,6 +50,8 @@ NEXT_STEP_TEXTS = ("Следующий шаг", "Next step")
 COURSE_MENU_TEXTS = ("Меню курса", "Course menu")
 CHOOSE_STEP_TEXTS = ("Выбрать шаг…", "Choose step…")
 RESET_COURSE_TEXTS = ("Сбросить курс", "Reset the course")
+SHARE_AUDIO_TEXTS = ("Поделиться звуком задания", "Share task audio")
+GROUP_REPLAY_TEXTS = ("Повтор группы 1", "Replaying group 1")
 SAVE_PROGRESS_TEXTS = ("Сохранить прогресс…", "Save progress…")
 NOTHING_TO_SAVE_PREFIXES = ("Пока нечего сохранять", "Nothing to save yet")
 SIGNAL_SPEED_TEXTS = ("Скорость сигнала", "Signal speed")
@@ -255,6 +257,12 @@ def close_alert():
     return text
 
 
+def keeps_screen_on():
+    """Окно приложения держит экран включённым (флаг KEEP_SCREEN_ON в dumpsys window)."""
+    out = adb("shell", "dumpsys", "window", "windows", check=False, timeout=60)
+    return any(PACKAGE in block.split("\n", 1)[0] and "KEEP_SCREEN_ON" in block for block in out.split("Window{"))
+
+
 def play_and_stop():
     root, _ = dump_ui()
     play = nodes_with_text(root, PLAY_TEXTS)
@@ -267,13 +275,44 @@ def play_and_stop():
     if alert:
         # Ошибка звука на эмуляторе без аудиоустройства — не падение; падение ловит ensure_alive
         return f"сообщение вместо звука: {alert}"
+    # Пока звучит задание, экран не гаснет (при записи на бумаге смотрят на «Группа N из M»)
+    screen_on = keeps_screen_on()
     root, _ = dump_ui()
     stop = nodes_with_text(root, STOP_TEXTS)
     if stop:
         tap(stop[0])
     time.sleep(1)
     ensure_alive()
-    return "звук запущен и остановлен"
+    released = not keeps_screen_on()
+    if not screen_on or not released:
+        raise RuntimeError(f"Экран во время звука: держится={screen_on}, после «Стоп» отпущен={released}")
+    return "звук запущен и остановлен; экран не гас во время звука и отпущен после «Стоп»"
+
+
+def replay_group_and_share():
+    """Нажатие на первую группу в тексте задания — «Повтор группы 1»; «Поделиться звуком задания» — окно «Поделиться»."""
+    root, _ = dump_ui()
+    task = [node for node in root.iter("node") if "•••" in node.get("text", "")]
+    if not task:
+        raise RuntimeError("Не найден текст задания (•••)")
+    x1, y1, x2, y2 = bounds(task[0])
+    adb("shell", "input", "tap", str(x1 + 25), str(y1 + 25))
+    wait_for(GROUP_REPLAY_TEXTS, 10)
+    time.sleep(2)
+    ensure_alive()
+    screenshot("training-group-replay")
+    root, _ = dump_ui()
+    share = nodes_with_text(root, SHARE_AUDIO_TEXTS)
+    if not share:
+        raise RuntimeError("Нет кнопки «Поделиться звуком задания»")
+    tap(share[0])
+    time.sleep(4)
+    ensure_alive()
+    screenshot("training-share-audio")
+    adb("shell", "input", "keyevent", "4")   # закрыть окно «Поделиться»
+    wait_for(PLAY_TEXTS, 20)
+    ensure_alive()
+    return "повтор группы 1 звучит, окно «Поделиться» открылось и закрылось"
 
 
 def open_tab(key, titles):
@@ -691,6 +730,7 @@ def main():
         step("Запуск MainActivity", launch)
         step("Первое задание на «Тренировке»", training_ready)
         step("Слушать и Стоп", play_and_stop)
+        step("Повтор группы и «Поделиться звуком»", replay_group_and_share)
         step("Параметры: раскрыть и свернуть", training_params)
         # По всем вкладкам и обратно на «Тренировку» (второй скриншот — под своим именем)
         for key, russian, english in TABS[1:] + [("training-return",) + TABS[0][1:]]:
