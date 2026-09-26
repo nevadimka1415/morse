@@ -17,17 +17,20 @@ public partial class SettingsPage : ContentPage
     private readonly IReminderService _reminders;
     private readonly ChantStore _chantStore;
     private readonly IAudioPlaybackService _audioPlayback;
+    private readonly TrainingHistoryStore _historyStore;
     private AppSettings _settings = new();
     private readonly HashSet<char> _selectedSymbols = new();
     private bool _ready;
 
-    public SettingsPage(MobileSettingsService settingsService, IReminderService reminders, ChantStore chantStore, IAudioPlaybackService audioPlayback)
+    public SettingsPage(MobileSettingsService settingsService, IReminderService reminders, ChantStore chantStore, IAudioPlaybackService audioPlayback,
+        TrainingHistoryStore historyStore)
     {
         InitializeComponent();
         _settingsService = settingsService;
         _reminders = reminders;
         _chantStore = chantStore;
         _audioPlayback = audioPlayback;
+        _historyStore = historyStore;
         // Списки пикеров задаются кодом, чтобы переводиться вместе с интерфейсом
         ThemePicker.ItemsSource = new[] { Texts.T("Системная"), Texts.T("Тёмная"), Texts.T("Светлая") };
         LanguagePicker.ItemsSource = new[] { Texts.T("Системный"), Texts.T("Русский (Russian)"), Texts.T("English") };
@@ -159,6 +162,54 @@ public partial class SettingsPage : ContentPage
         catch (Exception exception)
         {
             await DisplayAlertAsync(Texts.T("Не удалось поделиться"), exception.Message, Texts.T("Закрыть"));
+        }
+    }
+
+    // Перенос прогресса (история занятий = отметки курса) на новый телефон — файлом, как «Экспорт/Импорт истории» на Windows
+    private async void SaveProgressButton_OnClicked(object sender, EventArgs e)
+    {
+        var history = _historyStore.Load();
+        if (history.Count == 0)
+        {
+            await DisplayAlertAsync(Texts.T("Прогресс"), Texts.T("Пока нечего сохранять: занятий ещё не было."), Texts.T("Понятно"));
+            return;
+        }
+
+        try
+        {
+            var path = Path.Combine(FileSystem.CacheDirectory, $"morse-progress-{DateTime.Now:yyyy-MM-dd}.json");
+            await File.WriteAllTextAsync(path, HistoryTransfer.Export(history));
+            await Share.Default.RequestAsync(new ShareFileRequest
+            {
+                Title = Texts.T("Прогресс Morse Trainer"),
+                File = new ShareFile(path, "application/json")
+            });
+        }
+        catch (Exception exception)
+        {
+            await DisplayAlertAsync(Texts.T("Не удалось поделиться"), exception.Message, Texts.T("Закрыть"));
+        }
+    }
+
+    private async void LoadProgressButton_OnClicked(object sender, EventArgs e)
+    {
+        try
+        {
+            var file = await FilePicker.Default.PickAsync(new PickOptions { PickerTitle = Texts.T("Загрузить прогресс…") });
+            if (file is null)
+            {
+                return;
+            }
+
+            await using var stream = await file.OpenReadAsync();
+            using var reader = new StreamReader(stream);
+            var result = _historyStore.Merge(HistoryTransfer.Import(await reader.ReadToEndAsync()));
+            await DisplayAlertAsync(Texts.T("Прогресс"), result.Describe(), Texts.T("Понятно"));
+        }
+        catch (Exception exception)
+        {
+            // Не тот файл или нет доступа — сообщение, а не падение из async void
+            await DisplayAlertAsync(Texts.T("Прогресс"), exception.Message, Texts.T("Закрыть"));
         }
     }
 

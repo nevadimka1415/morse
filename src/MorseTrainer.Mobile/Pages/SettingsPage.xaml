@@ -196,6 +196,13 @@
                         </Grid>
                         <Label Text="{loc:Loc '«Поделиться» отправляет настройки и свои напевы текстом (например, себе в мессенджер) и копирует его в буфер; «Вставить из буфера» принимает такой текст на другом устройстве.'}"
                                Opacity="0.65" FontSize="13" LineBreakMode="WordWrap" />
+                        <!-- Прогресс = история занятий, по ней считаются отметки курса: переносится файлом, как на Windows -->
+                        <Grid ColumnDefinitions="*,8,*">
+                            <Button x:Name="SaveProgressButton" Text="{loc:Loc 'Сохранить прогресс…'}" LineBreakMode="WordWrap" Clicked="SaveProgressButton_OnClicked" />
+                            <Button x:Name="LoadProgressButton" Grid.Column="2" Text="{loc:Loc 'Загрузить прогресс…'}" LineBreakMode="WordWrap" Clicked="LoadProgressButton_OnClicked" />
+                        </Grid>
+                        <Label Text="{loc:Loc 'Прогресс — это история занятий и отметки курса. «Сохранить прогресс…» отправляет файл (например, себе в мессенджер или на диск), «Загрузить прогресс…» добавляет его на новом телефоне — повторы не дублируются.'}"
+                               Opacity="0.65" FontSize="13" LineBreakMode="WordWrap" />
                     </VerticalStackLayout>
                 </Border>
             </VerticalStackLayout>

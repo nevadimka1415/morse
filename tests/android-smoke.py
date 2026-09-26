@@ -50,6 +50,8 @@ NEXT_STEP_TEXTS = ("Следующий шаг", "Next step")
 COURSE_MENU_TEXTS = ("Меню курса", "Course menu")
 CHOOSE_STEP_TEXTS = ("Выбрать шаг…", "Choose step…")
 RESET_COURSE_TEXTS = ("Сбросить курс", "Reset the course")
+SAVE_PROGRESS_TEXTS = ("Сохранить прогресс…", "Save progress…")
+NOTHING_TO_SAVE_PREFIXES = ("Пока нечего сохранять", "Nothing to save yet")
 SIGNAL_SPEED_TEXTS = ("Скорость сигнала", "Signal speed")
 STEP3_TITLE_PREFIXES = ("Курс «С нуля до 60 зн/мин» · шаг 3 из", "Course “From zero to 60 cpm” · step 3 of")
 rustore_apk_arg = sys.argv[3] if len(sys.argv) > 3 else None
@@ -482,6 +484,27 @@ def logo_easter_egg():
     return f"значок вверху ({x1},{y1}), нажатие — процесс жив"
 
 
+def save_progress_empty():
+    """«Настройки» → «Сохранить прогресс…»: без занятий (в тесте ответы не проверяются) — сообщение, а не падение."""
+    _, height = screen_size()
+    for _ in range(8):
+        root, _ = dump_ui()
+        found = nodes_with_text(root, SAVE_PROGRESS_TEXTS)
+        if found and bounds(found[0])[3] < height - 250:
+            break
+        swipe(20, height * 2 // 3, 20, height // 3, 300)
+        time.sleep(0.8)
+    else:
+        raise RuntimeError("Не долистал до «Сохранить прогресс…»")
+    tap(found[0])
+    wait_for(NOTHING_TO_SAVE_PREFIXES, 10, prefix=True)
+    screenshot("settings-save-progress")
+    adb("shell", "input", "keyevent", "4")   # закрыть сообщение
+    time.sleep(1)
+    ensure_alive()
+    return "пустая история — сообщение «Пока нечего сохранять», процесс жив"
+
+
 def course_menu_button(root):
     """«⋯» курса: по описанию для TalkBack, а если его нет — кнопка в том же ряду правее «Следующий шаг»."""
     found = nodes_with_text(root, COURSE_MENU_TEXTS)
@@ -677,6 +700,7 @@ def main():
                 step("На слух: без автоперехода", quiz_manual_round())
             if key == "settings":
                 step("Настройки: значок вверху — пасхалка", logo_easter_egg)
+                step("Настройки: «Сохранить прогресс…» без занятий", save_progress_empty)
         step("Вкладка «Обучение» для курса", open_tab("learning-course", ("Обучение", "Learning")))
         step("Книжка: свайп по тексту и «Назад»", course_book_swipe_and_back)
         step("Книжка курса и шаг 1", course_book)
