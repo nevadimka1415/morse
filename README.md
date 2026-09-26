@@ -82,6 +82,10 @@
 |---|---|
 | ![Прогресс](docs/screenshots/progress.png) | ![Training, dark](docs/screenshots/training-en.png) |
 
+| Звучит задание: «Группа 3 из 10» | Книжка курса: метод Коха |
+|---|---|
+| ![Группа 3 из 10](docs/screenshots/training-group.png) | ![Книжка курса](docs/screenshots/course-book.png) |
+
 Ещё: [свёрнутая панель параметров с вводом ответа](docs/screenshots/training-compact.png).
 
 Ещё: [обучение на английском в тёмной теме](docs/screenshots/learning-en.png).
