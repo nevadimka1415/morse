@@ -13,9 +13,9 @@
     <Nullable>enable</Nullable>
     <ApplicationTitle>Morse Trainer</ApplicationTitle>
     <ApplicationId>ru.morsetrainer.app</ApplicationId>
-    <ApplicationDisplayVersion>2.9.1</ApplicationDisplayVersion>
+    <ApplicationDisplayVersion>2.10.0</ApplicationDisplayVersion>
     <!-- versionCode = major*10000 + minor*100 + patch, как считает release.yml из тега -->
-    <ApplicationVersion>20901</ApplicationVersion>
+    <ApplicationVersion>21000</ApplicationVersion>
     <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">13.0</SupportedOSPlatformVersion>
     <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">24.0</SupportedOSPlatformVersion>
   </PropertyGroup>
