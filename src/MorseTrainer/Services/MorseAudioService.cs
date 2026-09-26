@@ -55,6 +55,18 @@ public static class MorseAudioService
     private const double QsbPeriodSeconds = 8;
     private const double DriftPeriodSeconds = 20;
 
+    /// <summary>Устойчивое число из текста (FNV-1a): string.GetHashCode в .NET меняется от запуска к запуску.</summary>
+    private static int StableSeed(string text, int charactersPerMinute)
+    {
+        var hash = 2166136261u;
+        foreach (var symbol in text)
+        {
+            hash = (hash ^ symbol) * 16777619u;
+        }
+
+        return (int)((hash ^ (uint)charactersPerMinute) & 0x7FFFFFFF);
+    }
+
     /// <summary>Группы задания — как их считает звук (разделитель — любые пробелы): для подсветки и повтора одной группы.</summary>
     public static string[] SplitGroups(string text) => text.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
 
@@ -116,7 +128,8 @@ public static class MorseAudioService
         builder.GroupStarts = null;
         builder.WriteSilence(dotDurationSeconds * 2);
 
-        var pcmBytes = builder.ToPcm(volumePercent, profile);
+        // Шум зависит от самого задания: один и тот же текст с теми же настройками звучит одинаково (и в тестах)
+        var pcmBytes = builder.ToPcm(volumePercent, profile, StableSeed(groupedText, charactersPerMinute));
         var wavBytes = CreateWaveFile(pcmBytes);
         var durationSeconds = pcmBytes.Length / (double)(SampleRate * ChannelCount * (BitsPerSample / 8));
         return new AudioClip(wavBytes, TimeSpan.FromSeconds(durationSeconds), groupStarts);
@@ -253,13 +266,13 @@ public static class MorseAudioService
         }
 
         /// <summary>Громкость, замирания и шум → 16-битные отсчёты.</summary>
-        public byte[] ToPcm(int volumePercent, NoiseProfile profile)
+        public byte[] ToPcm(int volumePercent, NoiseProfile profile, int seed)
         {
             var amplitude = short.MaxValue * 0.85 * (volumePercent / 100d);
             var qsbDepth = profile.QsbPercent / 100d;
             // Шум привязан к громкости сигнала, чтобы соотношение сигнал/шум не зависело от ползунка громкости
             var noiseAmplitude = amplitude * 0.45 * (profile.NoisePercent / 100d);
-            var random = new Random();
+            var random = new Random(seed);
             var filtered = 0d;
             var pcm = new byte[_samples.Count * 2];
             for (var index = 0; index < _samples.Count; index++)

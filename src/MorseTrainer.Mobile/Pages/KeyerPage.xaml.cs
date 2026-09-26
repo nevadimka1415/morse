@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Microsoft.Maui.Devices;
 using MorseTrainer.Domain;
 using MorseTrainer.Mobile.Services;
 using MorseTrainer.Services;
@@ -22,17 +23,35 @@ public partial class KeyerPage : ContentPage, IDisposable
     private int _toneVolume;
     private string _target = string.Empty;
     private bool _timerRunning;
+    private const string MicAlphabetKey = "keyer.mic_alphabet";
+    private readonly IMicrophoneStream _microphone;
+    private readonly Button[] _micAlphabetButtons;
+    private int _micAlphabet;
+    private int _micSampleRate;
+    private volatile MorseAudioDecoder? _micDecoder;
+    private bool _micTimerRunning;
 
-    public KeyerPage(IAudioPlaybackService audioPlayback, MobileSettingsService settingsService)
+    public KeyerPage(IAudioPlaybackService audioPlayback, MobileSettingsService settingsService, IMicrophoneStream microphone)
     {
         InitializeComponent();
         _audioPlayback = audioPlayback;
         _settingsService = settingsService;
+        _microphone = microphone;
+        _micAlphabetButtons = new[] { MicRussianButton, MicLatinButton };
+        _micAlphabet = Math.Clamp(Preferences.Default.Get(MicAlphabetKey, 0), 0, 1);
+        ChoiceButtons.Highlight(_micAlphabetButtons, _micAlphabet);
     }
 
     protected override void OnAppearing()
     {
         base.OnAppearing();
+        // Приложение свернули — микрофон отпускается (OnDisappearing при этом не вызывается)
+        if (Window is { } window)
+        {
+            window.Stopped -= Window_OnStopped;
+            window.Stopped += Window_OnStopped;
+        }
+
         EnsureKeyer();
         if (!_timerRunning)
         {
@@ -51,12 +70,38 @@ public partial class KeyerPage : ContentPage, IDisposable
         _timerRunning = false;
         _keyDown = false;
         _audioPlayback.Stop();
+        _micTimerRunning = false;
+        _microphone.Stop();
+    }
+
+    private void Window_OnStopped(object? sender, EventArgs e)
+    {
+        if (_microphone.IsRunning)
+        {
+            StopMicrophone();
+        }
+
+        if (_keyDown)
+        {
+            EndKeyPress();
+        }
     }
 
     protected override void OnDisappearing()
     {
         base.OnDisappearing();
+        if (Window is { } window)
+        {
+            window.Stopped -= Window_OnStopped;
+        }
+
         _timerRunning = false;
+        // Ушли с вкладки — микрофон отпускается
+        if (_microphone.IsRunning)
+        {
+            StopMicrophone();
+        }
+
         if (_keyDown)
         {
             EndKeyPress();
@@ -81,7 +126,9 @@ public partial class KeyerPage : ContentPage, IDisposable
 
     private async void KeyButton_OnPressed(object sender, EventArgs e)
     {
-        if (_keyDown)
+        // Пока слушаем микрофон, экранный ключ молчит: его тон попал бы в микрофон, а на iPhone воспроизведение
+        // переключает звук телефона и глушит запись
+        if (_keyDown || _microphone.IsRunning)
         {
             return;
         }
@@ -267,6 +314,137 @@ public partial class KeyerPage : ContentPage, IDisposable
         if (width > 0)
         {
             RootLayout.Padding = TabletLayout.PaddingFor(width);
+        }
+    }
+
+    // ---------- Приём с микрофона: настоящий ключ, рация, приёмник ----------
+
+    private AlphabetMode MicAlphabetMode => _micAlphabet == 1 ? AlphabetMode.Latin : AlphabetMode.Russian;
+
+    private async void MicButton_OnClicked(object sender, EventArgs e)
+    {
+        if (_microphone.IsRunning)
+        {
+            StopMicrophone();
+            return;
+        }
+
+        if (!await _microphone.RequestPermissionAsync())
+        {
+            await DisplayAlertAsync(Texts.T("Приём с микрофона"),
+                Texts.T("Нет доступа к микрофону: разрешите его для Morse Trainer в настройках телефона."), Texts.T("Понятно"));
+            return;
+        }
+
+        if (_keyDown)
+        {
+            EndKeyPress();
+        }
+
+        try
+        {
+            // Звук приходит из фонового потока в текущий декодер (при смене алфавита он заменяется)
+            _micSampleRate = _microphone.Start((samples, count) => _micDecoder?.Process(samples.AsSpan(0, count)));
+            _micDecoder = new MorseAudioDecoder(_micSampleRate, MicAlphabetMode);
+        }
+        catch (Exception exception)
+        {
+            _microphone.Stop();
+            await DisplayAlertAsync(Texts.T("Приём с микрофона"), Texts.F("Микрофон недоступен: {0}", exception.Message), Texts.T("Понятно"));
+            return;
+        }
+
+        MicButton.Text = Texts.T("■ Остановить");
+        MicAnalysisLabel.IsVisible = false;
+        KeyButton.IsEnabled = false;
+        // Пока слушаем, экран не гаснет: текст читают во время передачи
+        DeviceDisplay.Current.KeepScreenOn = true;
+        UpdateMicrophone();
+        if (!_micTimerRunning)
+        {
+            _micTimerRunning = true;
+            Dispatcher.StartTimer(TimeSpan.FromMilliseconds(150), () =>
+            {
+                UpdateMicrophone();
+                return _micTimerRunning;
+            });
+        }
+    }
+
+    private void StopMicrophone()
+    {
+        _microphone.Stop();
+        _micTimerRunning = false;
+        _micDecoder?.Flush();
+        MicButton.Text = Texts.T("● Слушать микрофон");
+        KeyButton.IsEnabled = true;
+        DeviceDisplay.Current.KeepScreenOn = false;
+        UpdateMicrophone();
+    }
+
+    private void UpdateMicrophone()
+    {
+        if (_micDecoder is not { } decoder)
+        {
+            return;
+        }
+
+        // Микрофон отобрала система (звонок, другое приложение) — кнопка и экран возвращаются в «остановлено»
+        if (_micTimerRunning && !_microphone.IsRunning)
+        {
+            StopMicrophone();
+            return;
+        }
+
+        var tone = decoder.ToneHz;
+        var speed = decoder.CharactersPerMinute;
+        MicStatusLabel.Text = !_microphone.IsRunning ? Texts.T("Остановлено")
+            : tone == 0 ? Texts.T("Слушаю… ищу тон")
+            : speed == 0 ? Texts.F("Тон {0} Гц", tone)
+            : Texts.F("Тон {0} Гц · {1} зн/мин", tone, speed);
+        MicLevelBar.Progress = _microphone.IsRunning ? decoder.Level : 0;
+        // Незаконченный знак — точками и тире после текста
+        var pending = decoder.PendingCode.Replace('.', '·').Replace('-', '–');
+        var shown = decoder.Text + (pending.Length > 0 ? " " + pending : string.Empty);
+        MicTextLabel.Text = shown.Length > 0 ? shown : " ";
+    }
+
+    private void MicClearButton_OnClicked(object sender, EventArgs e)
+    {
+        _micDecoder?.Clear();
+        MicAnalysisLabel.IsVisible = false;
+        UpdateMicrophone();
+    }
+
+    // Разбор ручной передачи по принятому с микрофона — как у экранного ключа
+    private void MicAnalyzeButton_OnClicked(object sender, EventArgs e)
+    {
+        if (_micDecoder is not { } decoder)
+        {
+            return;
+        }
+
+        var analysis = decoder.Analyze();
+        MicAnalysisLabel.Text = analysis.Describe();
+        MicAnalysisLabel.Opacity = analysis.HasEnoughData ? 1 : 0.65;
+        MicAnalysisLabel.IsVisible = true;
+    }
+
+    private void MicAlphabetButton_OnClicked(object sender, EventArgs e)
+    {
+        if (sender is not Button { CommandParameter: string parameter } || !int.TryParse(parameter, out var index))
+        {
+            return;
+        }
+
+        _micAlphabet = Math.Clamp(index, 0, 1);
+        Preferences.Default.Set(MicAlphabetKey, _micAlphabet);
+        ChoiceButtons.Highlight(_micAlphabetButtons, _micAlphabet);
+        // Слушаем — новый декодер с другим алфавитом (текст начинается заново)
+        if (_microphone.IsRunning)
+        {
+            _micDecoder = new MorseAudioDecoder(_micSampleRate, MicAlphabetMode);
+            UpdateMicrophone();
         }
     }
 }

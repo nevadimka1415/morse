@@ -19,22 +19,25 @@ public enum ContentMode
     Koch,
     Words,
     Callsigns,
-    QCodes
+    QCodes,
+    // Целые связи, как в эфире: CQ, позывные, RST, имя, город, 73 (добавлен в конец — номера прежних режимов не сдвигаются)
+    RadioExchange
 }
 
 /// <summary>Границы и свойства режимов состава задания: одно место для обоих приложений.</summary>
 public static class ContentModes
 {
-    public const int MaxIndex = (int)ContentMode.QCodes;
+    public const int MaxIndex = (int)ContentMode.RadioExchange;
 
     public static ContentMode Clamp(int index) => (ContentMode)Math.Clamp(index, 0, MaxIndex);
 
     /// <summary>Режимы, где группа — это слово, позывной или код, а не пять случайных символов.</summary>
-    public static bool IsWordMode(ContentMode content) => content is ContentMode.Words or ContentMode.Callsigns or ContentMode.QCodes;
+    public static bool IsWordMode(ContentMode content) =>
+        content is ContentMode.Words or ContentMode.Callsigns or ContentMode.QCodes or ContentMode.RadioExchange;
 
-    /// <summary>Алфавит для декодера ключа: позывные и Q-код всегда латиница.</summary>
+    /// <summary>Алфавит для декодера ключа: позывные, Q-код и радиообмен всегда латиница.</summary>
     public static AlphabetMode DecodingAlphabet(ContentMode content, AlphabetMode alphabet) =>
-        content is ContentMode.Callsigns or ContentMode.QCodes ? AlphabetMode.Latin : alphabet;
+        content is ContentMode.Callsigns or ContentMode.QCodes or ContentMode.RadioExchange ? AlphabetMode.Latin : alphabet;
 }
 
 public static class MorseAlphabet

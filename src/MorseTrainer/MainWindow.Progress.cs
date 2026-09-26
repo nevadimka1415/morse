@@ -224,7 +224,7 @@ public partial class MainWindow
             .Select(item => new HistoryRow(
                 item.CompletedAt.ToString("dd.MM.yy HH:mm", CultureInfo.CurrentCulture),
                 (item.IsExam ? Texts.F("{0} · экзамен", item.ProfileName) : item.ProfileName) +
-                (item.CourseStep > 0 ? Texts.F(" · шаг {0}", item.CourseStep) : string.Empty),
+                (item.CourseStep > 0 ? Texts.F(" · шаг {0}", Course.DisplayNumber(item.CourseStep)) + (Course.CourseOf(item.CourseStep) == 2 ? Texts.T(" (курс 2)") : string.Empty) : string.Empty),
                 Texts.F("{0} зн/мин", item.CharactersPerMinute),
                 item.GroupCount.ToString(CultureInfo.InvariantCulture),
                 $"{item.AccuracyPercent:0.#}%",

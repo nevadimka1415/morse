@@ -41,6 +41,29 @@
                     <Label x:Name="ResultLabel" Text="" LineBreakMode="WordWrap" />
                 </VerticalStackLayout>
             </Border>
+
+            <!-- Приём с микрофона: настоящий ключ, рация, приёмник — тон и скорость декодер находит сам -->
+            <Border>
+                <VerticalStackLayout Spacing="8">
+                    <Label Text="{loc:Loc 'Приём с микрофона'}" FontAttributes="Bold" />
+                    <Label Text="{loc:Loc 'Поднесите телефон к динамику рации, приёмника или генератора ключа — тон и скорость программа найдёт сама. Так проверяется передача на настоящем ключе.'}"
+                           Opacity="0.65" FontSize="13" LineBreakMode="WordWrap" />
+                    <Grid ColumnDefinitions="*,8,*">
+                        <Button x:Name="MicRussianButton" Text="{loc:Loc 'Русские буквы'}" CommandParameter="0" Clicked="MicAlphabetButton_OnClicked" />
+                        <Button x:Name="MicLatinButton" Grid.Column="2" Text="{loc:Loc 'Латинские буквы'}" CommandParameter="1" Clicked="MicAlphabetButton_OnClicked" />
+                    </Grid>
+                    <Button x:Name="MicButton" Text="{loc:Loc '● Слушать микрофон'}" BackgroundColor="{StaticResource Primary}" TextColor="#06231C"
+                            Clicked="MicButton_OnClicked" />
+                    <Label x:Name="MicStatusLabel" Text="" Opacity="0.75" />
+                    <ProgressBar x:Name="MicLevelBar" Progress="0" ProgressColor="{StaticResource PrimaryDark}" />
+                    <Label x:Name="MicTextLabel" Text=" " FontSize="22" FontAttributes="Bold" FontFamily="monospace" LineBreakMode="WordWrap" />
+                    <Grid ColumnDefinitions="*,8,*">
+                        <Button Text="{loc:Loc 'Очистить'}" Clicked="MicClearButton_OnClicked" />
+                        <Button Grid.Column="2" Text="{loc:Loc 'Разбор'}" Clicked="MicAnalyzeButton_OnClicked" />
+                    </Grid>
+                    <Label x:Name="MicAnalysisLabel" Text="" FontSize="13" LineBreakMode="WordWrap" IsVisible="False" />
+                </VerticalStackLayout>
+            </Border>
         </VerticalStackLayout>
     </ScrollView>
 </ContentPage>

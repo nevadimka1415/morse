@@ -32,6 +32,9 @@ public enum CourseMark
 /// Курс «С нуля до 60 зн/мин»: метод Коха по 4 новых символа на шаг (скорость знака сразу 60, в начале паузы
 /// растянуты), затем слова на 50 и 60 зн/мин и итоговый экзамен. Шаг засчитан, когда в истории есть задание
 /// этого шага с точностью от 90 %.
+/// Курс 2 «С 60 до 100 зн/мин» продолжает первый: буквы и цифры с обычными паузами, +5 зн/мин за шаг, экзамен на 100.
+/// Номера его шагов — 101, 102, … (в настройках и истории шаг 3 одного курса не путается с шагом 3 другого);
+/// на экране — «шаг 3 из 9» (DisplayNumber).
 /// </summary>
 public static class Course
 {
@@ -40,6 +43,78 @@ public static class Course
     public const int WordsWarmUpSpeed = 50;
     public const int KochStep = 4;
     public const int ExamTimeLimitMinutes = 10;
+    public const int SecondCourseOffset = 100;
+    public const int SecondCourseTargetSpeed = 100;
+    public const int SecondCourseStepSpeed = 5;
+
+    /// <summary>Курс шага: 1 — «С нуля до 60», 2 — «С 60 до 100» (номера от 101).</summary>
+    public static int CourseOf(int stepNumber) => stepNumber > SecondCourseOffset ? 2 : 1;
+
+    /// <summary>Номер шага на экране: у второго курса 101 → 1.</summary>
+    public static int DisplayNumber(int stepNumber) => stepNumber > SecondCourseOffset ? stepNumber - SecondCourseOffset : stepNumber;
+
+    /// <summary>Название курса.</summary>
+    public static string Title(int course) => course == 2 ? Texts.T("Курс «С 60 до 100 зн/мин»") : Texts.T("Курс «С нуля до 60 зн/мин»");
+
+    /// <summary>Текущий курс: по выбранному шагу, а пока шаг не выбран — курс из меню (AppSettings.CourseNumber).</summary>
+    public static int Current(int courseStep, int courseNumber) => courseStep > 0 ? CourseOf(courseStep) : courseNumber == 2 ? 2 : 1;
+
+    /// <summary>Номер первого шага курса: 1 или 101.</summary>
+    public static int FirstNumber(int course) => course == 2 ? SecondCourseOffset + 1 : 1;
+
+    /// <summary>Следующий шаг того же курса; null — шаг последний (или не из этого курса).</summary>
+    public static CourseStep? Next(IReadOnlyList<CourseStep> steps, int number) =>
+        steps.SkipWhile(step => step.Number != number).Skip(1).FirstOrDefault();
+
+    /// <summary>Заголовок карточки курса: «Курс «…» · шаг 3 из 9: …» (у второго курса номер без сотни).</summary>
+    public static string Heading(CourseStep step, int count) => CourseOf(step.Number) == 2
+        ? Texts.F("Курс «С 60 до 100 зн/мин» · шаг {0} из {1}: {2}", DisplayNumber(step.Number), count, step.Title)
+        : Texts.F("Курс «С нуля до 60 зн/мин» · шаг {0} из {1}: {2}", step.Number, count, step.Title);
+
+    /// <summary>Описание курса, пока он не начат.</summary>
+    public static string Intro(int course, int count) => course == 2
+        ? Texts.F("{0} шагов: буквы и цифры от 65 до 100 знаков в минуту, по 5 за шаг, итоговый экзамен. Кнопка ставит нужные настройки и создаёт задание.", count)
+        : Texts.F("{0} шагов: метод Коха по 4 символа, слова на 50 и 60 зн/мин, итоговый экзамен. Кнопка ставит нужные настройки и создаёт задание.", count);
+
+    /// <summary>Пункт меню «Перейти к курсу …» — к другому курсу, не к текущему.</summary>
+    public static string SwitchLabel(int course) => course == 2
+        ? Texts.T("Перейти к курсу «С нуля до 60 зн/мин»")
+        : Texts.T("Перейти к курсу «С 60 до 100 зн/мин»");
+
+    /// <summary>
+    /// Подсказка после итогового экзамена первого курса: дальше — второй (пусто, если рано или это курс 2). Пока она
+    /// есть, кнопка «Следующий шаг» становится «Следующий курс».
+    /// </summary>
+    public static string NextCourseHint(IReadOnlyList<TrainingRecord> history, IReadOnlyList<CourseStep> steps, CourseStep step) =>
+        CourseOf(step.Number) == 1 && step.IsExam && step.Number == steps[^1].Number && IsPassed(history, step)
+            ? Texts.T("Курс пройден ✓ Дальше — курс «С 60 до 100 зн/мин».")
+            : string.Empty;
+
+    /// <summary>Шаги курса 1 или 2.</summary>
+    public static IReadOnlyList<CourseStep> Steps(AlphabetMode alphabet, int course) => course == 2 ? SecondSteps(alphabet) : Steps(alphabet);
+
+    /// <summary>Шаги того курса, к которому относится шаг с этим номером.</summary>
+    public static IReadOnlyList<CourseStep> StepsFor(AlphabetMode alphabet, int stepNumber) => Steps(alphabet, CourseOf(stepNumber));
+
+    /// <summary>Курс 2: буквы и цифры с обычными паузами, каждый шаг на 5 зн/мин быстрее (65…100), затем экзамен на 100.</summary>
+    private static IReadOnlyList<CourseStep> SecondSteps(AlphabetMode alphabet)
+    {
+        alphabet = alphabet == AlphabetMode.Latin ? AlphabetMode.Latin : AlphabetMode.Russian;
+        var max = KochMethod.MaxLevel(alphabet);
+        var steps = new List<CourseStep>();
+        var number = SecondCourseOffset;
+        for (var speed = TargetSpeed + SecondCourseStepSpeed; speed <= SecondCourseTargetSpeed; speed += SecondCourseStepSpeed)
+        {
+            steps.Add(new CourseStep(++number, Texts.F("Буквы и цифры на {0} знаков в минуту", speed),
+                Texts.T("Все буквы и цифры, обычные паузы: каждый шаг на 5 знаков в минуту быстрее прошлого."),
+                ContentMode.LettersAndDigits, alphabet, max, speed, 10, 3, 7, false));
+        }
+
+        steps.Add(new CourseStep(++number, Texts.F("Экзамен на {0} знаков в минуту", SecondCourseTargetSpeed),
+            Texts.F("Буквы и цифры, 10 групп, одно прослушивание, лимит {0} минут. Точность от 90 % — курс пройден.", ExamTimeLimitMinutes),
+            ContentMode.LettersAndDigits, alphabet, max, SecondCourseTargetSpeed, 10, 3, 7, true));
+        return steps;
+    }
 
     /// <summary>Курс идёт по русскому или латинскому ряду Коха: «Русский и латинский» считается русским.</summary>
     public static AlphabetMode AlphabetFor(int alphabetIndex) =>
@@ -84,7 +159,7 @@ public static class Course
 
     /// <summary>Шаг по номеру (1…); null — курс не начат или номер вне курса.</summary>
     public static CourseStep? Find(IReadOnlyList<CourseStep> steps, int number) =>
-        number >= 1 && number <= steps.Count ? steps[number - 1] : null;
+        steps.FirstOrDefault(step => step.Number == number);
 
     /// <summary>Ставит настройки шага: алфавит, состав, скорость, паузы; помехи и авто-скорость выключаются.</summary>
     public static void Apply(CourseStep step, AppSettings settings)
@@ -92,6 +167,7 @@ public static class Course
         ArgumentNullException.ThrowIfNull(step);
         ArgumentNullException.ThrowIfNull(settings);
         settings.CourseStep = step.Number;
+        settings.CourseNumber = CourseOf(step.Number);
         settings.AlphabetIndex = (int)step.Alphabet;
         settings.ContentModeIndex = (int)step.Content;
         settings.KochLevel = step.KochLevel;
@@ -128,7 +204,7 @@ public static class Course
     public static int StepForRecord(AppSettings taskSettings, bool isExam)
     {
         ArgumentNullException.ThrowIfNull(taskSettings);
-        var step = Find(Steps(AlphabetFor(taskSettings.AlphabetIndex)), taskSettings.CourseStep);
+        var step = Find(StepsFor(AlphabetFor(taskSettings.AlphabetIndex), taskSettings.CourseStep), taskSettings.CourseStep);
         return step is not null && Matches(step, taskSettings, isExam) ? step.Number : 0;
     }
 
@@ -160,7 +236,7 @@ public static class Course
             }
             else
             {
-                lines.Add($"{step.Number}. {step.Title}");
+                lines.Add($"{DisplayNumber(step.Number)}. {step.Title}");
             }
         }
 

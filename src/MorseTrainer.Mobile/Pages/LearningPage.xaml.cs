@@ -79,34 +79,37 @@ public partial class LearningPage : ContentPage
     private void RefreshCourse()
     {
         var settings = _settingsService.LoadSettings();
-        var steps = Course.Steps(Course.AlphabetFor(settings.AlphabetIndex));
+        var course = CurrentCourse(settings);
+        var steps = CourseSteps(settings);
         var history = _historyStore.Load();
         var passed = Course.PassedCount(history, steps);
         var step = Course.Find(steps, settings.CourseStep);
         if (step is null)
         {
-            CourseTitleLabel.Text = Texts.T("Курс «С нуля до 60 зн/мин»");
-            CourseDetailsLabel.Text = Texts.F("{0} шагов: метод Коха по 4 символа, слова на 50 и 60 зн/мин, итоговый экзамен. Кнопка ставит нужные настройки и создаёт задание.", steps.Count);
+            CourseTitleLabel.Text = Course.Title(course);
+            CourseDetailsLabel.Text = Course.Intro(course, steps.Count);
             CourseStatusLabel.Text = passed > 0 ? Texts.F("Пройдено шагов: {0} из {1}.", passed, steps.Count) : string.Empty;
             // Пустая строка статуса оставляла зазор над кнопкой
             CourseStatusLabel.IsVisible = passed > 0;
             CourseStartButton.Text = Texts.T("Начать курс");
             CourseNextButton.IsVisible = false;
-            // После сброса с пройденными шагами меню остаётся: через «Выбрать шаг…» можно продолжить с нужного
-            CourseMenuButton.IsVisible = passed > 0;
             UpdateCourseMarks(steps, history, 0, visible: passed > 0);
             return;
         }
 
         var stepPassed = Course.IsPassed(history, step);
-        CourseTitleLabel.Text = Texts.F("Курс «С нуля до 60 зн/мин» · шаг {0} из {1}: {2}", step.Number, steps.Count, step.Title);
+        var hint = Course.NextCourseHint(history, steps, step);
+        CourseTitleLabel.Text = Course.Heading(step, steps.Count);
         CourseDetailsLabel.Text = step.Details;
-        CourseStatusLabel.Text = Course.Status(history, step) + " " + Texts.F("Пройдено шагов: {0} из {1}.", passed, steps.Count);
+        CourseStatusLabel.Text = Course.Status(history, step) + " " + Texts.F("Пройдено шагов: {0} из {1}.", passed, steps.Count) +
+                                 (hint.Length > 0 ? "\n" + hint : string.Empty);
         CourseStatusLabel.IsVisible = true;
         CourseStartButton.Text = step.IsExam ? Texts.T("Начать экзамен") : Texts.T("Начать шаг");
-        CourseNextButton.IsVisible = step.Number < steps.Count;
+        // После итогового экзамена первого курса «Следующий шаг» ведёт ко второму курсу
+        var hasNext = Course.Next(steps, step.Number) is not null;
+        CourseNextButton.Text = hasNext ? Texts.T("Следующий шаг") : Texts.T("Следующий курс");
+        CourseNextButton.IsVisible = hasNext || hint.Length > 0;
         CourseNextButton.IsEnabled = stepPassed;
-        CourseMenuButton.IsVisible = true;
         UpdateCourseMarks(steps, history, step.Number, visible: true);
     }
 
@@ -139,16 +142,26 @@ public partial class LearningPage : ContentPage
         CourseProgressLabel.FormattedText = text;
     }
 
+    /// <summary>Текущий курс: 1 — «С нуля до 60», 2 — «С 60 до 100» (переключается в меню «⋯»).</summary>
+    private static int CurrentCourse(AppSettings settings) => Course.Current(settings.CourseStep, settings.CourseNumber);
+
+    private static IReadOnlyList<CourseStep> CourseSteps(AppSettings settings) =>
+        Course.Steps(Course.AlphabetFor(settings.AlphabetIndex), CurrentCourse(settings));
+
     private async void CourseStartButton_OnClicked(object sender, EventArgs e)
     {
         var settings = _settingsService.LoadSettings();
-        // Первый запуск курса — сначала «книжка»: как устроен курс и метод Коха (можно пропустить)
+        // Первый запуск курса — сначала «книжка»: как устроен курс (можно пропустить)
         if (settings.CourseStep == 0 && !await OpenCourseBookAsync(settings, startMode: true))
         {
             return;
         }
 
-        settings.CourseStep = Math.Max(1, settings.CourseStep);
+        if (settings.CourseStep == 0)
+        {
+            settings.CourseStep = Course.FirstNumber(CurrentCourse(settings));
+        }
+
         await StartCourseStepAsync(settings);
     }
 
@@ -167,7 +180,8 @@ public partial class LearningPage : ContentPage
         _bookOpen = true;
         try
         {
-            var book = new CourseBookPage(CourseBook.Pages(Course.AlphabetFor(settings.AlphabetIndex)), startMode);
+            var book = new CourseBookPage(CourseBook.Pages(Course.AlphabetFor(settings.AlphabetIndex), CurrentCourse(settings)), startMode,
+                Course.Title(CurrentCourse(settings)));
             await Navigation.PushModalAsync(book);
             return await book.Result;
         }
@@ -180,19 +194,37 @@ public partial class LearningPage : ContentPage
     private async void CourseNextButton_OnClicked(object sender, EventArgs e)
     {
         var settings = _settingsService.LoadSettings();
-        settings.CourseStep = Math.Min(Course.Steps(Course.AlphabetFor(settings.AlphabetIndex)).Count, settings.CourseStep + 1);
+        if (Course.Next(CourseSteps(settings), settings.CourseStep) is not { } next)
+        {
+            // Последний шаг: кнопка видна только как «Следующий курс» после итогового экзамена первого курса
+            if (CurrentCourse(settings) == 1)
+            {
+                SwitchCourse(settings, 2);
+            }
+
+            return;
+        }
+
+        settings.CourseStep = next.Number;
         await StartCourseStepAsync(settings);
     }
 
-    // «⋯»: выбрать шаг, перечитать книжку, сбросить курс. Сброс — отдельным пунктом меню, случайно одним касанием не нажать
+    // «⋯»: выбрать шаг, перечитать книжку, перейти к другому курсу, сбросить курс. Сброс — отдельным пунктом меню,
+    // случайно одним касанием не нажать
     private async void CourseMenuButton_OnClicked(object sender, EventArgs e)
     {
         var settings = _settingsService.LoadSettings();
+        var course = CurrentCourse(settings);
         var choose = Texts.T("Выбрать шаг…");
         var book = Texts.T("📖 Как устроен курс");
+        var other = Course.SwitchLabel(course);
         var reset = settings.CourseStep > 0 ? Texts.T("Сбросить курс") : null;
-        var action = await DisplayActionSheetAsync(Texts.T("Курс «С нуля до 60 зн/мин»"), Texts.T("Отмена"), reset, choose, book);
-        if (action == choose)
+        var action = await DisplayActionSheetAsync(Course.Title(course), Texts.T("Отмена"), reset, choose, book, other);
+        if (action == other)
+        {
+            SwitchCourse(settings, course == 2 ? 1 : 2);
+        }
+        else if (action == choose)
         {
             await ChooseCourseStepAsync(settings);
         }
@@ -209,13 +241,24 @@ public partial class LearningPage : ContentPage
     }
 
     /// <summary>
+    /// Переход к другому курсу: он начинается с «Начать курс» и книжки. Пройденные шаги обоих курсов остаются
+    /// в истории — вернуться к нужному можно через «Выбрать шаг…».
+    /// </summary>
+    private void SwitchCourse(AppSettings settings, int course)
+    {
+        settings.CourseNumber = course;
+        settings.CourseStep = 0;
+        _settingsService.SaveSettings(settings);
+        RefreshCourse();
+    }
+
+    /// <summary>
     /// «Выбрать шаг…»: все шаги курса, пройденные (по истории) отмечены ✓. После случайного сброса можно продолжить
     /// с нужного шага, а не проходить всё с первого. Шаг только выбирается — задание создаёт «Начать шаг».
     /// </summary>
     private async Task ChooseCourseStepAsync(AppSettings settings)
     {
-        var steps = Course.Steps(Course.AlphabetFor(settings.AlphabetIndex));
-        var choices = Course.StepChoices(steps, _historyStore.Load());
+        var choices = Course.StepChoices(CourseSteps(settings), _historyStore.Load());
         var picked = await DisplayActionSheetAsync(Texts.T("С какого шага продолжить?"), Texts.T("Отмена"), null,
             choices.Select(choice => choice.Label).ToArray());
         if (choices.FirstOrDefault(choice => choice.Label == picked) is not { } chosen)
@@ -224,6 +267,7 @@ public partial class LearningPage : ContentPage
         }
 
         settings.CourseStep = chosen.Number;
+        settings.CourseNumber = Course.CourseOf(chosen.Number);
         _settingsService.SaveSettings(settings);
         RefreshCourse();
     }
@@ -231,7 +275,7 @@ public partial class LearningPage : ContentPage
     /// <summary>Ставит настройки шага, открывает «Тренировку» и создаёт задание (или экзамен).</summary>
     private async Task StartCourseStepAsync(AppSettings settings)
     {
-        if (Course.Find(Course.Steps(Course.AlphabetFor(settings.AlphabetIndex)), settings.CourseStep) is not { } step)
+        if (Course.Find(CourseSteps(settings), settings.CourseStep) is not { } step)
         {
             return;
         }

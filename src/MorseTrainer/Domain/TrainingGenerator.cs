@@ -59,6 +59,7 @@ public static class TrainingGenerator
             ContentMode.Words => GenerateWords(WordLists.Words(alphabet), groupCount, emphasized),
             ContentMode.QCodes => GenerateWords(WordLists.QCodes, groupCount, emphasized),
             ContentMode.Callsigns => GenerateCallsigns(groupCount),
+            ContentMode.RadioExchange => GenerateExchange(groupCount),
             _ => Generate(pool, groupCount, emphasized)
         };
     }
@@ -101,6 +102,38 @@ public static class TrainingGenerator
         }
 
         return string.Join(' ', picks);
+    }
+
+    /// <summary>
+    /// Радиообмен: связи подряд (CQ, ответ, рапорт, 73), wordCount — сколько слов принять; связь обрывается на границе
+    /// слова. Для целой связи — около 45 слов. Задание короче половины связи начинается с одного из естественных мест: вызов,
+    /// ответ, рапорт (UR), имя (NAME), ответная передача — а не всегда с «CQ CQ DE».
+    /// </summary>
+    public static string GenerateExchange(int wordCount)
+    {
+        if (wordCount is < 1 or > 100)
+        {
+            throw new ArgumentOutOfRangeException(nameof(wordCount), "Word count must be between 1 and 100.");
+        }
+
+        var first = WordLists.RandomExchange().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var starts = new List<int> { 0 };
+        for (var index = 1; index < first.Length; index++)
+        {
+            if (first[index - 1] is "K" or "KN" || first[index] is "UR" or "NAME")
+            {
+                starts.Add(index);
+            }
+        }
+
+        var start = wordCount * 2 >= first.Length ? 0 : starts[RandomNumberGenerator.GetInt32(starts.Count)];
+        var words = first.Skip(start).ToList();
+        while (words.Count < wordCount)
+        {
+            words.AddRange(WordLists.RandomExchange().Split(' ', StringSplitOptions.RemoveEmptyEntries));
+        }
+
+        return string.Join(' ', words.Take(wordCount));
     }
 
     public static string GenerateCallsigns(int count)

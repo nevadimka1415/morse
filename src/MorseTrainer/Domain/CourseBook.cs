@@ -11,6 +11,37 @@ public sealed record BookPage(string Title, IReadOnlyList<string> Paragraphs);
 /// </summary>
 public static class CourseBook
 {
+    public static IReadOnlyList<BookPage> Pages(AlphabetMode alphabet, int course)
+    {
+        return course == 2 ? SecondPages(alphabet) : Pages(alphabet);
+    }
+
+    /// <summary>
+    /// Книжка второго курса «С 60 до 100 зн/мин»: как он устроен, как расти в скорости, путь по шагам.
+    /// </summary>
+    private static IReadOnlyList<BookPage> SecondPages(AlphabetMode alphabet)
+    {
+        var steps = Course.Steps(alphabet, 2);
+        return new[]
+        {
+            new BookPage(Texts.T("Как устроен курс"), new[]
+            {
+                Texts.F("Курс продолжает первый: от {0} до {1} знаков в минуту — скорость уверенного приёма в эфире.", Course.TargetSpeed, Course.SecondCourseTargetSpeed),
+                Texts.F("В курсе {0} шагов: каждый на {1} знаков в минуту быстрее прошлого, в конце — экзамен на {2}.", steps.Count, Course.SecondCourseStepSpeed, Course.SecondCourseTargetSpeed),
+                Texts.T("Задания — случайные группы из всех букв и цифр с обычными паузами, без растяжек: как в эфире."),
+                Texts.F("Шаг засчитан, когда в его задании принято {0} % знаков и больше, — как в первом курсе. Введите принятое в поле ответа и нажмите «Проверить ответ».", Course.PassAccuracy)
+            }),
+            new BookPage(Texts.T("Как расти в скорости"), new[]
+            {
+                Texts.T("На новой скорости первые задания даются трудно — это нормально. Два-три задания подряд, и ухо привыкает."),
+                Texts.T("Не записывайте знак, пока он звучит: слушайте, а пишите с отставанием на знак-два."),
+                Texts.T("Шаг не даётся несколько дней — вернитесь на шаг назад («Выбрать шаг…»), закрепите и снова вперёд."),
+                Texts.T("Трудное место разберите повтором: нажатие на группу в тексте задания повторяет только её.")
+            }),
+            new BookPage(Texts.T("Путь по шагам"), Course.StepLines(steps))
+        };
+    }
+
     public static IReadOnlyList<BookPage> Pages(AlphabetMode alphabet)
     {
         var steps = Course.Steps(alphabet);

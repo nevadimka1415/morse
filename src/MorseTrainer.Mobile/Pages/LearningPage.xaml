@@ -34,7 +34,7 @@
                     <Button x:Name="CourseStartButton" Text="{loc:Loc 'Начать курс'}" BackgroundColor="{StaticResource Primary}" TextColor="#06231C"
                             Padding="8,7" Clicked="CourseStartButton_OnClicked" />
                     <Button x:Name="CourseNextButton" Grid.Column="2" Text="{loc:Loc 'Следующий шаг'}" Padding="8,7" Clicked="CourseNextButton_OnClicked" />
-                    <!-- «⋯»: выбрать шаг, книжка, сбросить курс — сброс в два касания, случайно не нажать -->
+                    <!-- «⋯»: выбрать шаг, книжка, другой курс, сбросить курс — сброс в два касания, случайно не нажать -->
                     <Button x:Name="CourseMenuButton" Grid.Column="4" Text="⋯" FontSize="18" Padding="12,4"
                             SemanticProperties.Description="{loc:Loc 'Меню курса'}" Clicked="CourseMenuButton_OnClicked" />
                 </Grid>

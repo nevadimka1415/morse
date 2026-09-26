@@ -282,9 +282,10 @@ public static class Program
             // «Выбрать шаг…»: в меню все шаги, пройденный шаг 1 — с ✓; выбор шага 3 делает его текущим; полоса прогресса видна
             var courseSteps = Domain.Course.Steps(Domain.Course.AlphabetFor(window.AlphabetCombo.SelectedIndex));
             var stepMenu = window.BuildCourseStepMenu();
-            Check(stepMenu.Items.Count == courseSteps.Count
-                  && ((stepMenu.Items[0] as MenuItem)?.Header as TextBlock)?.Text.StartsWith("✓ 1.", StringComparison.Ordinal) == true,
-                "step menu lists every course step with step 1 ticked");
+            Check(stepMenu.Items.Count == courseSteps.Count + 2
+                  && ((stepMenu.Items[0] as MenuItem)?.Header as TextBlock)?.Text.StartsWith("✓ 1.", StringComparison.Ordinal) == true
+                  && ((stepMenu.Items[^1] as MenuItem)?.Header as TextBlock)?.Text == Texts.T("Перейти к курсу «С 60 до 100 зн/мин»"),
+                "step menu lists every course step with step 1 ticked and ends with the switch to course 2");
             window.ChooseCourseStep(3);
             DoEvents();
             Check(window.CourseTitleText.Text == Texts.F("Курс «С нуля до 60 зн/мин» · шаг {0} из {1}: {2}", 3, courseSteps.Count, courseSteps[2].Title)
@@ -292,8 +293,27 @@ public static class Program
                   && window.CourseChooseButton.Visibility == Visibility.Visible,
                 "choosing step 3 makes it current and shows the progress marks: " + window.CourseTitleText.Text);
             SaveScreenshot(window, screenshots, "learning-course-" + suffix);
+
+            // Курс 2 «С 60 до 100»: переход из меню, шаги 101…, на экране «шаг 3 из 9»; обратно — к первому курсу
+            var secondSteps = Domain.Course.Steps(Domain.Course.AlphabetFor(window.AlphabetCombo.SelectedIndex), 2);
+            window.SwitchCourse(2);
+            DoEvents();
+            Check(window.CourseTitleText.Text == Texts.T("Курс «С 60 до 100 зн/мин»") && window.CourseStartButton.Content as string == Texts.T("Начать курс")
+                  && window.CourseChooseButton.Visibility == Visibility.Visible, "switching to course 2 shows its intro: " + window.CourseTitleText.Text);
+            var secondMenu = window.BuildCourseStepMenu();
+            Check(secondMenu.Items.Count == secondSteps.Count + 2
+                  && ((secondMenu.Items[0] as MenuItem)?.Header as TextBlock)?.Text.StartsWith("1. ", StringComparison.Ordinal) == true
+                  && ((secondMenu.Items[^1] as MenuItem)?.Header as TextBlock)?.Text == Texts.T("Перейти к курсу «С нуля до 60 зн/мин»"),
+                "course 2 menu lists its steps from 1 and the switch back");
+            window.ChooseCourseStep(103);
+            DoEvents();
+            Check(window.CourseTitleText.Text == Texts.F("Курс «С 60 до 100 зн/мин» · шаг {0} из {1}: {2}", 3, secondSteps.Count, secondSteps[2].Title)
+                  && window.CourseProgressText.Inlines.Count == secondSteps.Count, "choosing course 2 step 3: " + window.CourseTitleText.Text);
+            window.SwitchCourse(1);
             window.ChooseCourseStep(1);
             DoEvents();
+            Check(window.CourseTitleText.Text == Texts.F("Курс «С нуля до 60 зн/мин» · шаг {0} из {1}: {2}", 1, courseSteps.Count, courseSteps[0].Title),
+                "back to course 1 step 1: " + window.CourseTitleText.Text);
 
             // На слух: вопрос, ответ, следующий символ сам; скорость, клавиатура, без автоперехода
             window.MainTabs.SelectedIndex = 2;
@@ -353,6 +373,39 @@ public static class Program
             Click(window.KeyerClearButton);
             Check(window.KeyerTimingText.Text.Length > 0 && !window.KeyerTimingText.Text.Contains("loc:"), "keyer timing label is translated");
             SaveScreenshot(window, screenshots, "keyer-" + suffix);
+
+            // «Приём с микрофона»: вместо ключа — тон и уровень; звук программы расшифровывается в поле «Принято»;
+            // на раннере микрофона нет — сообщение, а не падение
+            window.KeyerModeCombo.SelectedIndex = 2;
+            DoEvents();
+            Check(window.MicPanel.Visibility == Visibility.Visible && window.MicPad.Visibility == Visibility.Visible
+                  && window.KeyPad.Visibility == Visibility.Collapsed, "microphone mode shows its panel instead of the key");
+            var micSample = MorseAudioService.Render("ПАРИЖ МОРЗЕ", 80, 700, 80, 3, 7);
+            var micSamples = new float[(micSample.WavBytes.Length - 44) / 2];
+            for (var index = 0; index < micSamples.Length; index++)
+            {
+                micSamples[index] = (short)(micSample.WavBytes[44 + index * 2] | (micSample.WavBytes[45 + index * 2] << 8)) / 32768f;
+            }
+
+            window.DecodeMicrophoneSamples(micSamples, 44_100);
+            DoEvents();
+            Check(window.KeyerOutputText.Text.Trim() == "ПАРИЖ МОРЗЕ", "microphone mode decodes into the output box: " + window.KeyerOutputText.Text);
+            Click(window.KeyerAnalyzeButton);
+            Check(window.KeyerAnalysisText.Text.Length > 0, "analysis works on the decoded sending");
+            Click(window.MicButton);
+            DoEvents();
+            Check(window.MicStatusText.Text.StartsWith(Texts.F("Микрофон недоступен: {0}", string.Empty), StringComparison.Ordinal)
+                  || window.MicButton.Content as string == Texts.T("■ Остановить"),
+                "microphone start either listens or explains why it cannot: " + window.MicStatusText.Text);
+            if (window.MicButton.Content as string == Texts.T("■ Остановить"))
+            {
+                Click(window.MicButton);
+            }
+
+            SaveScreenshot(window, screenshots, "keyer-microphone-" + suffix);
+            window.KeyerModeCombo.SelectedIndex = 0;
+            DoEvents();
+            Check(window.KeyPad.Visibility == Visibility.Visible && window.MicPanel.Visibility == Visibility.Collapsed, "back to the on-screen key");
 
             // Прогресс (виден, раз включён ввод ответа): сводка и таблица с привязками строк
             window.MainTabs.SelectedIndex = 4;

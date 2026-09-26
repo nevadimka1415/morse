@@ -51,7 +51,12 @@ var tests = new (string Name, Action Run)[]
     ("Course book", TestCourseBook),
     ("Course step choice and marks", TestCourseStepChoice),
     ("Learning signal speed", TestLearningSignalSpeed),
-    ("Practice days and reminder streak", TestPracticeStreak)
+    ("Practice days and reminder streak", TestPracticeStreak),
+    ("Audio decoder: clean signal", TestAudioDecoderClean),
+    ("Audio decoder: noise, fading, drift", TestAudioDecoderNoise),
+    ("Audio decoder: hand sending", TestAudioDecoderHand),
+    ("Radio exchange", TestRadioExchange),
+    ("Second course 60 to 100", TestSecondCourse)
 };
 
 var failures = new List<string>();
@@ -473,7 +478,7 @@ static void TestWordTasks()
     var emphasized = TrainingGenerator.GenerateWords(new[] { "AAA", "BBB" }, 100, new[] { 'A' }, emphasisWeight: 5).Split(' ');
     Assert(emphasized.Count(word => word == "AAA") > 60, "Words with emphasized symbols must appear more often.");
     Assert(MorseAlphabet.BuildPool(AlphabetMode.Latin, ContentMode.Words, "").Count > 20, "BuildPool for word modes must list the used letters.");
-    Assert(ContentModes.Clamp(99) == ContentMode.QCodes && ContentModes.Clamp(-1) == ContentMode.Letters, "ContentModes.Clamp must bound the index.");
+    Assert(ContentModes.Clamp(99) == ContentMode.RadioExchange && ContentModes.Clamp(-1) == ContentMode.Letters, "ContentModes.Clamp must bound the index.");
     Assert(ContentModes.DecodingAlphabet(ContentMode.Callsigns, AlphabetMode.Russian) == AlphabetMode.Latin
            && ContentModes.DecodingAlphabet(ContentMode.Words, AlphabetMode.Russian) == AlphabetMode.Russian, "Callsigns must decode in Latin.");
 }
@@ -1281,6 +1286,305 @@ static void TestPracticeStreak()
     Assert(PracticeNudge.ReminderText(1) == Texts.T("Пора потренироваться: пять минут азбуки Морзе.")
            && PracticeNudge.ReminderText(5).Contains("Дней подряд: 5", StringComparison.Ordinal), "the reminder shows a streak from two days");
     Assert(new AppSettings().PracticeDays.Count == 0, "no practice days by default");
+}
+
+// ---------- Декодер с микрофона: стенд — звук программы (помехи, Фарнсворт) и «ручная» передача с неровностями ----------
+
+static string RandomGroups(Random random, int groups, int size)
+{
+    var symbols = MorseAlphabet.Russian.Keys.Concat(MorseAlphabet.Digits.Keys).ToArray();
+    return string.Join(' ', Enumerable.Range(0, groups).Select(_ => new string(Enumerable.Range(0, size).Select(_ => symbols[random.Next(symbols.Length)]).ToArray())));
+}
+
+static float[] ClipSamples(AudioClip clip)
+{
+    // Заголовок WAV — 44 байта, дальше 16-битные отсчёты
+    var samples = new float[(clip.WavBytes.Length - 44) / 2];
+    for (var index = 0; index < samples.Length; index++)
+    {
+        samples[index] = (short)(clip.WavBytes[44 + index * 2] | (clip.WavBytes[45 + index * 2] << 8)) / 32768f;
+    }
+
+    return samples;
+}
+
+static (string Text, MorseAudioDecoder Decoder) Decode(float[] samples, int sampleRate)
+{
+    var decoder = new MorseAudioDecoder(sampleRate, AlphabetMode.Russian);
+    // Порциями, как с микрофона
+    for (var offset = 0; offset < samples.Length; offset += 1024)
+    {
+        decoder.Process(samples.AsSpan(offset, Math.Min(1024, samples.Length - offset)));
+    }
+
+    decoder.Flush();
+    return (decoder.Text, decoder);
+}
+
+/// <summary>Доля верно принятых знаков без учёта пробелов: 1 − расстояние Левенштейна / длина.</summary>
+static double DecodeAccuracy(string expected, string decoded)
+{
+    var a = new string(expected.Where(symbol => !char.IsWhiteSpace(symbol)).ToArray());
+    var b = new string(decoded.Where(symbol => !char.IsWhiteSpace(symbol)).ToArray());
+    var row = Enumerable.Range(0, b.Length + 1).ToArray();
+    for (var i = 1; i <= a.Length; i++)
+    {
+        var previous = row[0];
+        row[0] = i;
+        for (var j = 1; j <= b.Length; j++)
+        {
+            var current = row[j];
+            row[j] = Math.Min(Math.Min(row[j] + 1, row[j - 1] + 1), previous + (a[i - 1] == b[j - 1] ? 0 : 1));
+            previous = current;
+        }
+    }
+
+    return 1 - row[b.Length] / (double)Math.Max(1, a.Length);
+}
+
+static void TestAudioDecoderClean()
+{
+    var random = new Random(26_09);
+    foreach (var cpm in new[] { 40, 60, 100, 150 })
+    {
+        var text = RandomGroups(random, 10, 5);
+        var (decoded, decoder) = Decode(ClipSamples(MorseAudioService.Render(text, cpm, 700, 80, 3, 7)), 44_100);
+        var accuracy = DecodeAccuracy(text, decoded);
+        Assert(accuracy >= 0.98, $"clean {cpm} cpm: {accuracy:P1}\n  sent: {text}\n  got:  {decoded}");
+        Assert(decoded.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length == 10, $"clean {cpm} cpm keeps the 10 groups: {decoded}");
+        Assert(Math.Abs(decoder.CharactersPerMinute - cpm) <= cpm * 0.15 && Math.Abs(decoder.ToneHz - 700) <= 20,
+            $"clean {cpm} cpm: speed {decoder.CharactersPerMinute}, tone {decoder.ToneHz}");
+        if (cpm == 60)
+        {
+            var analysis = decoder.Analyze();
+            Assert(analysis.Describe().Length > 0, "the decoded sending can be analysed like the on-screen key");
+        }
+    }
+
+    // Другой тон и растянутые паузы (Фарнсворт, как на первых шагах курса)
+    foreach (var (tone, symbolGap, groupGap) in new[] { (450, 3, 7), (1000, 3, 7), (700, 5, 12) })
+    {
+        var text = RandomGroups(random, 8, 5);
+        var (decoded, _) = Decode(ClipSamples(MorseAudioService.Render(text, 80, tone, 80, symbolGap, groupGap)), 44_100);
+        var accuracy = DecodeAccuracy(text, decoded);
+        Assert(accuracy >= 0.98 && decoded.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length == 8,
+            $"tone {tone} Hz, gaps {symbolGap}/{groupGap}: {accuracy:P1}\n  sent: {text}\n  got:  {decoded}");
+    }
+
+    // Только шум, без тона — никакого «мусора» в тексте
+    var noiseOnly = new float[44_100 * 5];
+    var noise = new Random(1);
+    for (var index = 0; index < noiseOnly.Length; index++)
+    {
+        noiseOnly[index] = (float)((noise.NextDouble() * 2 - 1) * 0.3);
+    }
+
+    var (garbage, _) = Decode(noiseOnly, 44_100);
+    Assert(garbage.Trim().Length <= 2, "noise without a tone gives no text: " + garbage);
+}
+
+static void TestAudioDecoderNoise()
+{
+    var random = new Random(2609);
+    foreach (var cpm in new[] { 60, 100 })
+    {
+        var text = RandomGroups(random, 10, 5);
+        var clip = MorseAudioService.Render(text, cpm, 700, 80, 3, 7, noise: new NoiseProfile(30, 30, 20));
+        var (decoded, _) = Decode(ClipSamples(clip), 44_100);
+        var accuracy = DecodeAccuracy(text, decoded);
+        Assert(accuracy >= 0.90, $"noise 30 %, fading 30 %, drift 20 Hz at {cpm} cpm: {accuracy:P1}\n  sent: {text}\n  got:  {decoded}");
+    }
+
+    // Тихая комната и гул сети без тона: 30 с — ни одного знака (раньше шумовой пик становился «тоном», и декодер
+    // печатал мусор без конца)
+    foreach (var sampleRate in new[] { 16_000, 48_000 })
+    {
+        foreach (var hum in new[] { false, true })
+        {
+            var (garbage, silentDecoder) = Decode(RoomNoise(sampleRate, 30, 0.01, hum, new Random(sampleRate + (hum ? 1 : 0))), sampleRate);
+            Assert(garbage.Trim().Length == 0, $"{sampleRate} Hz, {(hum ? "hum" : "white noise")}: 30 s of noise give no text: {garbage} (tone {silentDecoder.ToneHz})");
+        }
+    }
+
+    // Шум до и после передачи: принят только текст, тон не уползает за шумом
+    foreach (var sampleRate in new[] { 16_000, 48_000 })
+    {
+        var transmission = HandSent("ПАРИЖ МОРЗЕ ТЕСТ", 60, 0, new Random(7), sampleRate, 0.3);
+        var samples = new float[sampleRate * 3].Concat(transmission).Concat(new float[sampleRate * 10]).ToArray();
+        var noise = RoomNoise(sampleRate, samples.Length / (double)sampleRate, 0.01, hum: true, new Random(sampleRate));
+        for (var index = 0; index < samples.Length; index++)
+        {
+            samples[index] += noise[index];
+        }
+
+        var (copied, decoder) = Decode(samples, sampleRate);
+        Assert(copied.Trim() == "ПАРИЖ МОРЗЕ ТЕСТ" && Math.Abs(decoder.ToneHz - 650) <= 10,
+            $"{sampleRate} Hz: noise before and after a transmission: '{copied}', tone {decoder.ToneHz}");
+    }
+}
+
+/// <summary>Шум комнаты: белый, с «гулом» — ещё низкочастотный шум и сеть 50/150 Гц.</summary>
+static float[] RoomNoise(int sampleRate, double seconds, double sigma, bool hum, Random random)
+{
+    var samples = new float[(int)(sampleRate * seconds)];
+    var lowPass = 0d;
+    for (var index = 0; index < samples.Length; index++)
+    {
+        var gauss = Math.Sqrt(-2 * Math.Log(1 - random.NextDouble())) * Math.Cos(2 * Math.PI * random.NextDouble());
+        lowPass += 0.05 * (gauss * 4 - lowPass);
+        var value = hum
+            ? lowPass + 0.3 * Math.Sin(2 * Math.PI * 50 * index / sampleRate) + 0.15 * Math.Sin(2 * Math.PI * 150 * index / sampleRate) + 0.5 * gauss
+            : gauss;
+        samples[index] = (float)(sigma * value);
+    }
+
+    return samples;
+}
+
+/// <summary>«Ручная» передача: каждая длительность ±jitter случайно, тон 650 Гц, 16 кГц — как запись с телефона.</summary>
+static float[] HandSent(string text, double dotMs, double jitter, Random random, int sampleRate = 16_000, double amplitude = 0.5)
+{
+    var samples = new List<float>();
+    void Silence(double ms) => samples.AddRange(new float[(int)(ms * sampleRate / 1000)]);
+    void Tone(double ms)
+    {
+        var count = (int)(ms * sampleRate / 1000);
+        var ramp = sampleRate * 5 / 1000;
+        for (var index = 0; index < count; index++)
+        {
+            var envelope = Math.Min(1, Math.Min(index, count - index) / (double)ramp);
+            samples.Add((float)(amplitude * envelope * Math.Sin(2 * Math.PI * 650 * index / sampleRate)));
+        }
+    }
+
+    double Jitter(double units) => units * dotMs * (1 + jitter * (random.NextDouble() * 2 - 1));
+    Silence(300);
+    for (var index = 0; index < text.Length; index++)
+    {
+        if (text[index] == ' ' || !MorseAlphabet.TryGetCode(text[index], out var code))
+        {
+            continue;
+        }
+
+        for (var element = 0; element < code.Length; element++)
+        {
+            Tone(Jitter(code[element] == '.' ? 1 : 3));
+            if (element < code.Length - 1)
+            {
+                Silence(Jitter(1));
+            }
+        }
+
+        Silence(index + 1 < text.Length && text[index + 1] == ' ' ? Jitter(7) : Jitter(3));
+    }
+
+    Silence(500);
+    return samples.ToArray();
+}
+
+static void TestAudioDecoderHand()
+{
+    var random = new Random(1415);
+    foreach (var cpm in new[] { 60, 100 })
+    {
+        var text = RandomGroups(random, 10, 5);
+        var (decoded, decoder) = Decode(HandSent(text, 6000d / cpm, 0.2, random), 16_000);
+        var accuracy = DecodeAccuracy(text, decoded);
+        Assert(accuracy >= 0.90, $"hand sending ±20 % at {cpm} cpm: {accuracy:P1}\n  sent: {text}\n  got:  {decoded}");
+        Assert(Math.Abs(decoder.ToneHz - 650) <= 20, $"hand sending tone found: {decoder.ToneHz}");
+    }
+}
+
+static void TestRadioExchange()
+{
+    Assert(ContentModes.Clamp(99) == ContentMode.RadioExchange && (int)ContentMode.RadioExchange == 9 && (int)ContentMode.QCodes == 8,
+        "radio exchange is appended after Q-codes: saved mode numbers do not move");
+    Assert(ContentModes.IsWordMode(ContentMode.RadioExchange) && ContentModes.DecodingAlphabet(ContentMode.RadioExchange, AlphabetMode.Russian) == AlphabetMode.Latin,
+        "radio exchange is a word mode decoded in Latin");
+    var allowed = MorseAlphabet.BuildPool(AlphabetMode.Russian, ContentMode.RadioExchange, string.Empty).ToHashSet();
+    for (var round = 0; round < 20; round++)
+    {
+        var exchange = TrainingGenerator.GenerateExchange(45);
+        var words = exchange.Split(' ');
+        Assert(words.Length == 45 && exchange.StartsWith("CQ CQ DE ", StringComparison.Ordinal) && words.Contains("RST") && words.Contains("NAME") && words.Contains("QTH"),
+            "an exchange reads like a real contact: " + exchange);
+        Assert(exchange.Where(symbol => symbol != ' ').All(allowed.Contains), "exchange symbols are Latin letters, digits and ?: " + exchange);
+    }
+
+    // Короткое задание — с естественного места связи (вызов, ответ позывным, рапорт, имя), и не всегда с «CQ CQ DE»
+    var firstWords = new HashSet<string>();
+    for (var round = 0; round < 60; round++)
+    {
+        var task = TrainingGenerator.GenerateTask(ContentMode.RadioExchange, AlphabetMode.Russian, Array.Empty<char>(), round % 2 == 0 ? 10 : 3);
+        var taskWords = task.Split(' ');
+        var first = taskWords[0];
+        Assert(taskWords.Length == (round % 2 == 0 ? 10 : 3)
+               && (first is "CQ" or "UR" or "NAME" || System.Text.RegularExpressions.Regex.IsMatch(first, "^[A-Z0-9]{1,3}[0-9][A-Z]{1,3}$")),
+            "a short exchange task starts at a natural point: " + task);
+        firstWords.Add(first is "CQ" or "UR" or "NAME" ? first : "callsign");
+    }
+
+    Assert(firstWords.Count >= 3, "short exchange tasks start at different points: " + string.Join(", ", firstWords));
+
+    // Связь озвучивается и расшифровывается декодером (латиница, «?» — знак вопроса)
+    var contact = TrainingGenerator.GenerateExchange(30);
+    var clip = MorseAudioService.Render(contact, 100, 700, 80, 3, 7);
+    Assert(clip.GroupCount == 30, "every exchange word is one group in the audio");
+    var decoder = new MorseAudioDecoder(44_100, AlphabetMode.Latin);
+    decoder.Process(ClipSamples(clip));
+    decoder.Flush();
+    Assert(DecodeAccuracy(contact, decoder.Text) >= 0.98, $"the decoder copies an exchange\n  sent: {contact}\n  got:  {decoder.Text}");
+}
+
+static void TestSecondCourse()
+{
+    Texts.Apply(AppLanguage.Russian);
+    var first = Course.Steps(AlphabetMode.Russian);
+    var second = Course.Steps(AlphabetMode.Russian, 2);
+    Assert(Course.Steps(AlphabetMode.Russian, 1).Count == first.Count && first.Count == 14, "the first course is unchanged");
+    Assert(second.Count == 9 && second.Select(step => step.Number).SequenceEqual(Enumerable.Range(101, 9))
+           && second.Take(8).Select(step => step.CharactersPerMinute).SequenceEqual(new[] { 65, 70, 75, 80, 85, 90, 95, 100 })
+           && second[^1].IsExam && second[^1].CharactersPerMinute == 100
+           && second.All(step => step.Content == ContentMode.LettersAndDigits && step.CharacterGapUnits == 3 && step.GroupGapUnits == 7),
+        "second course: letters and digits, +5 cpm per step from 65 to 100, then the exam, numbered 101…");
+    Assert(Course.CourseOf(3) == 1 && Course.CourseOf(103) == 2 && Course.DisplayNumber(103) == 3 && Course.DisplayNumber(3) == 3,
+        "step numbers tell the course and show as 1…9");
+    Assert(Course.StepsFor(AlphabetMode.Russian, 105).Count == 9 && Course.Title(2) == Texts.T("Курс «С 60 до 100 зн/мин»"), "steps by number and title");
+
+    // Шаг 3 второго курса: настройки, запись в историю, зачёт, перенос истории, подпись
+    var settings = new AppSettings();
+    Course.Apply(second[2], settings);
+    Assert(settings.CourseStep == 103 && settings.CharactersPerMinute == 75 && settings.ContentModeIndex == (int)ContentMode.LettersAndDigits,
+        "applying step 3 of the second course");
+    Assert(Course.StepForRecord(settings, isExam: false) == 103, "a task with these settings belongs to step 103");
+    var history = new List<TrainingRecord> { new() { CourseStep = 103, AccuracyPercent = 95, CompletedAt = DateTime.Now } };
+    Assert(Course.IsPassed(history, second[2]) && !Course.IsPassed(history, first[2]), "step 3 of the second course is not step 3 of the first");
+    Assert(HistoryTransfer.Import(HistoryTransfer.Export(history))[0].CourseStep == 103, "history transfer keeps second-course steps");
+    Assert(history[0].Kind == Texts.F("Курс 2, шаг {0}", 3), "the record shows course 2, step 3: " + history[0].Kind);
+
+    var choices = Course.StepChoices(second, history);
+    Assert(choices[0].Label == "1. " + Texts.F("Буквы и цифры на {0} знаков в минуту", 65) && choices[2].Label.StartsWith("✓ 3. ", StringComparison.Ordinal)
+           && choices[^1].Label == "9. " + Texts.F("Экзамен на {0} знаков в минуту", 100), "second-course choices are numbered 1…9: " + choices[2].Label);
+    var book = CourseBook.Pages(AlphabetMode.Russian, 2);
+    Assert(book.Count == 3 && book[^1].Paragraphs.Count == 9 && CourseBook.Pages(AlphabetMode.Russian, 1).Count == 5, "the second course has its own short book");
+
+    // Интерфейс курса: текущий курс, первый и следующий шаг, заголовок, переход ко второму после экзамена первого
+    Assert(settings.CourseNumber == 2 && Course.Current(103, 1) == 2 && Course.Current(0, 2) == 2 && Course.Current(0, 1) == 1 && Course.Current(0, 7) == 1,
+        "the current course follows the step, before the start — the chosen one");
+    Assert(Course.FirstNumber(1) == 1 && Course.FirstNumber(2) == 101 && Course.Next(second, 103)?.Number == 104 && Course.Next(second, 109) is null
+           && Course.Next(first, first.Count) is null && Course.Next(second, 5) is null, "first and next steps stay inside the course");
+    Assert(Course.Heading(second[2], second.Count) == Texts.F("Курс «С 60 до 100 зн/мин» · шаг {0} из {1}: {2}", 3, 9, second[2].Title)
+           && Course.Heading(first[2], first.Count).StartsWith("Курс «С нуля до 60 зн/мин» · шаг 3 из 14", StringComparison.Ordinal),
+        "headings show the step number inside its course: " + Course.Heading(second[2], second.Count));
+    Assert(Course.Intro(2, 9).StartsWith("9 шагов: буквы и цифры", StringComparison.Ordinal) && Course.Intro(1, 14).StartsWith("14 шагов: метод Коха", StringComparison.Ordinal)
+           && Course.SwitchLabel(1) == Texts.T("Перейти к курсу «С 60 до 100 зн/мин»") && Course.SwitchLabel(2) == Texts.T("Перейти к курсу «С нуля до 60 зн/мин»"),
+        "intro and switch labels");
+    var exam = first[^1];
+    var examPassed = new List<TrainingRecord> { new() { CourseStep = exam.Number, IsExam = true, AccuracyPercent = 92, CompletedAt = DateTime.Now } };
+    Assert(Course.NextCourseHint(examPassed, first, exam).Length > 0 && Course.NextCourseHint(history, first, exam).Length == 0
+           && Course.NextCourseHint(examPassed, first, first[2]).Length == 0
+           && Course.NextCourseHint(new List<TrainingRecord> { new() { CourseStep = 109, IsExam = true, AccuracyPercent = 99, CompletedAt = DateTime.Now } }, second, second[^1]).Length == 0,
+        "the hint to go on appears only after the first course's exam is passed");
 }
 
 static void Assert(bool condition, string message)

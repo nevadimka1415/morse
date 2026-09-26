@@ -20,14 +20,17 @@ using MorseTrainer.Services;
 
 namespace MorseTrainer;
 
-/// <summary>Главное окно: вкладка «Обучение»: курс «С нуля до 60 зн/мин», карточки символов, свои напевы и голос.</summary>
+/// <summary>Главное окно: вкладка «Обучение»: курсы «С нуля до 60» и «С 60 до 100 зн/мин», карточки символов, свои напевы и голос.</summary>
 public partial class MainWindow
 {
     private static readonly string[] OwnVoiceExtensions = { ".wav" };
 
-    // ---------- Курс «С нуля до 60 зн/мин» ----------
+    // ---------- Курсы «С нуля до 60 зн/мин» и «С 60 до 100 зн/мин» ----------
 
-    private IReadOnlyList<CourseStep> CourseSteps => Course.Steps(Course.AlphabetFor(AlphabetCombo.SelectedIndex));
+    /// <summary>Текущий курс: 1 или 2 (переключается в меню «Выбрать шаг…»).</summary>
+    private int CurrentCourse => Course.Current(_courseStep, _courseNumber);
+
+    private IReadOnlyList<CourseStep> CourseSteps => Course.Steps(Course.AlphabetFor(AlphabetCombo.SelectedIndex), CurrentCourse);
 
     private void RefreshCourse()
     {
@@ -36,26 +39,31 @@ public partial class MainWindow
         var passed = Course.PassedCount(_history, steps);
         if (step is null)
         {
-            CourseTitleText.Text = Texts.T("Курс «С нуля до 60 зн/мин»");
-            CourseDetailsText.Text = Texts.F("{0} шагов: метод Коха по 4 символа, слова на 50 и 60 зн/мин, итоговый экзамен. Кнопка ставит нужные настройки и создаёт задание.", steps.Count);
+            CourseTitleText.Text = Course.Title(CurrentCourse);
+            CourseDetailsText.Text = Course.Intro(CurrentCourse, steps.Count);
             CourseStatusText.Text = passed > 0 ? Texts.F("Пройдено шагов: {0} из {1}.", passed, steps.Count) : " ";
             CourseStatusText.Foreground = (Brush)FindResource("MutedTextBrush");
             CourseStartButton.Content = Texts.T("Начать курс");
             CourseNextButton.Visibility = Visibility.Collapsed;
             CourseResetButton.Visibility = Visibility.Collapsed;
-            // После сброса с пройденными шагами можно продолжить с нужного — «Выбрать шаг…»
-            CourseChooseButton.Visibility = passed > 0 ? Visibility.Visible : Visibility.Collapsed;
+            // «Выбрать шаг…» видна всегда: в её меню и шаги (после случайного сброса), и переход к другому курсу
+            CourseChooseButton.Visibility = Visibility.Visible;
             UpdateCourseMarks(steps, 0, visible: passed > 0);
             return;
         }
 
         var stepPassed = Course.IsPassed(_history, step);
-        CourseTitleText.Text = Texts.F("Курс «С нуля до 60 зн/мин» · шаг {0} из {1}: {2}", step.Number, steps.Count, step.Title);
+        var hint = Course.NextCourseHint(_history, steps, step);
+        CourseTitleText.Text = Course.Heading(step, steps.Count);
         CourseDetailsText.Text = step.Details;
-        CourseStatusText.Text = Course.Status(_history, step) + " " + Texts.F("Пройдено шагов: {0} из {1}.", passed, steps.Count);
+        CourseStatusText.Text = Course.Status(_history, step) + " " + Texts.F("Пройдено шагов: {0} из {1}.", passed, steps.Count) +
+                                (hint.Length > 0 ? " " + hint : string.Empty);
         CourseStatusText.Foreground = (Brush)FindResource(stepPassed ? "PrimaryBrush" : "MutedTextBrush");
         CourseStartButton.Content = step.IsExam ? Texts.T("Начать экзамен") : Texts.T("Начать шаг");
-        CourseNextButton.Visibility = step.Number < steps.Count ? Visibility.Visible : Visibility.Collapsed;
+        // После итогового экзамена первого курса «Следующий шаг» ведёт ко второму курсу
+        var hasNext = Course.Next(steps, step.Number) is not null;
+        CourseNextButton.Content = hasNext ? Texts.T("Следующий шаг") : Texts.T("Следующий курс");
+        CourseNextButton.Visibility = hasNext || hint.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
         CourseNextButton.IsEnabled = stepPassed;
         CourseNextButton.ToolTip = stepPassed ? null : Texts.F("Откроется, когда в задании этого шага будет точность от {0} %.", Course.PassAccuracy);
         CourseResetButton.Visibility = Visibility.Visible;
@@ -91,10 +99,10 @@ public partial class MainWindow
 
     private async void CourseStartButton_OnClick(object sender, RoutedEventArgs e)
     {
-        // Первый запуск курса — сначала «книжка»: как устроен курс и метод Коха (можно пропустить)
+        // Первый запуск курса — сначала «книжка»: как устроен курс (можно пропустить)
         if (_courseStep == 0 && !App.HeadlessMode)
         {
-            var book = new CourseBookWindow(CourseBook.Pages(Course.AlphabetFor(AlphabetCombo.SelectedIndex)), startMode: true) { Owner = this };
+            var book = new CourseBookWindow(CourseBook.Pages(Course.AlphabetFor(AlphabetCombo.SelectedIndex), CurrentCourse), startMode: true, Course.Title(CurrentCourse)) { Owner = this };
             book.ShowDialog();
             if (!book.Started)
             {
@@ -102,23 +110,39 @@ public partial class MainWindow
             }
         }
 
-        _courseStep = Math.Max(1, _courseStep);
+        if (_courseStep == 0)
+        {
+            _courseStep = Course.FirstNumber(CurrentCourse);
+        }
+
         await StartCourseStepAsync();
     }
 
     // «📖 Как устроен курс» — перечитать книжку в любой момент
     private void CourseBookButton_OnClick(object sender, RoutedEventArgs e)
     {
-        new CourseBookWindow(CourseBook.Pages(Course.AlphabetFor(AlphabetCombo.SelectedIndex)), startMode: false) { Owner = this }.ShowDialog();
+        new CourseBookWindow(CourseBook.Pages(Course.AlphabetFor(AlphabetCombo.SelectedIndex), CurrentCourse), startMode: false, Course.Title(CurrentCourse)) { Owner = this }.ShowDialog();
     }
 
     private async void CourseNextButton_OnClick(object sender, RoutedEventArgs e)
     {
-        _courseStep = Math.Min(CourseSteps.Count, _courseStep + 1);
+        if (Course.Next(CourseSteps, _courseStep) is not { } next)
+        {
+            // Последний шаг: кнопка видна только как «Следующий курс» после итогового экзамена первого курса
+            if (CurrentCourse == 1)
+            {
+                SwitchCourse(2);
+            }
+
+            return;
+        }
+
+        _courseStep = next.Number;
         await StartCourseStepAsync();
     }
 
-    // «Выбрать шаг…»: меню всех шагов с ✓ у пройденных — после случайного сброса продолжить с нужного, а не с первого
+    // «Выбрать шаг…»: меню всех шагов с ✓ у пройденных — после случайного сброса продолжить с нужного, а не с первого;
+    // последним пунктом — переход к другому курсу
     private void CourseChooseButton_OnClick(object sender, RoutedEventArgs e)
     {
         var menu = BuildCourseStepMenu();
@@ -127,7 +151,7 @@ public partial class MainWindow
         menu.IsOpen = true;
     }
 
-    /// <summary>Меню «Выбрать шаг…»: по пункту на шаг, пройденные с ✓, текущий отмечен галочкой меню.</summary>
+    /// <summary>Меню «Выбрать шаг…»: по пункту на шаг, пройденные с ✓, текущий отмечен галочкой меню; в конце — «Перейти к курсу …».</summary>
     internal ContextMenu BuildCourseStepMenu()
     {
         var menu = new ContextMenu();
@@ -140,13 +164,36 @@ public partial class MainWindow
             menu.Items.Add(item);
         }
 
+        menu.Items.Add(new Separator());
+        var other = CurrentCourse == 2 ? 1 : 2;
+        var switchItem = new MenuItem { Header = new TextBlock { Text = Course.SwitchLabel(CurrentCourse) } };
+        switchItem.Click += (_, _) => SwitchCourse(other);
+        menu.Items.Add(switchItem);
         return menu;
     }
 
     /// <summary>Делает шаг текущим (без создания задания — его создаёт «Начать шаг»).</summary>
     internal void ChooseCourseStep(int number)
     {
-        _courseStep = Math.Clamp(number, 1, CourseSteps.Count);
+        if (Course.Find(CourseSteps, number) is null)
+        {
+            return;
+        }
+
+        _courseStep = number;
+        _courseNumber = Course.CourseOf(number);
+        _settingsService.Save(ReadSettings());
+        RefreshCourse();
+    }
+
+    /// <summary>
+    /// Переход к другому курсу: он начинается с «Начать курс» и книжки. Пройденные шаги обоих курсов остаются
+    /// в истории — вернуться к нужному можно через «Выбрать шаг…».
+    /// </summary>
+    internal void SwitchCourse(int course)
+    {
+        _courseNumber = course == 2 ? 2 : 1;
+        _courseStep = 0;
         _settingsService.Save(ReadSettings());
         RefreshCourse();
     }

@@ -26,12 +26,15 @@ public sealed class CourseBookPage : ContentPage
     private bool _finished;
     private bool _start;
     private bool _coverOpened;
+    private readonly string _courseTitle;
 
-    public CourseBookPage(IReadOnlyList<BookPage> pages, bool startMode)
+    public CourseBookPage(IReadOnlyList<BookPage> pages, bool startMode, string? bookTitle = null)
     {
         _pages = pages;
+        // Название курса — в заголовке, шапке и на обложке (у второго курса своё)
+        _courseTitle = bookTitle ?? Texts.T("Курс «С нуля до 60 зн/мин»");
         _startMode = startMode;
-        Title = Texts.T("Курс «С нуля до 60 зн/мин»");
+        Title = _courseTitle;
         var primaryDark = (Color)Application.Current!.Resources["PrimaryDark"];
 
         var root = new Grid { Padding = new Thickness(16, 12, 16, 16), RowSpacing = 12 };
@@ -41,7 +44,7 @@ public sealed class CourseBookPage : ContentPage
 
         // Шапка: название курса и «Пропустить»
         var header = new Grid { ColumnDefinitions = { new ColumnDefinition(GridLength.Star), new ColumnDefinition(GridLength.Auto) } };
-        header.Add(new Label { Text = Texts.T("Курс «С нуля до 60 зн/мин»"), FontAttributes = FontAttributes.Bold, Opacity = 0.7, VerticalOptions = LayoutOptions.Center });
+        header.Add(new Label { Text = _courseTitle, FontAttributes = FontAttributes.Bold, Opacity = 0.7, VerticalOptions = LayoutOptions.Center });
         var skip = new Button { Text = startMode ? Texts.T("Пропустить") : Texts.T("Закрыть"), BackgroundColor = Colors.Transparent, TextColor = primaryDark, Padding = new Thickness(10, 6) };
         skip.Clicked += async (_, _) => await FinishAsync(startMode);
         header.Add(skip, 1);
@@ -182,7 +185,7 @@ public sealed class CourseBookPage : ContentPage
         mark.Add(new BoxView { WidthRequest = 40, HeightRequest = 15, CornerRadius = 7.5, Color = Colors.White, VerticalOptions = LayoutOptions.Center });
         var content = new VerticalStackLayout { VerticalOptions = LayoutOptions.Center, Padding = new Thickness(24) };
         content.Add(mark);
-        content.Add(new Label { Text = Texts.T("Курс «С нуля до 60 зн/мин»"), FontSize = 26, FontAttributes = FontAttributes.Bold, TextColor = Colors.White, HorizontalTextAlignment = TextAlignment.Center });
+        content.Add(new Label { Text = _courseTitle, FontSize = 26, FontAttributes = FontAttributes.Bold, TextColor = Colors.White, HorizontalTextAlignment = TextAlignment.Center });
         content.Add(new Label { Text = "Morse Trainer", FontSize = 14, TextColor = Color.FromArgb("#CCFFFFFF"), HorizontalTextAlignment = TextAlignment.Center, Margin = new Thickness(0, 8, 0, 0) });
         return new Border
         {

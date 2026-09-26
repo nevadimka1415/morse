@@ -288,7 +288,8 @@ public partial class MainWindow
             WindowMaximized = WindowState == WindowState.Maximized,
             MainTabIndex = Math.Max(0, MainTabs.SelectedIndex),
             TrainingPanelCollapsed = TrainingPanel.Visibility != Visibility.Visible,
-            CourseStep = _courseStep
+            CourseStep = _courseStep,
+            CourseNumber = _courseNumber
         };
     }
 
@@ -335,6 +336,7 @@ public partial class MainWindow
         _lastPracticeAt = settings.LastPracticeAt;
         _practiceDays = new List<string>(settings.PracticeDays ?? new List<string>());
         _courseStep = Math.Max(0, settings.CourseStep);
+        _courseNumber = Course.Current(_courseStep, settings.CourseNumber);
         UpdateKochSummary();
     }
 

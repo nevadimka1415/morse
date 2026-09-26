@@ -32,6 +32,7 @@ public partial class MainWindow : Window
     private TrayReminder? _trayReminder;
     private DateOnly? _reminderShownOn;
     private int _courseStep;
+    private int _courseNumber = 1;
     private IReadOnlyList<TrainingRecord> _history = Array.Empty<TrainingRecord>();
     private bool _currentTaskRecorded;
     private DateTime _currentTaskStartedAt = DateTime.Now;
@@ -54,6 +55,10 @@ public partial class MainWindow : Window
     private int _toneFrequency;
     private int _toneVolume;
     private DispatcherTimer? _keyerTimer;
+    private MicrophoneCapture? _microphone;
+    private volatile MorseAudioDecoder? _micDecoder;
+    private int _micAlphabet;
+    private DispatcherTimer? _micTimer;
     private string _keyerTarget = string.Empty;
     private readonly ProfileService _profileService = new();
     private readonly Dictionary<char, int> _problemSymbols = new();
@@ -174,6 +179,15 @@ public partial class MainWindow : Window
         await GenerateTaskAsync();
     }
 
+    // Ушли с «Передачи» — микрофон отпускается (SelectionChanged всплывает и от списков внутри вкладок — их пропускаем)
+    private void MainTabs_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (ReferenceEquals(e.OriginalSource, MainTabs) && MainTabs.SelectedIndex != KeyerTabIndex)
+        {
+            StopMicrophone();
+        }
+    }
+
     private void Window_OnClosing(object? sender, CancelEventArgs e)
     {
         CancelQuizNext();
@@ -184,6 +198,7 @@ public partial class MainWindow : Window
         StopPlayback(resetProgress: false);
         StopLearningPlayback();
         StopKeyerTone();
+        StopMicrophone();
         if (_windowLoaded)
         {
             _settingsService.Save(ReadSettings());

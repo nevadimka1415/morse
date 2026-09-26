@@ -54,7 +54,8 @@ public partial class MainWindow
 
     private void StartKeyPress()
     {
-        if (_keyDown)
+        // В режиме «Приём с микрофона» экранный ключ не работает — передача идёт настоящим ключом
+        if (_keyDown || MicMode)
         {
             return;
         }
@@ -199,6 +200,21 @@ public partial class MainWindow
         var taskMode = KeyerModeCombo.SelectedIndex == 1;
         KeyerNewTaskButton.Visibility = taskMode ? Visibility.Visible : Visibility.Collapsed;
         KeyerCheckButton.Visibility = taskMode ? Visibility.Visible : Visibility.Collapsed;
+        // «Приём с микрофона»: слева — управление, справа вместо ключа — тон, скорость и уровень
+        MicPanel.Visibility = MicMode ? Visibility.Visible : Visibility.Collapsed;
+        MicPad.Visibility = MicMode ? Visibility.Visible : Visibility.Collapsed;
+        KeyPad.Visibility = MicMode ? Visibility.Collapsed : Visibility.Visible;
+        KeyerBackspaceButton.Visibility = MicMode ? Visibility.Collapsed : Visibility.Visible;
+        if (MicMode)
+        {
+            HighlightChoice(new[] { MicRussianButton, MicLatinButton }, _micAlphabet);
+            UpdateMicDisplay();
+        }
+        else
+        {
+            StopMicrophone();
+            UpdateKeyerDisplay();
+        }
         if (!taskMode)
         {
             _keyerTarget = string.Empty;
@@ -259,12 +275,18 @@ public partial class MainWindow
 
     private void ShowKeyerAnalysis()
     {
-        if (_keyer is null || KeyerAnalysisText is null)
+        if (KeyerAnalysisText is null)
         {
             return;
         }
 
-        var analysis = _keyer.Analyze();
+        // «Разбор» — по тому, что сейчас в поле: экранный ключ или приём с микрофона
+        var analysis = MicMode ? _micDecoder?.Analyze() : _keyer?.Analyze();
+        if (analysis is null)
+        {
+            return;
+        }
+
         KeyerAnalysisText.Text = analysis.Describe();
         KeyerAnalysisText.Foreground = (Brush)FindResource(analysis.HasEnoughData ? "TextBrush" : "MutedTextBrush");
     }
@@ -277,6 +299,13 @@ public partial class MainWindow
 
     private void KeyerClearButton_OnClick(object sender, RoutedEventArgs e)
     {
+        if (MicMode)
+        {
+            _micDecoder?.Clear();
+            UpdateMicDisplay();
+            return;
+        }
+
         _keyer?.Clear();
         _keyerLastRelease = -1;
         UpdateKeyerDisplay();
@@ -284,5 +313,126 @@ public partial class MainWindow
         {
             KeyerCodeText.Text = " ";
         }
+    }
+
+    // ---------- Приём с микрофона: настоящий ключ, рация, приёмник ----------
+
+    private bool MicMode => KeyerModeCombo?.SelectedIndex == 2;
+
+    private AlphabetMode MicAlphabetMode => _micAlphabet == 1 ? AlphabetMode.Latin : AlphabetMode.Russian;
+
+    private void MicButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        if (_microphone?.IsRunning == true)
+        {
+            StopMicrophone();
+            return;
+        }
+
+        StartMicrophone();
+    }
+
+    internal void StartMicrophone()
+    {
+        _microphone ??= new MicrophoneCapture();
+        try
+        {
+            // Звук приходит из фонового потока в текущий декодер (при смене алфавита он заменяется)
+            _micDecoder = new MorseAudioDecoder(MicrophoneCapture.SampleRate, MicAlphabetMode);
+            _microphone.Start((samples, count) => _micDecoder?.Process(samples.AsSpan(0, count)));
+        }
+        catch (Exception exception) when (exception is InvalidOperationException or DllNotFoundException or EntryPointNotFoundException)
+        {
+            _microphone.Stop();
+            MicStatusText.Text = Texts.F("Микрофон недоступен: {0}", exception.Message);
+            return;
+        }
+
+        MicButton.Content = Texts.T("■ Остановить");
+        if (_micTimer is null)
+        {
+            _micTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(150) };
+            _micTimer.Tick += (_, _) => UpdateMicDisplay();
+        }
+
+        _micTimer.Start();
+        UpdateMicDisplay();
+    }
+
+    private void StopMicrophone()
+    {
+        if (_microphone?.IsRunning != true)
+        {
+            return;
+        }
+
+        _microphone.Stop();
+        _micTimer?.Stop();
+        _micDecoder?.Flush();
+        if (MicButton is not null)
+        {
+            MicButton.Content = Texts.T("● Слушать микрофон");
+            UpdateMicDisplay();
+        }
+    }
+
+    private void UpdateMicDisplay()
+    {
+        var listening = _microphone?.IsRunning == true;
+        if (_micDecoder is not { } decoder)
+        {
+            MicLevelBar.Value = 0;
+            if (MicMode)
+            {
+                KeyerOutputText.Text = string.Empty;
+                KeyerCodeText.Text = " ";
+            }
+
+            return;
+        }
+
+        var tone = decoder.ToneHz;
+        var speed = decoder.CharactersPerMinute;
+        MicStatusText.Text = !listening ? Texts.T("Остановлено")
+            : tone == 0 ? Texts.T("Слушаю… ищу тон")
+            : speed == 0 ? Texts.F("Тон {0} Гц", tone)
+            : Texts.F("Тон {0} Гц · {1} зн/мин", tone, speed);
+        MicLevelBar.Value = listening ? decoder.Level : 0;
+        if (!MicMode)
+        {
+            return;
+        }
+
+        var pending = decoder.PendingCode.Replace('.', '•').Replace('-', '—');
+        KeyerCodeText.Text = pending.Length == 0 ? " " : pending;
+        KeyerOutputText.Text = decoder.Text;
+        KeyerOutputText.CaretIndex = KeyerOutputText.Text.Length;
+    }
+
+    private void MicAlphabetButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        var index = ChoiceIndex(sender, 1);
+        if (index < 0)
+        {
+            return;
+        }
+
+        _micAlphabet = index;
+        HighlightChoice(new[] { MicRussianButton, MicLatinButton }, _micAlphabet);
+        // Слушаем — новый декодер с другим алфавитом (текст начинается заново)
+        if (_microphone?.IsRunning == true)
+        {
+            _micDecoder = new MorseAudioDecoder(MicrophoneCapture.SampleRate, MicAlphabetMode);
+            UpdateMicDisplay();
+        }
+    }
+
+    /// <summary>Для проверки без микрофона: звук прогоняется через декодер режима «Приём с микрофона».</summary>
+    internal void DecodeMicrophoneSamples(float[] samples, int sampleRate)
+    {
+        _micDecoder = new MorseAudioDecoder(sampleRate, MicAlphabetMode);
+        _micDecoder.Process(samples);
+        _micDecoder.Flush();
+        UpdateMicDisplay();
     }
 }

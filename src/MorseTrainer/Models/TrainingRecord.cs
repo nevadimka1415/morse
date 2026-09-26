@@ -11,13 +11,15 @@ public sealed class TrainingRecord
     /// <summary>Запись экзамена (одно прослушивание, время) — в истории помечается отдельно.</summary>
     public bool IsExam { get; set; }
 
-    /// <summary>Подпись вида записи для таблиц: «Экзамен», «Курс, шаг N» или пусто.</summary>
+    /// <summary>Подпись вида записи для таблиц: «Экзамен», «Курс, шаг N» (второй курс — «Курс 2, шаг N») или пусто.</summary>
     [JsonIgnore]
-    public string Kind => (IsExam, CourseStep > 0) switch
+    public string Kind => (IsExam, CourseStep > 0, Domain.Course.CourseOf(CourseStep) == 2) switch
     {
-        (true, true) => Texts.F("Экзамен · курс, шаг {0}", CourseStep),
-        (true, false) => Texts.T("Экзамен"),
-        (false, true) => Texts.F("Курс, шаг {0}", CourseStep),
+        (true, true, false) => Texts.F("Экзамен · курс, шаг {0}", CourseStep),
+        (true, true, true) => Texts.F("Экзамен · курс 2, шаг {0}", Domain.Course.DisplayNumber(CourseStep)),
+        (true, false, _) => Texts.T("Экзамен"),
+        (false, true, false) => Texts.F("Курс, шаг {0}", CourseStep),
+        (false, true, true) => Texts.F("Курс 2, шаг {0}", Domain.Course.DisplayNumber(CourseStep)),
         _ => string.Empty
     };
 

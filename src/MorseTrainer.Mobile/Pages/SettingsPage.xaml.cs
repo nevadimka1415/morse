@@ -39,7 +39,7 @@ public partial class SettingsPage : ContentPage
         {
             Texts.T("Только буквы"), Texts.T("Только цифры"), Texts.T("Буквы и цифры"),
             Texts.T("Все символы"), Texts.T("Выбранные символы"), Texts.T("Метод Коха"),
-            Texts.T("Слова"), Texts.T("Позывные"), Texts.T("Q-код и сокращения")
+            Texts.T("Слова"), Texts.T("Позывные"), Texts.T("Q-код и сокращения"), Texts.T("Радиообмен")
         };
         ExamPlaybacksPicker.ItemsSource = Enumerable.Range(ExamSession.MinPlaybacks, ExamSession.MaxAllowedPlaybacks)
             .Select(count => count.ToString()).ToList();

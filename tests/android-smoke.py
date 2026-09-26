@@ -52,6 +52,9 @@ CHOOSE_STEP_TEXTS = ("Выбрать шаг…", "Choose step…")
 RESET_COURSE_TEXTS = ("Сбросить курс", "Reset the course")
 SHARE_AUDIO_TEXTS = ("Поделиться звуком задания", "Share task audio")
 GROUP_REPLAY_TEXTS = ("Повтор группы 1", "Replaying group 1")
+MIC_START_TEXTS = ("● Слушать микрофон", "● Listen to the microphone")
+MIC_STOP_TEXTS = ("■ Остановить", "■ Stop")
+MIC_LISTENING_PREFIXES = ("Слушаю", "Listening", "Тон ", "Tone ")
 ADVANCED_OPEN_TEXTS = ("Дополнительные настройки ▾", "More settings ▾")
 ADVANCED_CLOSE_TEXTS = ("Дополнительные настройки ▴", "More settings ▴")
 SAVE_PROGRESS_TEXTS = ("Сохранить прогресс…", "Save progress…")
@@ -563,6 +566,27 @@ def save_progress_empty():
     return "пустая история — сообщение «Пока нечего сохранять», процесс жив"
 
 
+def microphone_listen():
+    """«Передача» → «● Слушать микрофон»: слушает (эмулятор без звука — «ищу тон») или объясняет, что микрофона нет;
+    остановка возвращает кнопку; приложение не падает."""
+    tap(scroll_until(MIC_START_TEXTS, "«● Слушать микрофон»"))
+    time.sleep(3)
+    ensure_alive()
+    alert = close_alert()
+    if alert:
+        return f"микрофона нет — сообщение: {alert}"
+    wait_for(MIC_LISTENING_PREFIXES, 10, prefix=True)
+    screenshot("keyer-microphone")
+    root, _ = dump_ui()
+    stop = nodes_with_text(root, MIC_STOP_TEXTS)
+    if not stop:
+        raise RuntimeError("Нет кнопки «■ Остановить»")
+    tap(stop[0])
+    wait_for(MIC_START_TEXTS, 10)
+    ensure_alive()
+    return "микрофон слушает, остановка работает"
+
+
 def course_menu_button(root):
     """«⋯» курса: по описанию для TalkBack, а если его нет — кнопка в том же ряду правее «Следующий шаг»."""
     found = nodes_with_text(root, COURSE_MENU_TEXTS)
@@ -669,6 +693,31 @@ def course_on_step_one():
     return found[0].get("text", "")
 
 
+def second_course():
+    """«⋯» → «Перейти к курсу «С 60 до 100 зн/мин»» → «Начать курс» → книжка второго курса → «Пропустить» → шаг 1 из 9."""
+    root, _ = dump_ui()
+    menu = course_menu_button(root)
+    if menu is None:
+        raise RuntimeError("Нет кнопки «⋯» курса")
+    tap(menu)
+    tap(wait_for(("Перейти к курсу «С 60 до 100",), 10, prefix=True)[0])
+    wait_for(("Курс «С 60 до 100 зн/мин»",), 10)
+    tap(wait_for(("Начать курс",), 15)[0])
+    wait_for(("Как устроен курс",), 20)
+    time.sleep(2.5)   # обложка раскрывается ~1,2 с
+    screenshot("ru-course2-book")
+    root, _ = dump_ui()
+    skip = nodes_with_text(root, ("Пропустить",))
+    if not skip:
+        raise RuntimeError("Нет кнопки «Пропустить»")
+    tap(skip[0])
+    wait_for(READY_PREFIXES[:1], 60, prefix=True)
+    ensure_alive()
+    open_tab("ru-learning-course2", ("Обучение",))()
+    found = wait_for(("Курс «С 60 до 100 зн/мин» · шаг 1 из 9",), 10, prefix=True)
+    return found[0].get("text", "")
+
+
 def install_rustore():
     apk = find_apk(rustore_apk_arg)
     adb("install", "-r", "-g", str(apk), timeout=300)
@@ -757,6 +806,8 @@ def main():
             if key == "quiz":
                 step("На слух: ответ и следующий символ сам", quiz_round())
                 step("На слух: без автоперехода", quiz_manual_round())
+            if key == "keyer":
+                step("Передача: приём с микрофона", microphone_listen)
             if key == "settings":
                 step("Настройки: значок вверху — пасхалка", logo_easter_egg)
                 step("Настройки: «Сохранить прогресс…» без занятий", save_progress_empty)
@@ -781,6 +832,7 @@ def main():
         step("На русском: «Обучение» для курса", open_tab("ru-learning-course", ("Обучение",)))
         step("На русском: сброс курса, книжка и «Пропустить»", reset_course_and_skip_book)
         step("На русском: курс на шаге 1", course_on_step_one)
+        step("На русском: второй курс «С 60 до 100», книжка и шаг 1", second_course)
         step("Итог: процесс жив, падений нет", lambda: f"pid {ensure_alive()}")
         if rustore_apk_arg:
             # Сборка для RuStore ставится поверх (та же подпись и версия) и проверяется отдельно

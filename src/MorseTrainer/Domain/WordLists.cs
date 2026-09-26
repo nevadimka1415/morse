@@ -72,12 +72,46 @@ public static class WordLists
         return prefix + digit + new string(suffix);
     }
 
+    // Для радиообмена: имена, города, рапорты — как их передают в эфире (латиница)
+    private static readonly string[] OperatorNames =
+        { "ALEX", "IVAN", "OLEG", "SERGEY", "PAVEL", "YURI", "DIMA", "OLGA", "ANNA", "NINA", "JOHN", "MIKE", "TOM", "HANS", "PETER" };
+
+    private static readonly string[] Cities =
+        { "MOSCOW", "TVER", "OMSK", "PERM", "KAZAN", "SOCHI", "TULA", "KIROV", "BERLIN", "PARIS", "PRAGUE", "ROME", "OSLO", "TOKYO", "SEOUL" };
+
+    private static readonly string[] Reports = { "599", "589", "579", "569", "559", "449" };
+    private static readonly string[] Greetings = { "GM", "GA", "GE" };
+    private static readonly string[] Extras =
+        { "RIG IC7300 PWR 100W ANT DIPOLE", "RIG FT891 PWR 50W ANT GP", "WX SUNNY TEMP 20C", "WX CLOUDY TEMP 5C", "HR WX RAIN" };
+
+    /// <summary>
+    /// Одна связь, как она звучит в эфире: общий вызов CQ, ответ с приветствием, рапортом RST, именем и городом,
+    /// подтверждение и прощание 73 … SK. Позывные случайные, всё латиницей; иногда — аппаратура или погода.
+    /// </summary>
+    public static string RandomExchange()
+    {
+        var caller = RandomCallsign();
+        var answer = RandomCallsign();
+        while (answer == caller)
+        {
+            answer = RandomCallsign();
+        }
+
+        string Pick(string[] items) => items[RandomNumberGenerator.GetInt32(items.Length)];
+        var extra = RandomNumberGenerator.GetInt32(100) < 50 ? " " + Pick(Extras) : string.Empty;
+        var reportToCaller = Pick(Reports);
+        return $"CQ CQ DE {caller} {caller} K " +
+               $"{caller} DE {answer} {Pick(Greetings)} OM TNX CALL UR RST {reportToCaller} {reportToCaller} NAME {Pick(OperatorNames)} QTH {Pick(Cities)}{extra} HW? {caller} DE {answer} KN " +
+               $"{answer} DE {caller} R TNX FER RPRT UR RST {Pick(Reports)} NAME {Pick(OperatorNames)} QTH {Pick(Cities)} 73 {answer} DE {caller} SK";
+    }
+
     /// <summary>Все символы, которые встречаются в режиме: для подсказок и умного повторения.</summary>
     public static IReadOnlyList<char> Symbols(ContentMode content, AlphabetMode alphabet)
     {
         return content switch
         {
             ContentMode.Callsigns => (LatinLetters + "0123456789").ToCharArray(),
+            ContentMode.RadioExchange => (LatinLetters + "0123456789?").ToCharArray(),
             ContentMode.QCodes => QCodes.SelectMany(word => word).Distinct().OrderBy(symbol => symbol).ToArray(),
             ContentMode.Words => Words(alphabet).SelectMany(word => word).Distinct().OrderBy(symbol => symbol).ToArray(),
             _ => Array.Empty<char>()

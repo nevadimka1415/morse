@@ -28,13 +28,16 @@ public sealed class CourseBookWindow : Window
     private readonly Border _cover;
     private readonly FrameworkElement _pageView;
     private int _index;
+    private readonly string _courseTitle;
 
-    public CourseBookWindow(IReadOnlyList<BookPage> pages, bool startMode)
+    public CourseBookWindow(IReadOnlyList<BookPage> pages, bool startMode, string? bookTitle = null)
     {
         ArgumentNullException.ThrowIfNull(pages);
         _pages = pages;
+        // Название курса — в заголовке, шапке и на обложке (у второго курса своё)
+        _courseTitle = bookTitle ?? Texts.T("Курс «С нуля до 60 зн/мин»");
         _startMode = startMode;
-        Title = Texts.T("Курс «С нуля до 60 зн/мин»");
+        Title = _courseTitle;
         Width = 640;
         Height = 600;
         ResizeMode = ResizeMode.NoResize;
@@ -53,7 +56,7 @@ public sealed class CourseBookWindow : Window
         var header = new Grid { Margin = new Thickness(0, 0, 0, 12) };
         header.ColumnDefinitions.Add(new ColumnDefinition());
         header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        var courseTitle = new TextBlock { Text = Texts.T("Курс «С нуля до 60 зн/мин»"), FontSize = 15, FontWeight = FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center };
+        var courseTitle = new TextBlock { Text = _courseTitle, FontSize = 15, FontWeight = FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center };
         courseTitle.SetResourceReference(TextBlock.ForegroundProperty, "MutedTextBrush");
         header.Children.Add(courseTitle);
         var skipButton = new Button { Content = startMode ? Texts.T("Пропустить") : Texts.T("Закрыть"), Padding = new Thickness(12, 6, 12, 6) };
@@ -170,7 +173,7 @@ public sealed class CourseBookWindow : Window
         mark.Children.Add(new Rectangle { Width = 40, Height = 15, RadiusX = 7.5, RadiusY = 7.5, Fill = Brushes.White, Margin = new Thickness(8, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center });
         var text = new StackPanel { VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Center };
         text.Children.Add(mark);
-        text.Children.Add(new TextBlock { Text = Texts.T("Курс «С нуля до 60 зн/мин»"), FontFamily = new FontFamily("Georgia, Times New Roman"), FontSize = 26, FontWeight = FontWeights.Bold, Foreground = Brushes.White, TextAlignment = TextAlignment.Center, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(30, 0, 30, 10) });
+        text.Children.Add(new TextBlock { Text = _courseTitle, FontFamily = new FontFamily("Georgia, Times New Roman"), FontSize = 26, FontWeight = FontWeights.Bold, Foreground = Brushes.White, TextAlignment = TextAlignment.Center, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(30, 0, 30, 10) });
         text.Children.Add(new TextBlock { Text = "Morse Trainer", FontSize = 14, Foreground = new SolidColorBrush(Color.FromArgb(0xCC, 0xFF, 0xFF, 0xFF)), HorizontalAlignment = HorizontalAlignment.Center });
         var cover = new Border
         {

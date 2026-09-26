@@ -82,7 +82,7 @@
             </Grid>
         </Border>
 
-        <TabControl x:Name="MainTabs" Grid.Row="3">
+        <TabControl x:Name="MainTabs" Grid.Row="3" SelectionChanged="MainTabs_OnSelectionChanged">
             <TabItem Header="{loc:Loc 'Тренировка'}">
                 <Grid>
                     <Grid.ColumnDefinitions>
@@ -219,6 +219,7 @@
                                         <ComboBoxItem Content="{loc:Loc 'Слова'}" />
                                         <ComboBoxItem Content="{loc:Loc 'Позывные'}" />
                                         <ComboBoxItem Content="{loc:Loc 'Q-код и сокращения'}" />
+                                        <ComboBoxItem Content="{loc:Loc 'Радиообмен'}" />
                                     </ComboBox>
 
                                     <Border x:Name="KochPanel" Visibility="Collapsed" Background="{DynamicResource CardAltBrush}"
@@ -733,7 +734,19 @@
                                       SelectionChanged="KeyerModeCombo_OnSelectionChanged">
                                 <ComboBoxItem Content="{loc:Loc 'Свободная передача'}" />
                                 <ComboBoxItem Content="{loc:Loc 'Задание: группы по 5 символов'}" />
+                                <ComboBoxItem Content="{loc:Loc 'Приём с микрофона: настоящий ключ, рация'}" />
                             </ComboBox>
+                            <!-- Приём с микрофона: тон и скорость декодер находит сам; текст — в поле справа, «Разбор» — по нему -->
+                            <StackPanel x:Name="MicPanel" Visibility="Collapsed" Margin="0,0,0,10">
+                                <TextBlock Text="{loc:Loc 'Микрофон у динамика рации, приёмника или генератора ключа — тон и скорость программа найдёт сама. Так проверяется передача на настоящем ключе.'}"
+                                           Foreground="{DynamicResource MutedTextBrush}" TextWrapping="Wrap" Margin="0,0,0,10" />
+                                <WrapPanel Margin="0,0,0,10">
+                                    <Button x:Name="MicRussianButton" Content="{loc:Loc 'Русские буквы'}" Tag="0" Click="MicAlphabetButton_OnClick" Padding="12,7" Margin="0,0,8,0" />
+                                    <Button x:Name="MicLatinButton" Content="{loc:Loc 'Латинские буквы'}" Tag="1" Click="MicAlphabetButton_OnClick" Padding="12,7" />
+                                </WrapPanel>
+                                <Button x:Name="MicButton" Content="{loc:Loc '● Слушать микрофон'}" Click="MicButton_OnClick" Style="{StaticResource PrimaryButton}"
+                                        HorizontalAlignment="Left" Padding="14,7" />
+                            </StackPanel>
                             <Button x:Name="KeyerNewTaskButton" Content="{loc:Loc 'Новое задание'}" Click="KeyerNewTaskButton_OnClick"
                                     Padding="12,7" HorizontalAlignment="Left" Visibility="Collapsed" Margin="0,0,0,10" />
                             <TextBlock x:Name="KeyerTargetText" Text="" FontSize="20" FontFamily="Consolas" TextWrapping="Wrap" Margin="0,0,0,12" />
@@ -757,6 +770,14 @@
                                 <RowDefinition Height="12" />
                                 <RowDefinition Height="Auto" />
                             </Grid.RowDefinitions>
+                            <!-- В режиме «Приём с микрофона» вместо ключа — тон, скорость и уровень сигнала -->
+                            <Border x:Name="MicPad" Background="{DynamicResource PrimaryDarkBrush}" CornerRadius="18" Visibility="Collapsed">
+                                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Width="300">
+                                    <TextBlock x:Name="MicStatusText" Text="{loc:Loc 'Нажмите «● Слушать микрофон»'}" Foreground="{DynamicResource PrimaryBrush}"
+                                               FontSize="22" FontWeight="Bold" TextWrapping="Wrap" TextAlignment="Center" />
+                                    <ProgressBar x:Name="MicLevelBar" Minimum="0" Maximum="1" Height="10" Margin="0,14,0,0" />
+                                </StackPanel>
+                            </Border>
                             <Border x:Name="KeyPad" Background="{DynamicResource PrimaryDarkBrush}" CornerRadius="18" Cursor="Hand"
                                     PreviewMouseLeftButtonDown="KeyPad_OnMouseDown" PreviewMouseLeftButtonUp="KeyPad_OnMouseUp"
                                     MouseLeave="KeyPad_OnMouseLeave" LostMouseCapture="KeyPad_OnLostMouseCapture">
