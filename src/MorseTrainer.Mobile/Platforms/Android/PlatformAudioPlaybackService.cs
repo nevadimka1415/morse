@@ -30,7 +30,12 @@ public sealed class PlatformAudioPlaybackService : IAudioPlaybackService
         player.Prepare();
         using var cancellationRegistration = cancellationToken.Register(() =>
         {
-            Stop();
+            // Отмена старого воспроизведения не должна глушить уже запущенное новое
+            if (ReferenceEquals(_player, player))
+            {
+                Stop();
+            }
+
             completion.TrySetCanceled(cancellationToken);
         });
         player.Start();
@@ -40,7 +45,12 @@ public sealed class PlatformAudioPlaybackService : IAudioPlaybackService
         }
         finally
         {
-            Stop();
+            // Новый PlayAsync поверх этого уже остановил и освободил этот плеер, а _player — уже новый:
+            // его не трогаем, иначе второй звук подряд молчит
+            if (ReferenceEquals(_player, player))
+            {
+                Stop();
+            }
         }
     }
 

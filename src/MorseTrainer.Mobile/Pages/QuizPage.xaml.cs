@@ -92,6 +92,7 @@ public partial class QuizPage : ContentPage, IDisposable
 
         RepeatButton.IsEnabled = false;
         QuizStatusLabel.Text = Texts.T("Нажмите «Новый символ» и слушайте");
+        UpdateScore();
     }
 
     private async void NewButton_OnClicked(object? sender, EventArgs e) => await AskNextAsync();
@@ -300,7 +301,7 @@ public partial class QuizPage : ContentPage, IDisposable
     private void UpdateScore(AppSettings? settings = null)
     {
         QuizScoreLabel.Text = Texts.F("Результат: {0} / {1}", _correct, _total);
-        var frequent = EarQuiz.Frequent((settings ?? _settingsService.LoadSettings()).QuizMisses);
+        var frequent = EarQuiz.Frequent((settings ?? _settingsService.LoadSettings()).QuizMisses, pool: LearningCatalog.GetItems(_alphabet));
         QuizFrequentLabel.Text = frequent.Count == 0 ? string.Empty : Texts.F("Чаще звучат: {0}", string.Join(' ', frequent));
         QuizFrequentLabel.IsVisible = frequent.Count > 0;
     }

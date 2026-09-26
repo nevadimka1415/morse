@@ -35,7 +35,12 @@ public sealed class PlatformAudioPlaybackService : IAudioPlaybackService
 
         using var cancellationRegistration = cancellationToken.Register(() =>
         {
-            Stop();
+            // Отмена старого воспроизведения не должна глушить уже запущенное новое
+            if (ReferenceEquals(_player, player))
+            {
+                Stop();
+            }
+
             completion.TrySetCanceled(cancellationToken);
         });
         try
@@ -44,7 +49,11 @@ public sealed class PlatformAudioPlaybackService : IAudioPlaybackService
         }
         finally
         {
-            Stop();
+            // Новый PlayAsync поверх этого уже остановил этот плеер, а _player — уже новый: его не трогаем
+            if (ReferenceEquals(_player, player))
+            {
+                Stop();
+            }
         }
     }
 

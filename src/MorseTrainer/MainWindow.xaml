@@ -654,7 +654,7 @@
                                 <StackPanel>
                                     <TextBlock x:Name="QuizFrequentText" Text=" " Visibility="Collapsed" Foreground="{DynamicResource MutedTextBrush}" FontSize="12"
                                                HorizontalAlignment="Center" Margin="0,0,0,6"
-                                               ToolTip="{loc:Loc 'Символы, которые вы путали, звучат чаще, пока не ответите на них верно'}" />
+                                               ToolTip="{loc:Loc 'Символы, которые вы путали, звучат чаще; каждый верный ответ на такой символ возвращает его к обычной частоте на шаг'}" />
                                     <TextBlock x:Name="QuizStatusText" Text="{loc:Loc 'Нажмите «Новый символ» и слушайте'}" FontSize="16" FontWeight="SemiBold"
                                                HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" Margin="0,0,0,8" />
                                     <UniformGrid x:Name="QuizAnswersGrid" Columns="2" Margin="-5,0,-5,0">

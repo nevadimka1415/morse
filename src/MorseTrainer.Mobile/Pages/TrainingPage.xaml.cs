@@ -147,15 +147,13 @@ public partial class TrainingPage : ContentPage, IDisposable
                 }
             }
 
-            _currentTask = drill is null
+            var task = drill is null
                 ? TrainingGenerator.GenerateTask(content, alphabet, pool, Math.Clamp(settings.GroupCount, 1, 100), emphasized)
                 : TrainingGenerator.Generate(pool, Math.Clamp(settings.GroupCount, 1, 100), emphasized);
-            _currentDrill = drill;
-            _currentTaskRecorded = false;
-            _currentTaskStartedAt = DateTime.Now;
-            _currentGroupCount = Math.Clamp(settings.GroupCount, 1, 100);
-            _currentClip = await Task.Run(() => MorseAudioService.Render(
-                _currentTask,
+            // Задание становится текущим только после отрисовки звука: пока доигрывает finally старого прослушивания,
+            // на экране остаётся старое задание — новое (и экзаменационное) не мелькнёт открытым текстом
+            var clip = await Task.Run(() => MorseAudioService.Render(
+                task,
                 Math.Clamp(settings.CharactersPerMinute, 20, 300),
                 Math.Clamp(settings.FrequencyHz, 300, 1200),
                 Math.Clamp(settings.VolumePercent, 0, 100),
@@ -164,6 +162,12 @@ public partial class TrainingPage : ContentPage, IDisposable
                 settings.PlayStartSignal,
                 Math.Clamp(settings.StartPauseUnits, 7, 60),
                 new NoiseProfile(settings.NoisePercent, settings.QsbPercent, settings.DriftHz)));
+            _currentTask = task;
+            _currentClip = clip;
+            _currentDrill = drill;
+            _currentTaskRecorded = false;
+            _currentTaskStartedAt = DateTime.Now;
+            _currentGroupCount = Math.Clamp(settings.GroupCount, 1, 100);
             _answerVisible = false;
             AnswerEditor.Text = string.Empty;
             AccuracyLabel.Text = Texts.T("Точность: —");
@@ -203,19 +207,24 @@ public partial class TrainingPage : ContentPage, IDisposable
         _exam?.RegisterPlayback();
         UpdateExamLabel();
         StopPlayback();
-        _playbackCancellation = new CancellationTokenSource();
+        var cancellation = new CancellationTokenSource();
+        _playbackCancellation = cancellation;
         PlayButton.IsEnabled = false;
         RepeatButton.IsEnabled = false;
         StopButton.IsEnabled = true;
-        PlaybackStatusLabel.Text = Texts.T("Сначала Ж Ж Ж, затем начнётся задание…");
         var clip = _currentClip;
+        // «Сначала Ж Ж Ж» — только когда сигнал начала действительно звучит
+        PlaybackStatusLabel.Text = clip.GroupAt(TimeSpan.Zero) == 0
+            ? Texts.T("Сначала Ж Ж Ж, затем начнётся задание…")
+            : Texts.T("Идёт воспроизведение…");
         var playing = true;
         try
         {
-            var path = await AudioFileService.SaveClipAsync(_currentClip, "current-training.wav", _playbackCancellation.Token);
+            var path = await AudioFileService.SaveClipAsync(clip, "current-training.wav", cancellation.Token);
             // Счётчик групп по времени от начала воспроизведения: «Группа 3 из 10» и подсветка группы в тексте задания
             var clock = System.Diagnostics.Stopwatch.StartNew();
-            ShowPlayingGroup(clip, 0);
+            // Без сигнала начала первая группа звучит сразу — «Ж Ж Ж» не показываем даже на миг
+            ShowPlayingGroup(clip, clip.GroupAt(TimeSpan.Zero));
             Dispatcher.StartTimer(TimeSpan.FromMilliseconds(200), () =>
             {
                 if (!playing)
@@ -226,7 +235,7 @@ public partial class TrainingPage : ContentPage, IDisposable
                 ShowPlayingGroup(clip, clip.GroupAt(clock.Elapsed));
                 return true;
             });
-            await _audioPlayback.PlayAsync(path, _playbackCancellation.Token);
+            await _audioPlayback.PlayAsync(path, cancellation.Token);
             // Клавиатура нужна только при вводе ответа; при записи на бумаге она закрыла бы полэкрана
             if (AnswerPanel.IsVisible)
             {
@@ -240,23 +249,35 @@ public partial class TrainingPage : ContentPage, IDisposable
         }
         catch (OperationCanceledException)
         {
-            PlaybackStatusLabel.Text = Texts.T("Воспроизведение остановлено");
+            // Новое прослушивание уже идёт — его статус не перетираем
+            if (ReferenceEquals(_playbackCancellation, cancellation))
+            {
+                PlaybackStatusLabel.Text = Texts.T("Воспроизведение остановлено");
+            }
         }
         catch (Exception exception)
         {
-            // Сбой звука (MediaPlayer, запись файла) не должен ронять приложение из async void
+            // Сбой звука (MediaPlayer, запись файла) не должен ронять приложение из async void;
+            // счётчик групп останавливается сразу, а не после закрытия окна ошибки
+            playing = false;
+            HidePlayingGroup();
             PlaybackStatusLabel.Text = Texts.T("Не удалось воспроизвести");
             await DisplayAlertAsync(Texts.T("Не удалось воспроизвести"), exception.Message, Texts.T("Закрыть"));
         }
         finally
         {
             playing = false;
-            HidePlayingGroup();
-            _playbackCancellation?.Dispose();
-            _playbackCancellation = null;
-            PlayButton.IsEnabled = CanPlayNow;
-            RepeatButton.IsEnabled = CanPlayNow;
-            StopButton.IsEnabled = false;
+            // Новое прослушивание уже началось — его счётчик, кнопки и отмену не трогаем
+            if (ReferenceEquals(_playbackCancellation, cancellation))
+            {
+                HidePlayingGroup();
+                _playbackCancellation = null;
+                PlayButton.IsEnabled = CanPlayNow;
+                RepeatButton.IsEnabled = CanPlayNow;
+                StopButton.IsEnabled = false;
+            }
+
+            cancellation.Dispose();
         }
     }
 

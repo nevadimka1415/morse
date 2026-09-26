@@ -290,6 +290,12 @@ for (const file of ['src/MorseTrainer/MainWindow.xaml', 'src/MorseTrainer/Symbol
   assert(!/<x:String>[^<]*[А-Яа-яЁё]/.test(xaml), `${file} has Russian picker items in XAML; set ItemsSource in code with Texts.T.`);
 }
 assert(read('src/MorseTrainer.Core/MorseTrainer.Core.csproj').includes('Texts.cs'), 'Core project must compile Localization/Texts.cs.');
+// Словарь переводов заполняется индексатором: повторный ключ не падает, а молча перезаписывает перевод
+// (так «Метод Коха» стал «The Koch method» во всём интерфейсе) — дубли ловим здесь
+const translationKeys = [...read('src/MorseTrainer/Localization/Texts.cs').matchAll(/^\s*\["((?:[^"\\]|\\.)*)"\]\s*=/gm)].map((match) => match[1]);
+const duplicateKeys = [...new Set(translationKeys.filter((key, index) => translationKeys.indexOf(key) !== index))];
+assert(translationKeys.length > 300, `Texts.cs: parsed only ${translationKeys.length} translation keys.`);
+assert(duplicateKeys.length === 0, `Texts.cs has duplicate translation keys: ${duplicateKeys.join(' | ')}`);
 
 const buildWorkflow = read('.github/workflows/build.yml');
 assert(buildWorkflow.includes('scripts\\build.ps1'), 'Build workflow does not call the build script.');

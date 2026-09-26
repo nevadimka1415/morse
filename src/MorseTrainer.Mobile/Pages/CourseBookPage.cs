@@ -51,19 +51,18 @@ public sealed class CourseBookPage : ContentPage
         _titleLabel = new Label { FontSize = 24, FontAttributes = FontAttributes.Bold, Margin = new Thickness(0, 0, 0, 12) };
         SetInk(_titleLabel);
         _paragraphs = new VerticalStackLayout { Spacing = 12 };
-        _scroll = new ScrollView { Content = new VerticalStackLayout { Children = { _titleLabel, _paragraphs } } };
+        var pageContent = new VerticalStackLayout { Children = { _titleLabel, _paragraphs } };
+        _scroll = new ScrollView { Content = pageContent };
         var pageGrid = new Grid { ColumnDefinitions = { new ColumnDefinition(GridLength.Auto), new ColumnDefinition(GridLength.Star) }, ColumnSpacing = 14 };
         pageGrid.Add(new BoxView { WidthRequest = 5, CornerRadius = 3, Color = primaryDark });
         pageGrid.Add(_scroll, 1);
         _paper = new Border { Padding = new Thickness(16, 18), StrokeShape = new RoundRectangle { CornerRadius = 18 }, Content = pageGrid };
         _paper.SetAppThemeColor(BackgroundColorProperty, Color.FromArgb("#FFFDF7"), Color.FromArgb("#1F1A28"));
         _paper.SetAppTheme<Brush>(Border.StrokeProperty, new SolidColorBrush(Color.FromArgb("#E6D9DE")), new SolidColorBrush(Color.FromArgb("#3A3247")));
-        var swipeLeft = new SwipeGestureRecognizer { Direction = SwipeDirection.Left };
-        swipeLeft.Swiped += async (_, _) => await ShowPageAsync(_index + 1);
-        var swipeRight = new SwipeGestureRecognizer { Direction = SwipeDirection.Right };
-        swipeRight.Swiped += async (_, _) => await ShowPageAsync(_index - 1);
-        _paper.GestureRecognizers.Add(swipeLeft);
-        _paper.GestureRecognizers.Add(swipeRight);
+        // Свайп и по полям страницы, и по самому тексту: касание текста забирает ScrollView, до «бумаги» оно не доходит.
+        // Вертикальную прокрутку это не ломает — ScrollView перехватывает вертикальное движение у содержимого
+        AddSwipes(_paper);
+        AddSwipes(pageContent);
         root.Add(_paper, 0, 1);
 
         // Обложка поверх страницы: раскрывается от левого края, как у книги
@@ -97,6 +96,16 @@ public sealed class CourseBookPage : ContentPage
     }
 
     public Task<bool> Result => _result.Task;
+
+    private void AddSwipes(View view)
+    {
+        var swipeLeft = new SwipeGestureRecognizer { Direction = SwipeDirection.Left };
+        swipeLeft.Swiped += async (_, _) => await ShowPageAsync(_index + 1);
+        var swipeRight = new SwipeGestureRecognizer { Direction = SwipeDirection.Right };
+        swipeRight.Swiped += async (_, _) => await ShowPageAsync(_index - 1);
+        view.GestureRecognizers.Add(swipeLeft);
+        view.GestureRecognizers.Add(swipeRight);
+    }
 
     protected override async void OnAppearing()
     {

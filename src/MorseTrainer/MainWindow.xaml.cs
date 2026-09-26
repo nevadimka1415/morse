@@ -411,6 +411,12 @@ public partial class MainWindow : Window
     // Пасхалка: щелчок по значку «· — —» в шапке — «НЕВАДИМКА» азбукой на 200 знаков/мин
     private void Logo_OnMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
+        // Пасхалка не перебивает прослушивание задания — на экзамене оно может быть единственным
+        if (_playbackCancellation is not null)
+        {
+            return;
+        }
+
         StopPlayback();
         StopLearningPlayback();
         try

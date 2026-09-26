@@ -174,7 +174,8 @@ public partial class MainWindow
             SetStatus(Texts.T("СЛУШАЕМ"), isActive: true);
 
             var startedAt = DateTime.UtcNow;
-            ShowPlayingGroup(0);
+            // Без сигнала начала первая группа звучит сразу — «Ж Ж Ж» не показываем даже на миг
+            ShowPlayingGroup(_currentClip.GroupAt(TimeSpan.Zero));
             while (DateTime.UtcNow - startedAt < _currentClip.Duration)
             {
                 await Task.Delay(50, cancellation.Token);

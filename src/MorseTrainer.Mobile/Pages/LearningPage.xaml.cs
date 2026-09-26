@@ -19,6 +19,7 @@ public partial class LearningPage : ContentPage
 
     private readonly Button[] _alphabetButtons;
     private int _alphabet;
+    private bool _bookOpen;
 
     public LearningPage(
         IAudioPlaybackService audioPlayback,
@@ -101,9 +102,23 @@ public partial class LearningPage : ContentPage
     /// <summary>Открывает книжку курса; true — курс нужно начать (дочитали или пропустили).</summary>
     private async Task<bool> OpenCourseBookAsync(AppSettings settings, bool startMode)
     {
-        var book = new CourseBookPage(CourseBook.Pages(Course.AlphabetFor(settings.AlphabetIndex)), startMode);
-        await Navigation.PushModalAsync(book);
-        return await book.Result;
+        // Двойное нажатие не кладёт вторую книжку поверх первой
+        if (_bookOpen)
+        {
+            return false;
+        }
+
+        _bookOpen = true;
+        try
+        {
+            var book = new CourseBookPage(CourseBook.Pages(Course.AlphabetFor(settings.AlphabetIndex)), startMode);
+            await Navigation.PushModalAsync(book);
+            return await book.Result;
+        }
+        finally
+        {
+            _bookOpen = false;
+        }
     }
 
     private async void CourseNextButton_OnClicked(object sender, EventArgs e)

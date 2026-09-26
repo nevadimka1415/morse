@@ -1149,6 +1149,12 @@ static void TestEarQuiz()
     for (var n = 0; n < 10; n++) EarQuiz.Record(misses, 'Б', false);
     Assert(misses["Б"] == EarQuiz.MaxMisses && EarQuiz.Weight(misses, 'Б') == 11 && EarQuiz.Weight(misses, 'А') == 1, "miss weight is capped");
     Assert(EarQuiz.Frequent(misses).SequenceEqual(new[] { 'Б' }), "frequent symbols list the confused ones");
+    // Подсказка «Чаще звучат» — только по текущему набору: латинская P при русских буквах не звучит и не показывается
+    var mixed = new Dictionary<string, int>(misses) { ["P"] = 1 };
+    Assert(EarQuiz.Frequent(mixed, pool: russian).SequenceEqual(new[] { 'Б' })
+           && EarQuiz.Frequent(mixed, pool: LearningCatalog.GetItems(1)).SequenceEqual(new[] { 'P' })
+           && EarQuiz.Frequent(mixed, pool: LearningCatalog.GetItems(3)).Count == 0,
+        "frequent symbols are limited to the current set");
     var hits = 0;
     for (var n = 0; n < 2000; n++)
     {

@@ -46,15 +46,16 @@ public sealed class VoiceRecorder : IDisposable
             return;
         }
 
-        var directory = Path.GetDirectoryName(path);
-        if (!string.IsNullOrEmpty(directory))
-        {
-            Directory.CreateDirectory(directory);
-        }
-
         var temp = path + ".part.wav";
         try
         {
+            // Папка создаётся внутри try: при ошибке устройство всё равно закроется и запись не останется висеть
+            var directory = Path.GetDirectoryName(path);
+            if (!string.IsNullOrEmpty(directory))
+            {
+                Directory.CreateDirectory(directory);
+            }
+
             Send($"stop {Alias}");
             Send($"save {Alias} \"{temp}\"");
         }

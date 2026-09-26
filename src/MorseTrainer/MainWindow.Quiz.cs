@@ -55,6 +55,7 @@ public partial class MainWindow
         QuizRepeatButton.IsEnabled = false;
         QuizStatusText.Text = Texts.T("Нажмите «Новый символ» и слушайте");
         QuizStatusText.ClearValue(TextBlock.ForegroundProperty);
+        UpdateQuizScore();
         SaveSettingsIfLoaded();
     }
 
@@ -290,7 +291,7 @@ public partial class MainWindow
     private void UpdateQuizScore()
     {
         QuizScoreText.Text = Texts.F("Результат: {0} / {1}", _quizCorrect, _quizTotal);
-        var frequent = EarQuiz.Frequent(_quizMisses);
+        var frequent = EarQuiz.Frequent(_quizMisses, pool: LearningCatalog.GetItems(_quizAlphabet));
         QuizFrequentText.Text = frequent.Count == 0 ? string.Empty : Texts.F("Чаще звучат: {0}", string.Join(' ', frequent));
         QuizFrequentText.Visibility = frequent.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
     }

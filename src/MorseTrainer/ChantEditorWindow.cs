@@ -143,7 +143,7 @@ public sealed class ChantEditorWindow : Window
         }
         catch (Exception exception) when (exception is InvalidOperationException or DllNotFoundException or EntryPointNotFoundException)
         {
-            _voiceStatus.Text = Texts.F("Не удалось начать запись: {0}. Проверьте, что микрофон подключён и разрешён для приложений в настройках Windows.", exception.Message);
+            _voiceStatus.Text = Texts.F("Не удалось начать запись: {0}. Проверьте, что микрофон подключён и разрешён для приложений в настройках Windows.", exception.Message.TrimEnd('.', ' '));
             _voiceStatus.SetResourceReference(TextBlock.ForegroundProperty, "DangerBrush");
         }
     }

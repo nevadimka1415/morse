@@ -85,13 +85,23 @@ public static class EarQuiz
         }
     }
 
-    /// <summary>Какие символы сейчас звучат чаще — по убыванию ошибок, для подсказки под счётом.</summary>
-    public static IReadOnlyList<char> Frequent(IReadOnlyDictionary<string, int>? misses, int count = 5) =>
-        misses is null
-            ? Array.Empty<char>()
-            : misses.Where(pair => pair.Value > 0 && pair.Key.Length == 1)
-                .OrderByDescending(pair => pair.Value).ThenBy(pair => pair.Key, StringComparer.Ordinal)
-                .Take(count).Select(pair => pair.Key[0]).ToArray();
+    /// <summary>
+    /// Какие символы сейчас звучат чаще — по убыванию ошибок, для подсказки под счётом. pool — текущий набор «На слух»:
+    /// ошибки по символам других наборов (латинская P при русских буквах) не показываются — эти символы сейчас не звучат.
+    /// </summary>
+    public static IReadOnlyList<char> Frequent(IReadOnlyDictionary<string, int>? misses, int count = 5,
+        IEnumerable<LearningSymbolItem>? pool = null)
+    {
+        if (misses is null)
+        {
+            return Array.Empty<char>();
+        }
+
+        var symbols = pool?.Select(item => item.Symbol).ToHashSet();
+        return misses.Where(pair => pair.Value > 0 && pair.Key.Length == 1 && (symbols is null || symbols.Contains(pair.Key[0])))
+            .OrderByDescending(pair => pair.Value).ThenBy(pair => pair.Key, StringComparer.Ordinal)
+            .Take(count).Select(pair => pair.Key[0]).ToArray();
+    }
 
     private static LearningSymbolItem PickWeighted(IReadOnlyList<LearningSymbolItem> candidates, IReadOnlyDictionary<string, int>? misses,
         Func<int, int> random)
