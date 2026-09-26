@@ -8,8 +8,8 @@
     <Grid x:Name="RootLayout" Padding="14" RowDefinitions="Auto,Auto,Auto,Auto,Auto,*" RowSpacing="10">
         <!-- Шапка в одну строку: карточкам остаётся больше места -->
         <Grid ColumnDefinitions="*,Auto,6,Auto">
-            <Label Text="{loc:Loc 'Обучение'}" FontSize="26" FontAttributes="Bold" VerticalOptions="Center" />
-            <Button x:Name="SearchToggleButton" Grid.Column="1" Text="🔍" Padding="10,6" Clicked="SearchToggleButton_OnClicked" />
+            <Label Text="{loc:Loc 'Обучение'}" FontSize="26" FontAttributes="Bold" VerticalOptions="Center" SemanticProperties.HeadingLevel="Level1" />
+            <Button x:Name="SearchToggleButton" Grid.Column="1" Text="🔍" Padding="10,6" SemanticProperties.Description="{loc:Loc 'Найти'}" Clicked="SearchToggleButton_OnClicked" />
             <Button x:Name="CustomVoiceButton" Grid.Column="3" Text="{loc:Loc 'Свой голос…'}" Padding="12,6"
                     Clicked="CustomVoiceButton_OnClicked" />
         </Grid>
@@ -20,7 +20,7 @@
                 <Grid ColumnDefinitions="*,Auto">
                     <Label x:Name="CourseTitleLabel" Text="{loc:Loc 'Курс «С нуля до 60 зн/мин»'}" FontAttributes="Bold" LineBreakMode="WordWrap"
                            VerticalOptions="Center" />
-                    <Button x:Name="CourseDetailsButton" Grid.Column="1" Text="▾" FontSize="18" Padding="10,0" MinimumWidthRequest="36" MinimumHeightRequest="36"
+                    <Button x:Name="CourseDetailsButton" Grid.Column="1" Text="▾" SemanticProperties.Description="{loc:Loc 'Подробнее о курсе'}" FontSize="18" Padding="10,0" MinimumWidthRequest="36" MinimumHeightRequest="36"
                             VerticalOptions="Start" BackgroundColor="Transparent" TextColor="{StaticResource PrimaryDark}"
                             Clicked="CourseDetailsButton_OnClicked" />
                 </Grid>
@@ -73,7 +73,7 @@
                                 <Label Text="{Binding Symbol}" FontSize="30" FontAttributes="Bold" />
                                 <Label Grid.Column="1" Text="{Binding Code}" FontSize="20" TextColor="{StaticResource PrimaryDark}" />
                                 <!-- «Изменить напев»: в строке с символом, чтобы кнопки «Голос»/«Сигнал» не обрезались на узкой карточке -->
-                                <Button Grid.Column="2" Text="✎" Padding="8,0" Margin="6,0,0,0" MinimumWidthRequest="36" MinimumHeightRequest="36"
+                                <Button Grid.Column="2" Text="✎" SemanticProperties.Description="{loc:Loc 'Изменить напев'}" Padding="8,0" Margin="6,0,0,0" MinimumWidthRequest="36" MinimumHeightRequest="36"
                                         VerticalOptions="Start" BackgroundColor="Transparent" TextColor="{StaticResource PrimaryDark}"
                                         CommandParameter="{Binding Symbol}" Clicked="EditChantButton_OnClicked" />
                             </Grid>

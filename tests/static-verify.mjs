@@ -292,6 +292,16 @@ for (const file of ['src/MorseTrainer/MainWindow.xaml', 'src/MorseTrainer/Symbol
   assert(!/<x:String>[^<]*[А-Яа-яЁё]/.test(xaml), `${file} has Russian picker items in XAML; set ItemsSource in code with Texts.T.`);
 }
 assert(read('src/MorseTrainer.Core/MorseTrainer.Core.csproj').includes('Texts.cs'), 'Core project must compile Localization/Texts.cs.');
+// Озвучка экрана (TalkBack, Экранный диктор): у кнопки-значка без слов («🔍», «✎», «⋯») должна быть подпись,
+// иначе читается просто «кнопка». «?» — заглушка вариантов «На слух»: там потом буквы, постоянная подпись их заглушила бы
+for (const file of ['src/MorseTrainer/MainWindow.xaml', ...['TrainingPage', 'LearningPage', 'QuizPage', 'SettingsPage', 'KeyerPage'].map((page) => `src/MorseTrainer.Mobile/Pages/${page}.xaml`)]) {
+  for (const element of read(file).match(/<Button\b[^>]*>/gs) || []) {
+    const value = (element.match(/\b(?:Text|Content)="([^"]*)"/) || [])[1] ?? '';
+    const label = value.startsWith('{loc:Loc') ? (value.match(/'([^']*)'/) || [])[1] ?? '' : value;
+    if (/[\p{L}\p{N}]/u.test(label) || label === '?' || value.startsWith('{Binding')) continue;
+    assert(/SemanticProperties\.Description=|AutomationProperties\.Name=/.test(element), `${file}: icon button "${label}" needs SemanticProperties.Description / AutomationProperties.Name for screen readers.`);
+  }
+}
 // Словарь переводов заполняется индексатором: повторный ключ не падает, а молча перезаписывает перевод
 // (так «Метод Коха» стал «The Koch method» во всём интерфейсе) — дубли ловим здесь
 const translationKeys = [...read('src/MorseTrainer/Localization/Texts.cs').matchAll(/^\s*\["((?:[^"\\]|\\.)*)"\]\s*=/gm)].map((match) => match[1]);

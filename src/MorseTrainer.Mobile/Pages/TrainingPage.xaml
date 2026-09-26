@@ -8,7 +8,7 @@
         <VerticalStackLayout x:Name="RootLayout" Padding="16" Spacing="14">
             <!-- Параметры задания нужны редко: свёрнуты под кнопкой в шапке, выбор запоминается -->
             <Grid ColumnDefinitions="*,Auto">
-                <Label Text="{loc:Loc 'Тренировка'}" FontSize="26" FontAttributes="Bold" VerticalOptions="Center" />
+                <Label Text="{loc:Loc 'Тренировка'}" FontSize="26" FontAttributes="Bold" VerticalOptions="Center" SemanticProperties.HeadingLevel="Level1" />
                 <Button x:Name="ParamsToggleButton" Grid.Column="1" Text="{loc:Loc 'Параметры ▾'}" Padding="12,6"
                         Clicked="ParamsToggleButton_OnClicked" />
             </Grid>

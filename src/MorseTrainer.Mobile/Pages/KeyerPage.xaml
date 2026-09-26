@@ -6,7 +6,7 @@
              Title="{loc:Loc 'Передача'}">
     <ScrollView>
         <VerticalStackLayout x:Name="RootLayout" Padding="16" Spacing="14">
-            <Label Text="{loc:Loc 'Передача ключом'}" FontSize="26" FontAttributes="Bold" />
+            <Label Text="{loc:Loc 'Передача ключом'}" FontSize="26" FontAttributes="Bold" SemanticProperties.HeadingLevel="Level1" />
             <Label Text="{loc:Loc 'Точка — короткое нажатие, тире — втрое длиннее. Пауза в 3 точки завершает символ, в 7 точек — группу. Скорость, алфавит и тон берутся из настроек.'}"
                    Opacity="0.65" LineBreakMode="WordWrap" />
             <Label x:Name="TimingLabel" Text="{loc:Loc 'Точка: 100 мс · тире от 200 мс'}" FontAttributes="Bold" />

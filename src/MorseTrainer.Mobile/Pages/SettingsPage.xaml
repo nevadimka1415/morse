@@ -9,7 +9,7 @@
         <VerticalStackLayout x:Name="RootLayout" Padding="16" Spacing="14">
             <!-- Шапка: заголовок и значок приложения; нажатие на значок — пасхалка, как на строку версии внизу -->
             <Grid ColumnDefinitions="*,Auto">
-                <Label Text="{loc:Loc 'Настройки'}" FontSize="26" FontAttributes="Bold" VerticalOptions="Center" />
+                <Label Text="{loc:Loc 'Настройки'}" FontSize="26" FontAttributes="Bold" VerticalOptions="Center" SemanticProperties.HeadingLevel="Level1" />
                 <controls:LogoMark x:Name="LogoMarkView" Grid.Column="1" VerticalOptions="Center" Tapped="LogoMarkView_OnTapped" />
             </Grid>
 

@@ -628,6 +628,7 @@ public static class Texts
         ["Прогресс — это история занятий и отметки курса. «Сохранить прогресс…» отправляет файл (например, себе в мессенджер или на диск), «Загрузить прогресс…» добавляет его на новом телефоне — повторы не дублируются."] = "Progress is your session history and course ticks. “Save progress…” sends a file (for example, to yourself in a messenger or to cloud storage), “Load progress…” adds it on a new phone — duplicates are skipped.",
         ["С какого шага продолжить?"] = "Which step do you want to continue from?",
         ["Меню курса"] = "Course menu",
+        ["Подробнее о курсе"] = "Course details",
         ["Сбросить курс?"] = "Reset the course?",
         ["Курс начнётся с первого шага. Пройденные шаги останутся отмечены ✓ — вернуться к нужному можно кнопкой «Выбрать шаг…»."] = "The course starts over from step 1. Passed steps stay ticked ✓ — you can return to any of them with “Choose step…”.",
         ["Откроется, когда в задании этого шага будет точность от {0} %."] = "Unlocks when a task of this step reaches {0} % accuracy.",

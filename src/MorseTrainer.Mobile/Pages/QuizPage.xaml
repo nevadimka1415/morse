@@ -8,7 +8,7 @@
     <ScrollView>
         <VerticalStackLayout x:Name="RootLayout" Padding="16" Spacing="14">
             <VerticalStackLayout>
-                <Label Text="{loc:Loc 'Проверка на слух'}" FontSize="26" FontAttributes="Bold" />
+                <Label Text="{loc:Loc 'Проверка на слух'}" FontSize="26" FontAttributes="Bold" SemanticProperties.HeadingLevel="Level1" />
                 <Label Text="{loc:Loc 'Прослушайте сигнал и выберите символ'}" Opacity="0.65" LineBreakMode="WordWrap" />
             </VerticalStackLayout>
 
