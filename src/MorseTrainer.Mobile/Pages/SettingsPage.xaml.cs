@@ -43,6 +43,12 @@ public partial class SettingsPage : ContentPage
         ExamLimitPicker.ItemsSource = ExamSession.TimeLimitChoices
             .Select(minutes => minutes == 0 ? Texts.T("без лимита") : Texts.F("{0} мин", minutes)).ToList();
         VersionLabel.Text = $"Morse Trainer {CurrentVersion}";
+#if RUSTORE
+        // Сборка для RuStore (-p:DistributionChannel=RuStore): обновления ставит сам магазин — по правилам RuStore
+        // приложение из него должно обновляться только через RuStore, поэтому своей проверки через GitHub нет
+        CheckUpdatesButton.IsVisible = false;
+        UpdatesNoteLabel.Text = Texts.T("Обновления приходят через RuStore. Приложение работает без интернета.");
+#endif
         BuildSymbolButtons();
         LoadAll();
         _ready = true;

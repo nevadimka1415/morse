@@ -472,6 +472,7 @@ public static class Texts
         ["Сохранено {0:HH:mm}"] = "Saved {0:HH:mm}",
         ["Настройки сохраняются автоматически"] = "Settings are saved automatically",
         ["О программе"] = "About",
+        ["Обновления приходят через RuStore. Приложение работает без интернета."] = "Updates come through RuStore. The app works without the internet.",
         ["Проверить обновления"] = "Check for updates",
         ["Интернет нужен только для этой проверки, всё остальное работает без сети."] = "Internet is needed only for this check; everything else works offline.",
         ["Есть обновление"] = "Update available",

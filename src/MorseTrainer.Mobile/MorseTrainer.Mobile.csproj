@@ -19,6 +19,11 @@
     <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">13.0</SupportedOSPlatformVersion>
     <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">24.0</SupportedOSPlatformVersion>
   </PropertyGroup>
+  <!-- Сборка для RuStore: -p:DistributionChannel=RuStore. Без своей проверки обновлений через GitHub — по правилам RuStore
+       приложение из магазина обновляется только через него (SettingsPage, #if RUSTORE) -->
+  <PropertyGroup Condition="'$(DistributionChannel)' == 'RuStore'">
+    <DefineConstants>$(DefineConstants);RUSTORE</DefineConstants>
+  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)' == 'Release' and $([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">
     <!-- R8 обрезает неиспользуемый Java-код: APK меньше -->
     <AndroidLinkTool>r8</AndroidLinkTool>

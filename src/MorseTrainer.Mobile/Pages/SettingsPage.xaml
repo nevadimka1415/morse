@@ -204,8 +204,9 @@
                             <TapGestureRecognizer Tapped="VersionLabel_OnTapped" />
                         </Label.GestureRecognizers>
                     </Label>
-                    <Button Text="{loc:Loc 'Проверить обновления'}" Clicked="CheckUpdatesButton_OnClicked" />
-                    <Label Text="{loc:Loc 'Интернет нужен только для этой проверки, всё остальное работает без сети.'}"
+                    <!-- В сборке для RuStore кнопки нет: приложение из RuStore обновляется только через RuStore -->
+                    <Button x:Name="CheckUpdatesButton" Text="{loc:Loc 'Проверить обновления'}" Clicked="CheckUpdatesButton_OnClicked" />
+                    <Label x:Name="UpdatesNoteLabel" Text="{loc:Loc 'Интернет нужен только для этой проверки, всё остальное работает без сети.'}"
                            Opacity="0.65" FontSize="13" />
                     <VerticalStackLayout x:Name="CrashReportLayout" Spacing="8" IsVisible="False">
                         <Label x:Name="CrashReportLabel" Text="{loc:Loc 'Есть отчёт о сбое'}" FontAttributes="Bold" TextColor="{StaticResource Danger}" />

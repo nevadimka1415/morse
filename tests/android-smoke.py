@@ -3,12 +3,16 @@
 
 Ставит APK, запускает главную активность, ждёт первое задание на вкладке «Тренировка»,
 нажимает «Слушать»/«Стоп», раскрывает и сворачивает «Параметры», проходит по пяти вкладкам нижней панели,
-открывает книжку курса («Начать курс»), листает её до «Начать шаг 1» и получает задание шага 1
+открывает книжку курса («Начать курс»): свайп по тексту листает её в обе стороны, системная «Назад» закрывает без
+старта курса; затем листает кнопками до «Начать шаг 1» и получает задание шага 1
 (на «На слух» — ответ и автопереход к следующему символу, затем раунд с выключенным автопереходом) и на каждом шаге
 снимает скриншот, проверяет, что процесс жив и в logcat нет падений приложения. Затем пересоздаёт
-активность и повторяет проход на русском (язык приложения ru-RU) — скриншоты android-ru-* идут в README.
+активность и повторяет проход на русском (язык приложения ru-RU) — скриншоты android-ru-* идут в README:
+там же внизу «Настроек» должна быть «Проверить обновления», а сброс курса «✕» → «Начать курс» → «Пропустить»
+снова даёт шаг 1 (книжка по-русски — скриншоты для карточки RuStore).
+Если передан APK для RuStore, он ставится поверх: в его «Настройках» кнопки «Проверить обновления» быть не должно.
 
-Запуск: python3 tests/android-smoke.py <apk или папка с apk> <папка для скриншотов и логов>
+Запуск: python3 tests/android-smoke.py <apk или папка с apk> <папка для скриншотов и логов> [<APK для RuStore или папка>]
 """
 import os
 import re
@@ -35,6 +39,12 @@ QUIZ_QUESTION_TEXTS = ("Какой символ прозвучал?", "Which sym
 QUIZ_ANSWERED_PREFIXES = ("Верно:", "Правильно:", "Correct:")
 PARAMS_TEXTS = ("Параметры ▾", "Параметры ▴", "Parameters ▾", "Parameters ▴")
 PARAMS_OPEN_TEXTS = ("Изменить в настройках", "Change in settings")
+START_COURSE_TEXTS = ("Начать курс", "Start the course")
+BOOK_TITLE_TEXTS = ("Как устроен курс", "How the course works")
+KOCH_TITLE_TEXTS = ("Метод Коха", "Koch method")
+UPDATES_TEXTS = ("Проверить обновления", "Check for updates")
+RUSTORE_NOTE_PREFIXES = ("Обновления приходят через RuStore", "Updates come through RuStore")
+rustore_apk_arg = sys.argv[3] if len(sys.argv) > 3 else None
 
 out_dir = Path(sys.argv[2] if len(sys.argv) > 2 else "android-smoke")
 results = []
@@ -406,6 +416,127 @@ def course_book():
     return "книжка пролистана до конца, шаг 1 курса создан"
 
 
+def screen_size():
+    match = re.search(r"(\d+)x(\d+)", adb("shell", "wm", "size"))
+    return (int(match.group(1)), int(match.group(2))) if match else (1080, 2400)
+
+
+def swipe(x1, y1, x2, y2, duration=300):
+    adb("shell", "input", "swipe", str(x1), str(y1), str(x2), str(y2), str(duration))
+
+
+def scroll_to_bottom(times=6):
+    """Листает страницу вниз у самого левого края — мимо ползунков, чтобы случайно не сдвинуть настройки."""
+    _, height = screen_size()
+    for _ in range(times):
+        swipe(20, height * 3 // 4, 20, height // 4, 250)
+        time.sleep(0.7)
+
+
+def course_book_swipe_and_back():
+    """Книжка: свайп по тексту страницы листает в обе стороны, системная «Назад» закрывает её без старта курса."""
+    root, _ = dump_ui()
+    start = nodes_with_text(root, START_COURSE_TEXTS)
+    if not start:
+        raise RuntimeError("Нет кнопки «Начать курс»")
+    tap(start[0])
+    title = wait_for(BOOK_TITLE_TEXTS, 20)
+    time.sleep(2.5)   # обложка раскрывается ~1,2 с
+    # По самому тексту (первый абзац под заголовком), а не по полям страницы
+    width, _ = screen_size()
+    y = bounds(title[0])[3] + 250
+    swipe(width * 3 // 4, y, width // 5, y)
+    wait_for(KOCH_TITLE_TEXTS, 10)
+    screenshot("course-book-swiped")
+    swipe(width // 5, y, width * 3 // 4, y)
+    wait_for(BOOK_TITLE_TEXTS, 10)
+    adb("shell", "input", "keyevent", "4")   # системная «Назад»
+    time.sleep(2)
+    ensure_alive()
+    root, _ = dump_ui()
+    if nodes_with_text(root, BOOK_TITLE_TEXTS):
+        raise RuntimeError("Системная «Назад» не закрыла книжку")
+    if not nodes_with_text(root, START_COURSE_TEXTS):
+        raise RuntimeError("После «Назад» курс начался, а не должен был")
+    return "свайп по тексту листает туда и обратно, «Назад» закрыла книжку без старта курса"
+
+
+def updates_button_visible():
+    """Обычная сборка: внизу «Настроек» есть «Проверить обновления» — контроль для проверки сборки RuStore."""
+    scroll_to_bottom()
+    wait_for(UPDATES_TEXTS, 10)
+    screenshot("ru-settings-about")
+    return "кнопка на месте"
+
+
+def reset_course_and_skip_book():
+    """«✕» сбрасывает курс, «Начать курс» снова открывает книжку (по-русски), «Пропустить» сразу даёт шаг 1."""
+    root, _ = dump_ui()
+    following = nodes_with_text(root, ("Следующий шаг",))
+    if not following:
+        raise RuntimeError("Нет кнопки «Следующий шаг» — курс не начат?")
+    _, top, right, bottom = bounds(following[0])
+    middle = (top + bottom) // 2
+    # «✕» — кнопка в том же ряду правее «Следующий шаг» (текста для поиска у неё нет)
+    reset = [node for node in root.iter("node") if node.get("class", "").endswith("Button")
+             and bounds(node)[0] >= right - 5 and bounds(node)[1] < middle < bounds(node)[3]]
+    if not reset:
+        raise RuntimeError("Не найдена кнопка «✕» справа от «Следующий шаг»")
+    tap(reset[0])
+    start = wait_for(("Начать курс",), 15)
+    tap(start[0])
+    wait_for(("Как устроен курс",), 20)
+    time.sleep(2.5)   # обложка раскрывается ~1,2 с
+    screenshot("ru-course-book")
+    root, _ = dump_ui()
+    following = nodes_with_text(root, ("Далее ›",))
+    if not following:
+        raise RuntimeError("Нет кнопки «Далее»")
+    tap(following[0])
+    wait_for(("Метод Коха",), 10)
+    time.sleep(1)
+    screenshot("ru-course-book-koch")
+    root, _ = dump_ui()
+    skip = nodes_with_text(root, ("Пропустить",))
+    if not skip:
+        raise RuntimeError("Нет кнопки «Пропустить»")
+    tap(skip[0])
+    wait_for(READY_PREFIXES[:1], 60, prefix=True)
+    ensure_alive()
+    return "курс сброшен, книжка по-русски, «Пропустить» дал задание"
+
+
+def course_on_step_one():
+    """После «Пропустить» курс действительно на шаге 1: это видно в заголовке курса на «Обучении»."""
+    open_tab("ru-learning-step-1", ("Обучение",))()
+    found = wait_for(("Курс «С нуля до 60 зн/мин» · шаг 1 из",), 10, prefix=True)
+    return found[0].get("text", "")
+
+
+def install_rustore():
+    apk = find_apk(rustore_apk_arg)
+    adb("install", "-r", "-g", str(apk), timeout=300)
+    return f"{apk.name}, {apk.stat().st_size // 1024} КБ"
+
+
+def launch_rustore():
+    detail = launch()
+    wait_for(READY_PREFIXES, 120, prefix=True)
+    return detail
+
+
+def rustore_settings():
+    """Сборка для RuStore: обновления ставит магазин — в «Настройках» нет своей проверки через GitHub."""
+    open_tab("rustore-settings-top", ("Настройки", "Settings"))()
+    scroll_to_bottom()
+    wait_for(RUSTORE_NOTE_PREFIXES, 10, prefix=True)
+    root, _ = dump_ui()
+    if nodes_with_text(root, UPDATES_TEXTS):
+        raise RuntimeError("В сборке для RuStore осталась кнопка «Проверить обновления»")
+    screenshot("rustore-settings")
+    return "кнопки «Проверить обновления» нет, вместо неё — «Обновления приходят через RuStore»"
+
+
 def activity_creations():
     log = adb("logcat", "-d", "-b", "events", check=False, timeout=60)
     return sum(1 for line in log.splitlines() if "wm_on_create_called" in line and "MainActivity" in line)
@@ -470,6 +601,7 @@ def main():
                 step("На слух: ответ и следующий символ сам", quiz_round())
                 step("На слух: без автоперехода", quiz_manual_round())
         step("Вкладка «Обучение» для курса", open_tab("learning-course", ("Обучение", "Learning")))
+        step("Книжка: свайп по тексту и «Назад»", course_book_swipe_and_back)
         step("Книжка курса и шаг 1", course_book)
         # Пересоздание активности: страницы старого окна не должны ронять приложение при переключении вкладок
         step("Пересоздание активности (шрифт 1.15)", recreate_activity)
@@ -482,7 +614,17 @@ def main():
             step(f"На русском: «{russian}»", open_tab("ru-" + key, (russian,)))
             if key == "quiz":
                 step("На русском: раунд «На слух»", quiz_round("ru-"))
+        step("На русском: «Проверить обновления» в настройках", updates_button_visible)
+        step("На русском: «Обучение» для курса", open_tab("ru-learning-course", ("Обучение",)))
+        step("На русском: сброс курса, книжка и «Пропустить»", reset_course_and_skip_book)
+        step("На русском: курс на шаге 1", course_on_step_one)
         step("Итог: процесс жив, падений нет", lambda: f"pid {ensure_alive()}")
+        if rustore_apk_arg:
+            # Сборка для RuStore ставится поверх (та же подпись и версия) и проверяется отдельно
+            step("RuStore: установка поверх", install_rustore)
+            step("RuStore: запуск", launch_rustore)
+            step("RuStore: «Настройки» без проверки обновлений", rustore_settings)
+            step("RuStore: процесс жив, падений нет", lambda: f"pid {ensure_alive()}")
     except Exception:
         exit_code = 1
     finally:

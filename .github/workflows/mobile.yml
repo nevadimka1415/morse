@@ -105,6 +105,47 @@ jobs:
           path: mobile-artifacts/android/*.apk
           if-no-files-found: error
 
+      # Вариант для RuStore (-p:DistributionChannel=RuStore → #if RUSTORE): без своей проверки обновлений через GitHub —
+      # приложение из RuStore обновляется только через RuStore. Та же подпись и версия. obj/bin прошлой сборки удаляются,
+      # чтобы код точно перекомпилировался с константой; дымовой тест ставит этот APK поверх и проверяет «Настройки»
+      - name: Build Android APK for RuStore
+        shell: powershell
+        run: |
+          $signArgs = @()
+          $ks = Join-Path $env:RUNNER_TEMP "morsetrainer.jks"
+          if ($env:ANDROID_KEYSTORE_BASE64 -and (Test-Path $ks)) {
+            $signArgs = @(
+              "-p:AndroidKeyStore=true",
+              "-p:AndroidSigningKeyStore=$ks",
+              "-p:AndroidSigningKeyAlias=morsetrainer",
+              "-p:AndroidSigningKeyPass=env:ANDROID_KEYSTORE_PASSWORD",
+              "-p:AndroidSigningStorePass=env:ANDROID_KEYSTORE_PASSWORD")
+          }
+          Remove-Item -Recurse -Force .\src\MorseTrainer.Mobile\obj, .\src\MorseTrainer.Mobile\bin -ErrorAction SilentlyContinue
+          dotnet publish .\src\MorseTrainer.Mobile\MorseTrainer.Mobile.csproj `
+            -f net10.0-android `
+            -c Release `
+            -p:MobileTargetFrameworks=net10.0-android `
+            -p:AndroidPackageFormats=apk `
+            -p:DistributionChannel=RuStore `
+            -p:AndroidSdkDirectory="$env:ANDROID_HOME" `
+            -p:JavaSdkDirectory="$env:JAVA_HOME" `
+            @signArgs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          New-Item -ItemType Directory -Path .\mobile-artifacts\android-rustore -Force | Out-Null
+          $apk = Get-ChildItem .\src\MorseTrainer.Mobile\bin\Release\net10.0-android -Recurse -Filter *-Signed.apk | Select-Object -First 1
+          if (-not $apk) { $apk = Get-ChildItem .\src\MorseTrainer.Mobile\bin\Release\net10.0-android -Recurse -Filter *.apk | Select-Object -First 1 }
+          if (-not $apk) { throw "RuStore APK not found" }
+          Copy-Item $apk.FullName .\mobile-artifacts\android-rustore\MorseTrainer-Android-RuStore.apk
+          Get-Item .\mobile-artifacts\android-rustore\MorseTrainer-Android-RuStore.apk | Format-List Name, Length
+
+      - name: Upload Android APK for RuStore
+        uses: actions/upload-artifact@v7
+        with:
+          name: MorseTrainer-Android-RuStore
+          path: mobile-artifacts/android-rustore/*.apk
+          if-no-files-found: error
+
   # Дымовой тест телефона: APK из job android ставится на эмулятор Android 14 (x86_64, KVM),
   # скрипт проходит по вкладкам, ловит падения в logcat и снимает скриншоты
   android-smoke:
@@ -120,6 +161,12 @@ jobs:
         with:
           name: MorseTrainer-Android
           path: apk
+
+      - name: Download Android APK for RuStore
+        uses: actions/download-artifact@v8
+        with:
+          name: MorseTrainer-Android-RuStore
+          path: apk-rustore
 
       # Без доступа к /dev/kvm эмулятор x86_64 работает в разы медленнее
       - name: Enable KVM
@@ -137,7 +184,7 @@ jobs:
           profile: pixel_6
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
-          script: python3 tests/android-smoke.py apk android-smoke
+          script: python3 tests/android-smoke.py apk android-smoke apk-rustore
 
       - name: Upload Android screenshots
         if: ${{ always() }}

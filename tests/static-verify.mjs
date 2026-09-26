@@ -352,6 +352,16 @@ for (const [name, workflow] of [['build', buildWorkflow], ['mobile', mobileWorkf
   assert(!/uses: actions\/[a-z-]+@v[1-4]\b/.test(workflow), `The ${name} workflow uses an outdated action version (Node 20).`);
 }
 assert(releaseWorkflow.includes('MorseTrainer-Android.apk'), 'Release workflow does not attach the Android APK.');
+// Вариант для RuStore: собирается в релизе и в mobile.yml, дымовой тест проверяет его «Настройки»
+assert(mobileProject.includes("'$(DistributionChannel)' == 'RuStore'") && mobileProject.includes('RUSTORE'),
+  'Mobile project must define RUSTORE for -p:DistributionChannel=RuStore.');
+assert(/#if RUSTORE[\s\S]*CheckUpdatesButton\.IsVisible = false/.test(read('src/MorseTrainer.Mobile/Pages/SettingsPage.xaml.cs')),
+  'RuStore build must hide the GitHub update check (RuStore apps update only through RuStore).');
+for (const [name, workflow] of [['mobile', mobileWorkflow], ['release', releaseWorkflow]]) {
+  assert(workflow.includes('-p:DistributionChannel=RuStore') && workflow.includes('MorseTrainer-Android-RuStore.apk'),
+    `The ${name} workflow must build MorseTrainer-Android-RuStore.apk.`);
+}
+assert(mobileWorkflow.includes('tests/android-smoke.py apk android-smoke apk-rustore'), 'Android smoke test must also check the RuStore APK.');
 assert(releaseWorkflow.includes('wingetcreate.exe update Nevadimka1415.MorseTrainer') && releaseWorkflow.includes('WINGET_TOKEN'),
   'Release workflow must update the winget package when the token is set.');
 assert(read('scripts/winget-manifests.ps1').includes('F5BA0D4D-BED2-4C8D-8963-42CE7B70C3AD') && read('installer/MorseTrainer.iss').includes('F5BA0D4D-BED2-4C8D-8963-42CE7B70C3AD'),

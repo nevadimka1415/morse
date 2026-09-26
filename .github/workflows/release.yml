@@ -212,6 +212,53 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: gh release upload "${{ github.ref_name }}" "dist/MorseTrainer-Android-arm64.apk" --clobber
 
+      # APK для публикации в RuStore: без своей проверки обновлений через GitHub (#if RUSTORE) — приложение из RuStore
+      # обновляется только через RuStore. Универсальный, та же подпись и тот же versionCode. obj/bin удаляются, чтобы код
+      # точно перекомпилировался с константой (в mobile.yml этот же вариант проверяет дымовой тест на эмуляторе)
+      - name: Build Android APK (RuStore)
+        id: rustore
+        continue-on-error: true
+        shell: powershell
+        run: |
+          $version = "${{ github.ref_name }}".TrimStart("v")
+          $m = [regex]::Match($version, '^(\d+)\.(\d+)\.(\d+)')
+          $code = [int]$m.Groups[1].Value * 10000 + [int]$m.Groups[2].Value * 100 + [int]$m.Groups[3].Value
+          $signArgs = @()
+          $ks = Join-Path $env:RUNNER_TEMP "morsetrainer.jks"
+          if ($env:ANDROID_KEYSTORE_BASE64 -and (Test-Path $ks)) {
+            $signArgs = @(
+              "-p:AndroidKeyStore=true",
+              "-p:AndroidSigningKeyStore=$ks",
+              "-p:AndroidSigningKeyAlias=morsetrainer",
+              "-p:AndroidSigningKeyPass=env:ANDROID_KEYSTORE_PASSWORD",
+              "-p:AndroidSigningStorePass=env:ANDROID_KEYSTORE_PASSWORD")
+          }
+          Remove-Item -Recurse -Force .\src\MorseTrainer.Mobile\obj, .\src\MorseTrainer.Mobile\bin -ErrorAction SilentlyContinue
+          dotnet publish .\src\MorseTrainer.Mobile\MorseTrainer.Mobile.csproj `
+            -f net10.0-android `
+            -c Release `
+            -p:MobileTargetFrameworks=net10.0-android `
+            -p:AndroidPackageFormats=apk `
+            -p:DistributionChannel=RuStore `
+            -p:ApplicationDisplayVersion=$version `
+            -p:ApplicationVersion=$code `
+            -p:AndroidSdkDirectory="$env:ANDROID_HOME" `
+            -p:JavaSdkDirectory="$env:JAVA_HOME" `
+            @signArgs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $apk = Get-ChildItem .\src\MorseTrainer.Mobile\bin\Release\net10.0-android -Recurse -Filter *-Signed.apk | Select-Object -First 1
+          if (-not $apk) { $apk = Get-ChildItem .\src\MorseTrainer.Mobile\bin\Release\net10.0-android -Recurse -Filter *.apk | Select-Object -First 1 }
+          if (-not $apk) { throw "RuStore APK not found" }
+          Copy-Item $apk.FullName .\dist\MorseTrainer-Android-RuStore.apk
+          Get-Item .\dist\MorseTrainer-Android-RuStore.apk | Format-List Name, Length
+
+      - name: Attach RuStore APK to GitHub release
+        if: ${{ steps.rustore.outcome == 'success' }}
+        shell: powershell
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ github.ref_name }}" "dist/MorseTrainer-Android-RuStore.apk" --clobber
+
   # Неподписанный IPA для установки на iPhone через Sideloadly/AltStore
   ios:
     needs: release
