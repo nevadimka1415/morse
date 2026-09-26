@@ -25,7 +25,7 @@
                             Clicked="CourseDetailsButton_OnClicked" />
                 </Grid>
                 <!-- Полоса прогресса курса: по отметке на шаг — пройден, текущий, впереди -->
-                <Label x:Name="CourseProgressLabel" FontSize="15" CharacterSpacing="2" IsVisible="False" />
+                <Label x:Name="CourseProgressLabel" FontSize="19" CharacterSpacing="3" IsVisible="False" />
                 <Label x:Name="CourseDetailsLabel" Text="" FontSize="13" Opacity="0.75" LineBreakMode="WordWrap" IsVisible="False" />
                 <Button x:Name="CourseBookButton" Text="{loc:Loc '📖 Как устроен курс'}" IsVisible="False" HorizontalOptions="Start" Padding="0,4"
                         BackgroundColor="Transparent" TextColor="{StaticResource PrimaryDark}" Clicked="CourseBookButton_OnClicked" />

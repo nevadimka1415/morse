@@ -25,6 +25,8 @@ public sealed class LogoMark : ContentView
         {
             WidthRequest = Size,
             HeightRequest = Size,
+            // Общий стиль Border (карточки) даёт Padding 16 — в плитке 44 dp знак обрезался до точки и половины тире
+            Padding = 0,
             StrokeThickness = 0,
             StrokeShape = new RoundRectangle { CornerRadius = Size * 0.24 },
             Background = new LinearGradientBrush(new GradientStopCollection
