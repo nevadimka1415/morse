@@ -218,8 +218,10 @@ jobs:
           key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
           restore-keys: ${{ runner.os }}-nuget-
 
+      # Набор нагрузок закреплён: 10.0.401.1 по умолчанию собирает под iOS 27 и требует Xcode 27, а на раннере
+      # macos-26 стоит Xcode 26.6. Поднимать вместе с образом раннера (runs-on)
       - name: Install iOS workload
-        run: dotnet workload install maui-ios
+        run: dotnet workload install maui-ios --version 10.0.401
 
       # Симуляторная сборка на ARM64-раннере, подпись не нужна: CodesignKey пустой
       - name: Build iPhone simulator app
@@ -250,8 +252,10 @@ jobs:
           key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
           restore-keys: ${{ runner.os }}-nuget-
 
+      # Набор нагрузок закреплён: 10.0.401.1 по умолчанию собирает под iOS 27 и требует Xcode 27, а на раннере
+      # macos-26 стоит Xcode 26.6. Поднимать вместе с образом раннера (runs-on)
       - name: Install iOS workload
-        run: dotnet workload install maui-ios
+        run: dotnet workload install maui-ios --version 10.0.401
 
       # Сборка под настоящий iPhone (ios-arm64) без подписи Apple: подписать можно на своём
       # компьютере обычным Apple ID через Sideloadly/AltStore (см. MOBILE.md)
