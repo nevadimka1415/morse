@@ -97,6 +97,9 @@ jobs:
           New-Item -ItemType Directory -Path .\mobile-artifacts\android -Force | Out-Null
           Get-ChildItem .\src\MorseTrainer.Mobile\bin\Release\net10.0-android -Recurse -Filter *.apk |
             Copy-Item -Destination .\mobile-artifacts\android
+          # У приложения должна быть своя иконка: без android:icon в манифесте лаунчер показывает стандартный значок Android
+          python .\scripts\check-app-icon.py (Get-ChildItem .\mobile-artifacts\android -Filter *.apk).FullName
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Upload Android APK
         uses: actions/upload-artifact@v7
@@ -138,6 +141,8 @@ jobs:
           if (-not $apk) { throw "RuStore APK not found" }
           Copy-Item $apk.FullName .\mobile-artifacts\android-rustore\MorseTrainer-Android-RuStore.apk
           Get-Item .\mobile-artifacts\android-rustore\MorseTrainer-Android-RuStore.apk | Format-List Name, Length
+          python .\scripts\check-app-icon.py .\mobile-artifacts\android-rustore\MorseTrainer-Android-RuStore.apk
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Upload Android APK for RuStore
         uses: actions/upload-artifact@v7
@@ -270,6 +275,8 @@ jobs:
           cp -R "$app" ./dist/ipa/Payload/
           (cd ./dist/ipa && zip -qr ../MorseTrainer-iOS-unsigned.ipa Payload)
           ls -la ./dist/MorseTrainer-iOS-unsigned.ipa
+          # Иконка должна попасть в приложение (XSAppIconAssets в Info.plist)
+          python3 scripts/check-app-icon.py ./dist/MorseTrainer-iOS-unsigned.ipa
 
       - name: Upload unsigned IPA
         uses: actions/upload-artifact@v7

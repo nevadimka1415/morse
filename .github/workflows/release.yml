@@ -160,6 +160,8 @@ jobs:
           if (-not $apk) { throw "APK not found" }
           Copy-Item $apk.FullName .\dist\MorseTrainer-Android.apk
           Get-Item .\dist\MorseTrainer-Android.apk | Format-List Name, Length
+          python .\scripts\check-app-icon.py .\dist\MorseTrainer-Android.apk
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Attach APK to GitHub release
         shell: powershell
@@ -204,6 +206,8 @@ jobs:
           if (-not $apk) { throw "arm64 APK not found" }
           Copy-Item $apk.FullName .\dist\MorseTrainer-Android-arm64.apk
           Get-Item .\dist\MorseTrainer-Android-arm64.apk | Format-List Name, Length
+          python .\scripts\check-app-icon.py .\dist\MorseTrainer-Android-arm64.apk
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Attach arm64 APK to GitHub release
         if: ${{ steps.arm64.outcome == 'success' }}
@@ -251,6 +255,8 @@ jobs:
           if (-not $apk) { throw "RuStore APK not found" }
           Copy-Item $apk.FullName .\dist\MorseTrainer-Android-RuStore.apk
           Get-Item .\dist\MorseTrainer-Android-RuStore.apk | Format-List Name, Length
+          python .\scripts\check-app-icon.py .\dist\MorseTrainer-Android-RuStore.apk
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Attach RuStore APK to GitHub release
         if: ${{ steps.rustore.outcome == 'success' }}
@@ -305,6 +311,8 @@ jobs:
           cp -R "$app" ./dist/ipa/Payload/
           (cd ./dist/ipa && zip -qr ../MorseTrainer-iOS-unsigned.ipa Payload)
           ls -la ./dist/MorseTrainer-iOS-unsigned.ipa
+          # Иконка должна попасть в приложение (XSAppIconAssets в Info.plist)
+          python3 scripts/check-app-icon.py ./dist/MorseTrainer-iOS-unsigned.ipa
 
       - name: Attach IPA to GitHub release
         env:

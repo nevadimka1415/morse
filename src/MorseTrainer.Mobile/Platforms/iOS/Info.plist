@@ -4,6 +4,9 @@
 <dict>
     <key>NSMicrophoneUsageDescription</key>
     <string>Микрофон нужен для записи ваших напевов («Обучение») и для приёма морзянки с ключа или рации («Передача»). Звук обрабатывается на телефоне и никуда не отправляется.</string>
+    <!-- Набор иконок из MauiIcon (appicon): без этой строки сборка не кладёт иконку в приложение -->
+    <key>XSAppIconAssets</key>
+    <string>Assets.xcassets/appicon.appiconset</string>
     <key>LSRequiresIPhoneOS</key>
     <true/>
     <key>UIDeviceFamily</key>

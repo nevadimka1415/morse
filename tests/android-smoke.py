@@ -12,6 +12,7 @@
 там же внизу «Настроек» должна быть «Проверить обновления», а сброс курса «⋯» → «Сбросить курс» → «Начать курс» → «Пропустить»
 снова даёт шаг 1 (книжка по-русски — скриншоты для карточки RuStore).
 Если передан APK для RuStore, он ставится поверх: в его «Настройках» кнопки «Проверить обновления» быть не должно.
+В конце — снимок списка приложений лаунчера со значком приложения (android-launcher.png).
 
 Запуск: python3 tests/android-smoke.py <apk или папка с apk> <папка для скриншотов и логов> [<APK для RuStore или папка>]
 """
@@ -742,6 +743,29 @@ def rustore_settings():
     return "кнопки «Проверить обновления» нет, вместо неё — «Обновления приходят через RuStore»"
 
 
+def launcher_icon():
+    """Значок в списке приложений лаунчера: снимок android-launcher.png — сверить с иконкой карточки RuStore (правило
+    магазина: они должны совпадать). Саму ссылку на иконку в манифесте проверяет scripts/check-app-icon.py при сборке,
+    поэтому сбой лаунчера эмулятора тест не роняет."""
+    adb("shell", "input", "keyevent", "KEYCODE_HOME")
+    time.sleep(3)
+    width, height = screen_size()
+    found = []
+    for _ in range(3):
+        # Первый свайп вверх с рабочего стола открывает список приложений, следующие листают его
+        swipe(width // 2, height * 4 // 5, width // 2, height // 4, 300)
+        time.sleep(3)
+        root, _ = dump_ui()
+        found = nodes_with_text(root, LOGO_TEXTS)
+        if found:
+            break
+    screenshot("launcher")
+    if not found:
+        return "ВНИМАНИЕ: «Morse Trainer» в списке приложений не найден — значок по снимку не проверить"
+    x1, y1, x2, y2 = bounds(found[0])
+    return f"значок с подписью в списке приложений: [{x1},{y1}][{x2},{y2}]"
+
+
 def activity_creations():
     log = adb("logcat", "-d", "-b", "events", check=False, timeout=60)
     return sum(1 for line in log.splitlines() if "wm_on_create_called" in line and "MainActivity" in line)
@@ -840,6 +864,7 @@ def main():
             step("RuStore: запуск", launch_rustore)
             step("RuStore: «Настройки» без проверки обновлений", rustore_settings)
             step("RuStore: процесс жив, падений нет", lambda: f"pid {ensure_alive()}")
+        step("Значок приложения в лаунчере", launcher_icon)
     except Exception:
         exit_code = 1
     finally:

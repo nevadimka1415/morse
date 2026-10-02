@@ -88,6 +88,7 @@ const requiredFiles = [
   'docs/RUSTORE.md',
   'docs/WINGET.md',
   'docs/privacy.md',
+  'scripts/check-app-icon.py',
   'scripts/import-voice.py',
   'scripts/rustore-assets.py',
   'scripts/winget-manifests.ps1',
@@ -374,6 +375,17 @@ for (const [name, workflow] of [['mobile', mobileWorkflow], ['release', releaseW
     `The ${name} workflow must build MorseTrainer-Android-RuStore.apk.`);
 }
 assert(mobileWorkflow.includes('tests/android-smoke.py apk android-smoke apk-rustore'), 'Android smoke test must also check the RuStore APK.');
+// Иконка: картинки из MauiIcon попадают в пакет всегда, но показывает их система только по ссылке из манифеста
+assert(mobileProject.includes('<MauiIcon Include="Resources/AppIcon/appicon.svg"')
+  && /<application[^>]*android:icon="@mipmap\/appicon"[^>]*android:roundIcon="@mipmap\/appicon_round"/.test(androidManifest),
+  'Android manifest must point to the app icon: without android:icon the launcher shows the default Android icon (RuStore rejected 2.9.1 for that).');
+assert(/<key>XSAppIconAssets<\/key>\s*<string>Assets\.xcassets\/appicon\.appiconset<\/string>/.test(read('src/MorseTrainer.Mobile/Platforms/iOS/Info.plist')),
+  'iOS Info.plist must name the icon set (XSAppIconAssets), otherwise the iPhone app is built without an icon.');
+for (const [name, workflow] of [['mobile', mobileWorkflow], ['release', releaseWorkflow]]) {
+  assert((workflow.match(/check-app-icon\.py/g) || []).length >= 3 && /check-app-icon\.py \S*MorseTrainer-iOS-unsigned\.ipa/.test(workflow),
+    `The ${name} workflow must check the app icon in every APK and in the IPA (scripts/check-app-icon.py).`);
+}
+assert(read('tests/android-smoke.py').includes('screenshot("launcher")'), 'Android smoke test must take a launcher screenshot with the app icon.');
 assert(read('docs/RUSTORE.md').includes('https://github.com/nevadimka1415/morse/blob/main/docs/privacy.md'),
   'docs/RUSTORE.md must give the privacy policy link for the RuStore card.');
 assert(releaseWorkflow.includes('wingetcreate.exe update Nevadimka1415.MorseTrainer') && releaseWorkflow.includes('WINGET_TOKEN'),
