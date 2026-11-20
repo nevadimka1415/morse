@@ -55,7 +55,7 @@
                 </VerticalStackLayout>
             </Border>
             <Button x:Name="ResetScoreButton" Text="{loc:Loc 'Сбросить счёт'}" HorizontalOptions="Center" BackgroundColor="Transparent"
-                    TextColor="{StaticResource PrimaryDark}" Clicked="ResetScoreButton_OnClicked" />
+                    TextColor="{AppThemeBinding Light={StaticResource PrimaryDark}, Dark={StaticResource Primary}}" Clicked="ResetScoreButton_OnClicked" />
         </VerticalStackLayout>
     </ScrollView>
 </ContentPage>

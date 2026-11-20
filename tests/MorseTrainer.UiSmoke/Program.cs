@@ -219,17 +219,13 @@ public static class Program
             Click(window.TogglePanelButton);
             Check(window.TrainingPanel.Visibility == Visibility.Visible && window.QuickGenerateButton.Visibility == Visibility.Collapsed, "settings panel expands back");
 
-            // Повтор сложных символов: ошибка в ответе попадает в историю, кнопка строит задание из неё
+            // Ответ с ошибкой тоже попадает в историю (на «Прогрессе» ниже — три задания)
             Click(window.ToggleAnswerButton);
             var missedTask = window.AnswerDisplayText.Text;
             var missed = missedTask[0];
             window.UserAnswerText.Text = (missed == 'Б' ? 'А' : 'Б') + missedTask[1..];
             Click(window.CheckAnswerButton);
             Check(window.HistoryListView.Items.Count == 2, "history has two records after a wrong answer");
-            Click(window.DrillButton);
-            WaitUntil(() => window.StatusBadgeText.Text == Texts.T("ГОТОВО") && window.GenerateButton.IsEnabled, "drill task generated");
-            Check(window.TaskMetaText.Text.StartsWith(Texts.T("Повтор сложных · "), StringComparison.Ordinal), "drill task meta: " + window.TaskMetaText.Text);
-            Check(window.ResultDetailsText.Text.Contains(missed), $"drill lists the missed symbol {missed}: " + window.ResultDetailsText.Text);
 
             // Обучение: карточки, поиск, привязки шаблона карточки
             window.MainTabs.SelectedIndex = 1;

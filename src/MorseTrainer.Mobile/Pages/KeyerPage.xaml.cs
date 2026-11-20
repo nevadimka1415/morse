@@ -224,7 +224,7 @@ public partial class KeyerPage : ContentPage, IDisposable
         var text = new FormattedString();
         if (matched > 0)
         {
-            text.Spans.Add(new Span { Text = _target[..matched], TextColor = (Color)Application.Current!.Resources["PrimaryDark"] });
+            text.Spans.Add(new Span { Text = _target[..matched], TextColor = ThemeColors.Accent });
         }
 
         if (matched < _target.Length)
@@ -295,7 +295,7 @@ public partial class KeyerPage : ContentPage, IDisposable
         if (result.IsPerfect)
         {
             ResultLabel.Text = Texts.T("Отлично: передано без ошибок.");
-            ResultLabel.TextColor = (Color)Application.Current!.Resources["PrimaryDark"];
+            ResultLabel.TextColor = ThemeColors.Accent;
         }
         else
         {

@@ -1,6 +1,7 @@
 using Microsoft.Maui.Controls.Shapes;
 using MorseTrainer.Domain;
 using MorseTrainer.Localization;
+using MorseTrainer.Mobile.Services;
 
 namespace MorseTrainer.Mobile.Pages;
 
@@ -45,7 +46,7 @@ public sealed class CourseBookPage : ContentPage
         // Шапка: название курса и «Пропустить»
         var header = new Grid { ColumnDefinitions = { new ColumnDefinition(GridLength.Star), new ColumnDefinition(GridLength.Auto) } };
         header.Add(new Label { Text = _courseTitle, FontAttributes = FontAttributes.Bold, Opacity = 0.7, VerticalOptions = LayoutOptions.Center });
-        var skip = new Button { Text = startMode ? Texts.T("Пропустить") : Texts.T("Закрыть"), BackgroundColor = Colors.Transparent, TextColor = primaryDark, Padding = new Thickness(10, 6) };
+        var skip = new Button { Text = startMode ? Texts.T("Пропустить") : Texts.T("Закрыть"), BackgroundColor = Colors.Transparent, TextColor = ThemeColors.Accent, Padding = new Thickness(10, 6) };
         skip.Clicked += async (_, _) => await FinishAsync(startMode);
         header.Add(skip, 1);
         root.Add(header);

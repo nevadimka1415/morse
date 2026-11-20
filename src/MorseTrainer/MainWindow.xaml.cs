@@ -36,7 +36,6 @@ public partial class MainWindow : Window
     private IReadOnlyList<TrainingRecord> _history = Array.Empty<TrainingRecord>();
     private bool _currentTaskRecorded;
     private DateTime _currentTaskStartedAt = DateTime.Now;
-    private DrillPlan? _currentDrill;
     private string _autoSpeedNote = string.Empty;
     private const int QuizTabIndex = 2;
     private const int KeyerTabIndex = 3;

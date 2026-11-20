@@ -166,8 +166,6 @@
                                         Click="GenerateButton_OnClick" Padding="16,13" />
                                 <TextBlock Text="{loc:Loc 'Ctrl+G — создать новое задание'}" Foreground="{DynamicResource MutedTextBrush}"
                                            FontSize="11" HorizontalAlignment="Center" Margin="0,8,0,0" />
-                                <Button x:Name="DrillButton" Content="{loc:Loc 'Повторить сложные символы'}" Click="DrillButton_OnClick" Padding="12,9" Margin="0,8,0,0"
-                                        ToolTip="{loc:Loc 'Задание только из символов, в которых вы чаще всего ошибались в последних 100 заданиях, и похожих на них по коду. Сложные звучат втрое чаще.'}" />
                                 <Button x:Name="AdvancedButton" Content="{loc:Loc 'Дополнительные настройки ▾'}" Click="AdvancedButton_OnClick"
                                         Padding="12,8" Margin="0,16,0,0"
                                         ToolTip="{loc:Loc 'Профили, алфавит и особые режимы, пресет Фарнсворта, помехи, авто-скорость, сигнал Ж Ж Ж, напоминание'}" />

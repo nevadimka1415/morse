@@ -14,30 +14,33 @@
                     Clicked="CustomVoiceButton_OnClicked" />
         </Grid>
 
-        <!-- Курс «С нуля до 60 зн/мин»: кнопки ставят настройки шага и открывают тренировку; подробности — по «▾» -->
+        <!-- Курс «С нуля до 60 зн/мин»: кнопки ставят настройки шага и открывают тренировку. «▴» сворачивает карточку
+             до одной строки (запоминается) — чтобы не мешала слушать карточки символов; подробности шага — в «⋯» -->
         <Border Grid.Row="1" Padding="12,10" BackgroundColor="{AppThemeBinding Light=#ECFDF5, Dark=#102F29}">
             <VerticalStackLayout Spacing="6">
                 <Grid ColumnDefinitions="*,Auto">
+                    <Grid.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="CourseCollapseButton_OnClicked" />
+                    </Grid.GestureRecognizers>
                     <Label x:Name="CourseTitleLabel" Text="{loc:Loc 'Курс «С нуля до 60 зн/мин»'}" FontAttributes="Bold" LineBreakMode="WordWrap"
                            VerticalOptions="Center" />
-                    <Button x:Name="CourseDetailsButton" Grid.Column="1" Text="▾" SemanticProperties.Description="{loc:Loc 'Подробнее о курсе'}" FontSize="18" Padding="10,0" MinimumWidthRequest="36" MinimumHeightRequest="36"
-                            VerticalOptions="Start" BackgroundColor="Transparent" TextColor="{StaticResource PrimaryDark}"
-                            Clicked="CourseDetailsButton_OnClicked" />
+                    <Button x:Name="CourseCollapseButton" Grid.Column="1" Text="▴" SemanticProperties.Description="{loc:Loc 'Свернуть курс'}" FontSize="18" Padding="10,0" MinimumWidthRequest="36" MinimumHeightRequest="36"
+                            VerticalOptions="Start" BackgroundColor="Transparent" TextColor="{AppThemeBinding Light={StaticResource PrimaryDark}, Dark={StaticResource Primary}}"
+                            Clicked="CourseCollapseButton_OnClicked" />
                 </Grid>
-                <!-- Полоса прогресса курса: по отметке на шаг — пройден, текущий, впереди -->
-                <Label x:Name="CourseProgressLabel" FontSize="19" CharacterSpacing="3" IsVisible="False" />
-                <Label x:Name="CourseDetailsLabel" Text="" FontSize="13" Opacity="0.75" LineBreakMode="WordWrap" IsVisible="False" />
-                <Button x:Name="CourseBookButton" Text="{loc:Loc '📖 Как устроен курс'}" IsVisible="False" HorizontalOptions="Start" Padding="0,4"
-                        BackgroundColor="Transparent" TextColor="{StaticResource PrimaryDark}" Clicked="CourseBookButton_OnClicked" />
-                <Label x:Name="CourseStatusLabel" Text="" FontSize="12" LineBreakMode="WordWrap" />
-                <Grid ColumnDefinitions="*,6,*,6,Auto">
-                    <Button x:Name="CourseStartButton" Text="{loc:Loc 'Начать курс'}" BackgroundColor="{StaticResource Primary}" TextColor="#06231C"
-                            Padding="8,7" Clicked="CourseStartButton_OnClicked" />
-                    <Button x:Name="CourseNextButton" Grid.Column="2" Text="{loc:Loc 'Следующий шаг'}" Padding="8,7" Clicked="CourseNextButton_OnClicked" />
-                    <!-- «⋯»: выбрать шаг, книжка, другой курс, сбросить курс — сброс в два касания, случайно не нажать -->
-                    <Button x:Name="CourseMenuButton" Grid.Column="4" Text="⋯" FontSize="18" Padding="12,4"
-                            SemanticProperties.Description="{loc:Loc 'Меню курса'}" Clicked="CourseMenuButton_OnClicked" />
-                </Grid>
+                <VerticalStackLayout x:Name="CourseBody" Spacing="6">
+                    <!-- Полоса прогресса курса: по отметке на шаг — пройден, текущий, впереди -->
+                    <Label x:Name="CourseProgressLabel" FontSize="19" CharacterSpacing="3" IsVisible="False" />
+                    <Label x:Name="CourseStatusLabel" Text="" FontSize="12" LineBreakMode="WordWrap" />
+                    <Grid ColumnDefinitions="*,6,*,6,Auto">
+                        <Button x:Name="CourseStartButton" Text="{loc:Loc 'Начать курс'}" BackgroundColor="{StaticResource Primary}" TextColor="#06231C"
+                                Padding="8,7" Clicked="CourseStartButton_OnClicked" />
+                        <Button x:Name="CourseNextButton" Grid.Column="2" Text="{loc:Loc 'Следующий шаг'}" Padding="8,7" Clicked="CourseNextButton_OnClicked" />
+                        <!-- «⋯»: подробнее о шаге, выбрать шаг, книжка, другой курс, сбросить курс — сброс в два касания, случайно не нажать -->
+                        <Button x:Name="CourseMenuButton" Grid.Column="4" Text="⋯" FontSize="18" Padding="12,4"
+                                SemanticProperties.Description="{loc:Loc 'Меню курса'}" Clicked="CourseMenuButton_OnClicked" />
+                    </Grid>
+                </VerticalStackLayout>
             </VerticalStackLayout>
         </Border>
 
@@ -71,16 +74,14 @@
                         <VerticalStackLayout Spacing="7">
                             <Grid ColumnDefinitions="*,Auto,Auto">
                                 <Label Text="{Binding Symbol}" FontSize="30" FontAttributes="Bold" />
-                                <Label Grid.Column="1" Text="{Binding Code}" FontSize="20" TextColor="{StaticResource PrimaryDark}" />
+                                <Label Grid.Column="1" Text="{Binding Code}" FontSize="20" TextColor="{AppThemeBinding Light={StaticResource PrimaryDark}, Dark={StaticResource Primary}}" />
                                 <!-- «Изменить напев»: в строке с символом, чтобы кнопки «Голос»/«Сигнал» не обрезались на узкой карточке -->
                                 <Button Grid.Column="2" Text="✎" SemanticProperties.Description="{loc:Loc 'Изменить напев'}" Padding="8,0" Margin="6,0,0,0" MinimumWidthRequest="36" MinimumHeightRequest="36"
-                                        VerticalOptions="Start" BackgroundColor="Transparent" TextColor="{StaticResource PrimaryDark}"
+                                        VerticalOptions="Start" BackgroundColor="Transparent" TextColor="{AppThemeBinding Light={StaticResource PrimaryDark}, Dark={StaticResource Primary}}"
                                         CommandParameter="{Binding Symbol}" Clicked="EditChantButton_OnClicked" />
                             </Grid>
                             <Label Text="{Binding Chant}" FontAttributes="Bold" LineBreakMode="WordWrap" />
                             <Label Text="{loc:Loc 'свой напев'}" IsVisible="{Binding IsCustom}" FontSize="11" Opacity="0.65" />
-                            <Label Text="{loc:Loc '🎙 ваш голос'}" IsVisible="{Binding HasOwnVoice}" FontSize="12" FontAttributes="Bold"
-                                   TextColor="{StaticResource PrimaryDark}" />
                             <Grid ColumnDefinitions="*,6,*">
                                 <Button Text="{loc:Loc 'Голос'}" Padding="8,7" CommandParameter="{Binding Symbol}"
                                         Clicked="VoiceButton_OnClicked" />

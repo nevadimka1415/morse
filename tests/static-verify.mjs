@@ -22,7 +22,7 @@ const requiredFiles = [
   'src/MorseTrainer/Domain/SpeedLadder.cs',
   'src/MorseTrainer/Domain/KeyerAnalysis.cs',
   'src/MorseTrainer/Domain/ReminderSchedule.cs',
-  'src/MorseTrainer/Domain/ProblemDrill.cs',
+  'src/MorseTrainer/Domain/CodeDistance.cs',
   'src/MorseTrainer/Domain/HistoryTransfer.cs',
   'src/MorseTrainer/Domain/ChantBook.cs',
   'src/MorseTrainer/Services/ChantStore.cs',
@@ -155,7 +155,7 @@ for (const relativePath of [
   'src/MorseTrainer/Domain/SpeedLadder.cs',
   'src/MorseTrainer/Domain/KeyerAnalysis.cs',
   'src/MorseTrainer/Domain/ReminderSchedule.cs',
-  'src/MorseTrainer/Domain/ProblemDrill.cs',
+  'src/MorseTrainer/Domain/CodeDistance.cs',
   'src/MorseTrainer/Domain/HistoryTransfer.cs',
   'src/MorseTrainer/Domain/ChantBook.cs',
   'src/MorseTrainer/Services/ChantStore.cs',
@@ -192,7 +192,11 @@ for (const relativePath of [
   'src/MorseTrainer.Mobile/Pages/LearningPage.xaml.cs',
   'src/MorseTrainer.Mobile/Pages/SettingsPage.xaml.cs',
   'src/MorseTrainer.Mobile/Controls/TrainingParamsView.xaml.cs',
-  'src/MorseTrainer.Mobile/Services/FeedbackService.cs'
+  'src/MorseTrainer.Mobile/Services/FeedbackService.cs',
+  'src/MorseTrainer.Mobile/Services/ThemeColors.cs',
+  'src/MorseTrainer.Mobile/Platforms/Android/MainActivity.cs',
+  'src/MorseTrainer.Mobile/Platforms/Android/MainApplication.cs',
+  'src/MorseTrainer.Mobile/AppShell.cs'
 ]) {
   assertBalancedBraces(read(relativePath), relativePath);
 }
@@ -226,6 +230,14 @@ assert(read('src/MorseTrainer.Mobile/Pages/TrainingPage.xaml').includes('<contro
 assert(read('src/MorseTrainer.Mobile/Pages/SettingsPage.xaml').includes('x:Name="FeedbackEditor"') && read('src/MorseTrainer.Mobile/Pages/SettingsPage.xaml.cs').includes('FeedbackService.SendAsync')
   && read('src/MorseTrainer.Mobile/Services/FeedbackService.cs').includes('https://mirpoehal.ru/morse/otzyv') && read('docs/privacy.md').includes('Обратная связь'),
   'Phone: feedback is sent from the Settings tab only by the button, and the privacy policy describes it.');
+// Карточка курса на «Обучении» сворачивается до заголовка (не мешает слушать символы); пометки «ваш голос» на карточках нет
+assert(read('src/MorseTrainer.Mobile/Pages/LearningPage.xaml').includes('x:Name="CourseBody"') && read('src/MorseTrainer.Mobile/Pages/LearningPage.xaml.cs').includes('CourseCollapsedKey')
+  && !read('src/MorseTrainer.Mobile/Pages/LearningPage.xaml').includes('ваш голос'),
+  'Phone learning: the course card collapses (remembered), no own-voice mark on the cards.');
+// Смена темы на ходу: Android не перекрашивает уже нарисованное — окно пересоздаётся; тема из настроек ставится до первого окна
+assert(read('src/MorseTrainer.Mobile/Platforms/Android/MainActivity.cs').includes('Recreate();') && read('src/MorseTrainer.Mobile/Platforms/Android/MainApplication.cs').includes('AppCompatDelegate.DefaultNightMode')
+  && read('src/MorseTrainer.Mobile/AppShell.cs').includes('TakeTabAfterRecreate'),
+  'Phone: a theme change recreates the window on the same tab, the saved theme applies before the first window.');
 // Параметры тренировки и общие настройки сохраняются поверх свежих настроек, а не своей старой копии — иначе затирают друг друга
 assert(read('src/MorseTrainer.Mobile/Controls/TrainingParamsView.xaml.cs').includes('var settings = _settingsService.LoadSettings();') && !read('src/MorseTrainer.Mobile/Pages/SettingsPage.xaml.cs').includes('private AppSettings _settings'),
   'Phone: each screen saves only its own fields on top of fresh settings.');
@@ -252,8 +264,8 @@ assert(!read('src/MorseTrainer/MainWindow.xaml').includes('LearningAlphabetCombo
   'Windows learning: symbol sets are chosen with buttons, the quiz lives on its own tab.');
 assert(read('src/MorseTrainer.Mobile/MorseTrainer.Mobile.csproj').includes('ForegroundFile="Resources/AppIcon/appiconfg.svg"'),
   'Android adaptive icon needs a separate foreground inside the safe zone, otherwise the launcher mask crops it.');
-assert(read('src/MorseTrainer/MainWindow.xaml').includes('x:Name="DrillButton"') && read('src/MorseTrainer.Mobile/Pages/TrainingPage.xaml').includes('x:Name="DrillButton"'),
-  'Both apps must offer the problem symbol drill.');
+assert(!read('src/MorseTrainer/MainWindow.xaml').includes('DrillButton') && !read('src/MorseTrainer.Mobile/Pages/TrainingPage.xaml').includes('DrillButton'),
+  'The problem symbol drill was removed in 2.12 — neither app shows it.');
 assert(read('src/MorseTrainer/MainWindow.xaml').includes('x:Name="ImportHistoryButton"'), 'Windows must export and import the history.');
 assert(read('src/MorseTrainer/MainWindow.xaml').includes('LearningCardEdit_OnClick') && read('src/MorseTrainer.Mobile/Pages/LearningPage.xaml').includes('EditChantButton_OnClicked'),
   'Both apps must let the user edit chants.');

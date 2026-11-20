@@ -15,7 +15,6 @@ public partial class TrainingPage : ContentPage, IDisposable
     private readonly TrainingHistoryStore _historyStore;
     private bool _currentTaskRecorded;
     private DateTime _currentTaskStartedAt = DateTime.Now;
-    private DrillPlan? _currentDrill;
     private int _currentGroupCount;
     private CancellationTokenSource? _playbackCancellation;
     private AudioClip? _currentClip;
@@ -79,14 +78,14 @@ public partial class TrainingPage : ContentPage, IDisposable
         await GenerateTaskAsync();
     }
 
-    /// <summary>Новое задание по настройкам; drill — упражнение «Повторить сложные символы» вместо обычного состава.</summary>
-    private async Task GenerateTaskAsync(DrillPlan? drill = null)
+    /// <summary>Новое задание по настройкам.</summary>
+    private async Task GenerateTaskAsync()
     {
         StopPlayback();
         var settings = _settingsService.LoadSettings();
         var alphabet = (AlphabetMode)Math.Clamp(settings.AlphabetIndex, 0, 2);
         var content = ContentModes.Clamp(settings.ContentModeIndex);
-        var pool = drill?.Pool ?? MorseAlphabet.BuildPool(alphabet, content, settings.CustomSymbols, settings.KochLevel);
+        var pool = MorseAlphabet.BuildPool(alphabet, content, settings.CustomSymbols, settings.KochLevel);
         if (pool.Count == 0)
         {
             await DisplayAlertAsync(Texts.T("Нет символов"), Texts.T("Откройте «Параметры» и выберите хотя бы один символ."), Texts.T("Понятно"));
@@ -99,17 +98,12 @@ public partial class TrainingPage : ContentPage, IDisposable
         {
             // Чаще звучат новый символ метода Коха и символы с ошибками из истории
             var emphasized = new HashSet<char>();
-            if (drill is not null)
-            {
-                // Упражнение на ошибки: сами сложные символы звучат втрое чаще похожих на них
-                emphasized.UnionWith(drill.Problems);
-            }
-            else if (content == ContentMode.Koch)
+            if (content == ContentMode.Koch)
             {
                 emphasized.Add(pool[^1]);
             }
 
-            if (drill is null && settings.EmphasizeProblemSymbols)
+            if (settings.EmphasizeProblemSymbols)
             {
                 foreach (var problem in TrainingStatistics.ProblemSymbols(_historyStore.Load(), 6))
                 {
@@ -120,23 +114,20 @@ public partial class TrainingPage : ContentPage, IDisposable
                 }
             }
 
-            var task = drill is null
-                ? TrainingGenerator.GenerateTask(content, alphabet, pool, Math.Clamp(settings.GroupCount, 1, 100), emphasized)
-                : TrainingGenerator.Generate(pool, Math.Clamp(settings.GroupCount, 1, 100), emphasized);
+            var task = TrainingGenerator.GenerateTask(content, alphabet, pool, Math.Clamp(settings.GroupCount, 1, 100), emphasized);
             // Задание становится текущим только после отрисовки звука: пока доигрывает finally старого прослушивания,
             // на экране остаётся старое задание — новое не мелькнёт открытым текстом
             var clip = await Task.Run(() => Render(task, settings));
             _currentTask = task;
             _currentClip = clip;
             _renderSettings = settings;
-            _currentDrill = drill;
             _currentTaskRecorded = false;
             _currentTaskStartedAt = DateTime.Now;
             _currentGroupCount = Math.Clamp(settings.GroupCount, 1, 100);
             _answerVisible = false;
             AnswerEditor.Text = string.Empty;
             AccuracyLabel.Text = Texts.T("Точность: —");
-            ResultLabel.Text = drill?.Describe() ?? Texts.T("Пробелы между группами не учитываются");
+            ResultLabel.Text = Texts.T("Пробелы между группами не учитываются");
             ResultLabel.ClearValue(Label.TextColorProperty);
             UpdateTaskLabel();
             PlayButton.IsEnabled = true;
@@ -189,8 +180,7 @@ public partial class TrainingPage : ContentPage, IDisposable
         var now = _settingsService.LoadSettings();
         var contentChanged = old.AlphabetIndex != now.AlphabetIndex || old.ContentModeIndex != now.ContentModeIndex
                              || old.CustomSymbols != now.CustomSymbols || old.KochLevel != now.KochLevel || old.GroupCount != now.GroupCount;
-        // Упражнение на ошибки собирает свой состав — смена режима его не отменяет
-        if (contentChanged && _currentDrill is null)
+        if (contentChanged)
         {
             await GenerateTaskAsync();
             return;
@@ -351,7 +341,7 @@ public partial class TrainingPage : ContentPage, IDisposable
             var span = new Span { Text = _answerVisible ? groups[index] : new string('•', groups[index].Length) };
             if (index + 1 == _playingGroup)
             {
-                span.TextColor = (Color)Application.Current!.Resources["PrimaryDark"];
+                span.TextColor = ThemeColors.Accent;
                 span.FontAttributes = FontAttributes.Bold;
             }
 
@@ -482,7 +472,7 @@ public partial class TrainingPage : ContentPage, IDisposable
             _currentTaskRecorded = true;
             var settings = _settingsService.LoadSettings();
             // Задание по настройкам текущего шага курса помечается его номером — так считается зачёт шага
-            var courseStep = _currentDrill is null ? Course.StepForRecord(settings) : 0;
+            var courseStep = Course.StepForRecord(settings);
             var history = _historyStore.Add(TrainingStatistics.CreateRecord(DateTime.Now, settings.ActiveProfileName,
                 settings.CharactersPerMinute, _currentGroupCount, result, DateTime.Now - _currentTaskStartedAt, courseStep));
             UpdateHistoryLabel();
@@ -504,7 +494,7 @@ public partial class TrainingPage : ContentPage, IDisposable
         if (result.IsPerfect)
         {
             ResultLabel.Text = Texts.T("Отлично: все символы распознаны правильно");
-            ResultLabel.TextColor = (Color)Application.Current!.Resources["PrimaryDark"];
+            ResultLabel.TextColor = ThemeColors.Accent;
         }
         else
         {
@@ -514,7 +504,7 @@ public partial class TrainingPage : ContentPage, IDisposable
         }
 
         var checkedSettings = _settingsService.LoadSettings();
-        if (_currentDrill is null && checkedSettings.ContentModeIndex == (int)ContentMode.Koch)
+        if (checkedSettings.ContentModeIndex == (int)ContentMode.Koch)
         {
             var kochAlphabet = (AlphabetMode)Math.Clamp(checkedSettings.AlphabetIndex, 0, 2);
             ResultLabel.Text += "\n" + KochMethod.Advice(kochAlphabet, checkedSettings.KochLevel, result.AccuracyPercent);
@@ -527,22 +517,6 @@ public partial class TrainingPage : ContentPage, IDisposable
 
         _answerVisible = true;
         UpdateTaskLabel();
-    }
-
-    // ---------- Повтор сложных символов ----------
-
-    private async void DrillButton_OnClicked(object sender, EventArgs e)
-    {
-        var plan = ProblemDrill.Build(_historyStore.Load());
-        if (plan.IsEmpty)
-        {
-            await DisplayAlertAsync(Texts.T("Повторить сложные символы"),
-                Texts.T("Ошибок в истории пока нет. Пройдите несколько заданий: символы, в которых вы ошибётесь, и похожие на них по коду попадут в это упражнение."),
-                Texts.T("Понятно"));
-            return;
-        }
-
-        await GenerateTaskAsync(plan);
     }
 
     /// <summary>Новое задание по текущим параметрам с полем для ответа (кнопки курса на странице «Обучение»).</summary>

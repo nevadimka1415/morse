@@ -19,6 +19,19 @@ public partial class App : Application
     // Своя область сервисов на каждое окно: Android пересоздаёт активность (смена шрифта, языка, системных ресурсов),
     // MAUI вызывает CreateWindow заново — и оболочка со страницами должна быть новой. Старые страницы привязаны к
     // закрытому контексту прежнего окна: при переключении вкладки было ObjectDisposedException (IServiceProvider).
+    /// <summary>Вкладка, которую открыть в окне после пересоздания (смена темы): иначе Shell открыл бы первую.</summary>
+    internal static string? TabAfterRecreate { get; private set; }
+
+    internal static void RememberTabForRecreate() =>
+        TabAfterRecreate = Shell.Current?.CurrentItem?.CurrentItem?.CurrentItem?.Route;
+
+    internal static string? TakeTabAfterRecreate()
+    {
+        var route = TabAfterRecreate;
+        TabAfterRecreate = null;
+        return route;
+    }
+
     protected override Window CreateWindow(IActivationState? activationState)
     {
         var scope = _services.CreateScope();

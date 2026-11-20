@@ -326,7 +326,7 @@ public partial class SettingsPage : ContentPage
         {
             await FeedbackService.SendAsync(text, FeedbackContactEntry.Text ?? string.Empty, CurrentVersion.ToString(3));
             FeedbackEditor.Text = string.Empty;
-            FeedbackStatusLabel.TextColor = (Color)Application.Current!.Resources["PrimaryDark"];
+            FeedbackStatusLabel.TextColor = ThemeColors.Accent;
             FeedbackStatusLabel.Text = Texts.T("Спасибо! Сообщение отправлено разработчику.");
         }
         catch (Exception)

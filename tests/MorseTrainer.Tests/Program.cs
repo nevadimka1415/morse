@@ -37,7 +37,7 @@ var tests = new (string Name, Action Run)[]
     ("Keyer analysis", TestKeyerAnalysis),
     ("Progress filter and CSV", TestProgressCsv),
     ("Reminder schedule", TestReminderSchedule),
-    ("Problem symbol drill", TestProblemDrill),
+    ("Code edit distance", TestCodeDistance),
     ("Daily goal, streak and speed", TestDailyGoalStreakSpeed),
     ("History transfer", TestHistoryTransfer),
     ("Custom chants and voice", TestCustomChantsAndVoice),
@@ -706,50 +706,14 @@ static void TestUpdateCheck()
     Assert(info.Notes == "- Проверка обновлений", "Release notes must be trimmed.");
 }
 
-static void TestProblemDrill()
+static void TestCodeDistance()
 {
-    Assert(ProblemDrill.EditDistance("...", "...") == 0 && ProblemDrill.EditDistance("...", "....") == 1
-           && ProblemDrill.EditDistance(".-", "-.") == 2, "Edit distance between codes is wrong.");
-
-    // Похожие на С (...): отличие в один элемент, той же длины — раньше
-    var similarToS = ProblemDrill.SimilarSymbols('С', 3);
-    Assert(similarToS.Count == 3 && !similarToS.Contains('С'), "С must get three similar symbols.");
-    foreach (var symbol in similarToS)
-    {
-        MorseAlphabet.TryGetCode(symbol, out var code);
-        Assert(ProblemDrill.EditDistance("...", code) == 1 && code.Length == 3, $"{symbol} ({code}) is not the closest to С.");
-        Assert(MorseAlphabet.Russian.ContainsKey(symbol), "Similar symbols for a Russian letter must be Russian letters.");
-    }
-
-    Assert(ProblemDrill.SimilarSymbols('A', 4).All(symbol => MorseAlphabet.Latin.ContainsKey(symbol)), "Similar symbols for a Latin letter must be Latin.");
-    Assert(ProblemDrill.SimilarSymbols('5', 2).All(char.IsDigit), "Similar symbols for a digit must be digits.");
-    Assert(ProblemDrill.SimilarSymbols('#', 2).Count == 0, "Unknown symbol must have no similar symbols.");
-
-    var at = new DateTime(2026, 9, 23, 10, 0, 0);
-    Assert(ProblemDrill.Build(Array.Empty<TrainingRecord>()).IsEmpty, "Empty history must give an empty drill.");
-    var history = new[]
-    {
-        new TrainingRecord { CompletedAt = at, ProblemSymbols = "ССС" },
-        new TrainingRecord { CompletedAt = at.AddMinutes(1), ProblemSymbols = "Д" },
-        // Латинская S звучит как С: второй раз её брать незачем
-        new TrainingRecord { CompletedAt = at.AddMinutes(2), ProblemSymbols = "S" }
-    };
-    var plan = ProblemDrill.Build(history);
-    Assert(plan.Problems.SequenceEqual(new[] { 'С', 'Д' }), "Problems must be ordered by count and deduplicated by code: " + string.Join(",", plan.Problems));
-    Assert(plan.Similar.Count == 4, "Each problem symbol must bring two similar ones: " + string.Join(",", plan.Similar));
-    var codes = plan.Pool.Select(symbol => MorseAlphabet.TryGetCode(symbol, out var code) ? code : "").ToArray();
-    Assert(codes.Distinct().Count() == codes.Length, "Drill pool must not repeat a Morse code.");
-    Assert(plan.Describe().Contains("С Д"), "Description must list the problem symbols: " + plan.Describe());
-
-    var task = TrainingGenerator.Generate(plan.Pool, 20, plan.Problems);
-    Assert(task.Where(symbol => symbol != ' ').All(plan.Pool.Contains), "Drill task must use only the drill symbols.");
-    var problemShare = task.Count(plan.Problems.Contains) / (double)task.Count(symbol => symbol != ' ');
-    Assert(problemShare > 0.4, $"Problem symbols must play more often than similar ones: {problemShare:0.00}.");
-
-    // Учитываются только последние RecentRecords заданий: старые ошибки уже исправлены
-    var old = Enumerable.Range(0, 50).Select(index => new TrainingRecord { CompletedAt = at.AddMinutes(index), ProblemSymbols = "Ж" });
-    var fresh = Enumerable.Range(0, ProblemDrill.RecentRecords).Select(index => new TrainingRecord { CompletedAt = at.AddHours(2).AddMinutes(index) });
-    Assert(ProblemDrill.Build(old.Concat(fresh).ToArray()).IsEmpty, "Old mistakes outside the recent window must be ignored.");
+    // Расстояние Левенштейна между кодами: замена, лишний или пропущенный элемент — по единице
+    Assert(CodeDistance.EditDistance("...", "...") == 0, "Equal codes must have distance 0.");
+    Assert(CodeDistance.EditDistance("...", "....") == 1 && CodeDistance.EditDistance("....", "...") == 1, "One extra element is distance 1.");
+    Assert(CodeDistance.EditDistance("...", "..-") == 1, "One replaced element is distance 1.");
+    Assert(CodeDistance.EditDistance(".-", "-.") == 2, "Swapped elements are distance 2.");
+    Assert(CodeDistance.EditDistance("", "-.-") == 3 && CodeDistance.EditDistance("-.-", "") == 3, "Distance to an empty code is its length.");
 }
 
 static void TestDailyGoalStreakSpeed()
@@ -1061,9 +1025,9 @@ static void TestEarQuiz()
             Assert(question.Target.Symbol != previous, $"alphabet {alphabet}: the same symbol does not repeat twice in a row");
             // Варианты — ближайшие по коду: любой не выбранный символ не ближе самого далёкого из выбранных
             var target = question.Target.Code;
-            var chosen = question.Answers.Where(item => item.Symbol != question.Target.Symbol).Select(item => ProblemDrill.EditDistance(target, item.Code)).ToArray();
+            var chosen = question.Answers.Where(item => item.Symbol != question.Target.Symbol).Select(item => CodeDistance.EditDistance(target, item.Code)).ToArray();
             var shownCodes = question.Answers.Select(item => item.Code).ToHashSet();
-            var rest = pool.Where(item => !shownCodes.Contains(item.Code)).Select(item => ProblemDrill.EditDistance(target, item.Code)).ToArray();
+            var rest = pool.Where(item => !shownCodes.Contains(item.Code)).Select(item => CodeDistance.EditDistance(target, item.Code)).ToArray();
             Assert(rest.Length == 0 || chosen.Max() <= rest.Min(),
                 $"alphabet {alphabet}: answers for {question.Target.Symbol} ({target}) are the most similar: {string.Join(' ', question.Answers.Select(a => a.Symbol))}");
             previous = question.Target.Symbol;
@@ -1073,7 +1037,7 @@ static void TestEarQuiz()
     // Пример: к И (··) — только отличающиеся на один элемент (Е, А, Н, С, У…); random → 0 выбирает первый символ набора
     var russian = LearningCatalog.GetItems(0);
     var forI = EarQuiz.Next(russian.OrderBy(item => item.Symbol == 'И' ? 0 : 1).ToArray(), null, _ => 0);
-    Assert(forI.Target.Symbol == 'И' && forI.Answers.Where(a => a.Symbol != 'И').All(a => ProblemDrill.EditDistance("..", a.Code) == 1),
+    Assert(forI.Target.Symbol == 'И' && forI.Answers.Where(a => a.Symbol != 'И').All(a => CodeDistance.EditDistance("..", a.Code) == 1),
         "similar answers for И are one element away: " + string.Join(' ', forI.Answers.Select(a => a.Symbol)));
 
     // Ошибки: ошибка +1 (не больше 5), верный ответ −1, на нуле символ убирается; путаный символ звучит чаще
@@ -1115,12 +1079,6 @@ static void TestEasterEgg()
 
 static void TestGroupCounter()
 {
-    // Пометки карточки обучения: свой напев и свой голос
-    Texts.Apply(AppLanguage.Russian);
-    var card = LearningCatalog.GetItems(0)[0];
-    Assert(!card.CategoryLabel.Contains("ваш голос"), "no own voice mark by default");
-    Assert((card with { HasOwnVoice = true }).CategoryLabel.EndsWith(" · ваш голос", StringComparison.Ordinal), "own voice mark in the card label");
-
     // Без сигнала старта первая группа начинается сразу; моменты групп растут, последняя — до конца звука
     var clip = MorseAudioService.Render("АБВГД ЕЖЗИК ЛМНОП", 60, 700, 70, 3, 7);
     Assert(clip.GroupCount == 3 && clip.GroupStarts![0] == TimeSpan.Zero, "three groups, the first starts at once");

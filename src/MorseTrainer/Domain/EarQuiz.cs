@@ -51,7 +51,7 @@ public static class EarQuiz
             .GroupBy(item => item.Code)
             .Select(group => group.First())
             .Select(item => (Item: item, Tie: random(int.MaxValue)))
-            .OrderBy(x => ProblemDrill.EditDistance(target.Code, x.Item.Code))
+            .OrderBy(x => CodeDistance.EditDistance(target.Code, x.Item.Code))
             .ThenBy(x => Math.Abs(target.Code.Length - x.Item.Code.Length))
             .ThenBy(x => x.Tie)
             .Select(x => x.Item)

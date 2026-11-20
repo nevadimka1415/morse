@@ -19,7 +19,7 @@ using MorseTrainer.Services;
 
 namespace MorseTrainer;
 
-/// <summary>Главное окно: вкладка «Тренировка»: задание, прослушивание, запись на бумаге или ввод ответа, повтор сложных.</summary>
+/// <summary>Главное окно: вкладка «Тренировка»: задание, прослушивание, запись на бумаге или ввод ответа.</summary>
 public partial class MainWindow
 {
     private async void GenerateButton_OnClick(object sender, RoutedEventArgs e)
@@ -27,8 +27,8 @@ public partial class MainWindow
         await GenerateTaskAsync();
     }
 
-    /// <summary>Новое задание по параметрам; drill — упражнение «Повторить сложные символы» вместо обычного состава.</summary>
-    private async Task GenerateTaskAsync(DrillPlan? drill = null)
+    /// <summary>Новое задание по параметрам.</summary>
+    private async Task GenerateTaskAsync()
     {
         if (!TryReadGroupCount(out var groupCount))
         {
@@ -39,7 +39,7 @@ public partial class MainWindow
         settings.GroupCount = groupCount;
         var alphabet = (AlphabetMode)Math.Clamp(AlphabetCombo.SelectedIndex, 0, 2);
         var content = ContentModes.Clamp(ContentModeCombo.SelectedIndex);
-        var pool = drill?.Pool ?? MorseAlphabet.BuildPool(alphabet, content, _selectedSymbols, settings.KochLevel);
+        var pool = MorseAlphabet.BuildPool(alphabet, content, _selectedSymbols, settings.KochLevel);
         if (pool.Count == 0)
         {
             MessageBox.Show(
@@ -57,17 +57,12 @@ public partial class MainWindow
         {
             // Чаще звучат новый символ метода Коха и символы с ошибками из истории
             var emphasized = new HashSet<char>();
-            if (drill is not null)
-            {
-                // Упражнение на ошибки: сами сложные символы звучат втрое чаще похожих на них
-                emphasized.UnionWith(drill.Problems);
-            }
-            else if (content == ContentMode.Koch)
+            if (content == ContentMode.Koch)
             {
                 emphasized.Add(pool[^1]);
             }
 
-            if (drill is null && settings.EmphasizeProblemSymbols)
+            if (settings.EmphasizeProblemSymbols)
             {
                 foreach (var problem in TrainingStatistics.ProblemSymbols(_history, 6))
                 {
@@ -78,9 +73,7 @@ public partial class MainWindow
                 }
             }
 
-            var generatedTask = drill is null
-                ? TrainingGenerator.GenerateTask(content, alphabet, pool, settings.GroupCount, emphasized)
-                : TrainingGenerator.Generate(pool, settings.GroupCount, emphasized);
+            var generatedTask = TrainingGenerator.GenerateTask(content, alphabet, pool, settings.GroupCount, emphasized);
             var audio = await Task.Run(() => MorseAudioService.Render(
                 generatedTask,
                 settings.CharactersPerMinute,
@@ -97,10 +90,9 @@ public partial class MainWindow
             _currentTaskStartedAt = DateTime.Now;
             _currentClip = audio;
             _currentSettings = settings;
-            _currentDrill = drill;
             _answerVisible = false;
             UserAnswerText.Clear();
-            ResultDetailsText.Text = drill?.Describe() ?? Texts.T("Пробелы между группами при проверке не учитываются");
+            ResultDetailsText.Text = Texts.T("Пробелы между группами при проверке не учитываются");
             ResultDetailsText.Foreground = (Brush)FindResource("MutedTextBrush");
             AccuracyText.Text = "—";
             PlaybackProgress.Value = 0;
@@ -111,11 +103,10 @@ public partial class MainWindow
                 startSignal += Texts.T(" · помехи");
             }
 
-            var metaTemplate = drill is null && ContentModes.IsWordMode(content)
+            var metaTemplate = ContentModes.IsWordMode(content)
                 ? Texts.T("{0} слов · {1} знаков/мин · паузы {2}/{3}{4}")
                 : Texts.T("{0} групп × 5 · {1} знаков/мин · паузы {2}/{3}{4}");
-            TaskMetaText.Text = (drill is null ? string.Empty : Texts.T("Повтор сложных · ")) +
-                                string.Format(CultureInfo.CurrentCulture, metaTemplate, settings.GroupCount, settings.CharactersPerMinute, settings.CharacterGapUnits, settings.GroupGapUnits, startSignal);
+            TaskMetaText.Text = string.Format(CultureInfo.CurrentCulture, metaTemplate, settings.GroupCount, settings.CharactersPerMinute, settings.CharacterGapUnits, settings.GroupGapUnits, startSignal);
             UpdateAnswerDisplay();
             SetStatus(Texts.T("ГОТОВО"), isActive: true);
             SetTaskControlsEnabled(true);
@@ -429,7 +420,7 @@ public partial class MainWindow
             _currentTaskRecorded = true;
             var taskSettings = _currentSettings ?? ReadSettings();
             // Задание по настройкам текущего шага курса помечается его номером — так считается зачёт шага
-            var courseStep = _currentDrill is null ? Course.StepForRecord(taskSettings) : 0;
+            var courseStep = Course.StepForRecord(taskSettings);
             var record = TrainingStatistics.CreateRecord(DateTime.Now, taskSettings.ActiveProfileName,
                 taskSettings.CharactersPerMinute, _currentTask.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length, result,
                 DateTime.Now - _currentTaskStartedAt, courseStep);
@@ -477,7 +468,7 @@ public partial class MainWindow
             SetStatus(Texts.T("ЕСТЬ ОШИБКИ"), isActive: false);
         }
 
-        if (_currentDrill is null && _currentSettings?.ContentModeIndex == (int)ContentMode.Koch)
+        if (_currentSettings?.ContentModeIndex == (int)ContentMode.Koch)
         {
             var kochAlphabet = (AlphabetMode)Math.Clamp(_currentSettings.AlphabetIndex, 0, 2);
             ResultDetailsText.Text += "\n" + KochMethod.Advice(kochAlphabet, _currentSettings.KochLevel, result.AccuracyPercent);
@@ -491,23 +482,6 @@ public partial class MainWindow
 
         _answerVisible = true;
         UpdateAnswerDisplay();
-    }
-
-    // ---------- Повтор сложных символов ----------
-
-    private async void DrillButton_OnClick(object sender, RoutedEventArgs e)
-    {
-        MainTabs.SelectedIndex = 0;
-        var plan = ProblemDrill.Build(_history);
-        if (plan.IsEmpty)
-        {
-            // Подсказка вместо окна: ничего не блокирует, как у пресета Фарнсворта
-            ResultDetailsText.Text = Texts.T("Ошибок в истории пока нет. Пройдите несколько заданий: символы, в которых вы ошибётесь, и похожие на них по коду попадут в это упражнение.");
-            ResultDetailsText.Foreground = (Brush)FindResource("MutedTextBrush");
-            return;
-        }
-
-        await GenerateTaskAsync(plan);
     }
 
     private void SaveTaskButton_OnClick(object sender, RoutedEventArgs e)
@@ -533,7 +507,7 @@ public partial class MainWindow
         var content = new StringBuilder()
             .AppendLine("Morse Trainer")
             .AppendLine(Texts.F("Создано: {0:dd.MM.yyyy HH:mm}", DateTime.Now))
-            .AppendLine(_currentDrill is null && ContentModes.IsWordMode(ContentModes.Clamp(settings.ContentModeIndex))
+            .AppendLine(ContentModes.IsWordMode(ContentModes.Clamp(settings.ContentModeIndex))
                 ? Texts.F("Слов: {0}", settings.GroupCount)
                 : Texts.F("Групп: {0} × 5", settings.GroupCount))
             .AppendLine(Texts.F("Скорость: {0} знаков/мин", settings.CharactersPerMinute))

@@ -23,8 +23,6 @@ namespace MorseTrainer;
 /// <summary>Главное окно: вкладка «Обучение»: курсы «С нуля до 60» и «С 60 до 100 зн/мин», карточки символов, свои напевы и голос.</summary>
 public partial class MainWindow
 {
-    private static readonly string[] OwnVoiceExtensions = { ".wav" };
-
     // ---------- Курсы «С нуля до 60 зн/мин» и «С 60 до 100 зн/мин» ----------
 
     /// <summary>Текущий курс: 1 или 2 (переключается в меню «Выбрать шаг…»).</summary>
@@ -283,10 +281,7 @@ public partial class MainWindow
     private void RefreshLearningItems()
     {
         var search = LearningSearchText?.Text?.Trim() ?? string.Empty;
-        // Символы со своей записью голоса (папка голоса) — с пометкой «ваш голос» в подписи карточки
-        var items = LearningCatalog.GetItems(_learningAlphabet)
-            .Select(item => CustomVoice.Find(AppPaths.VoiceDirectory, item.Symbol, OwnVoiceExtensions) is null ? item : item with { HasOwnVoice = true })
-            .ToArray();
+        var items = LearningCatalog.GetItems(_learningAlphabet);
         _visibleLearningItems = string.IsNullOrEmpty(search)
             ? items
             : items.Where(item => item.Symbol.ToString().Contains(search, StringComparison.OrdinalIgnoreCase)
@@ -305,10 +300,9 @@ public partial class MainWindow
 
         var dialog = new ChantEditorWindow(item) { Owner = this };
         var saved = dialog.ShowDialog() == true;
-        // Запись голоса могла появиться или пропасть даже при «Отмене» напева — пометки карточек обновляем всегда
+        // Запись голоса могла появиться или пропасть даже при «Отмене» напева — счётчик своих записей обновляем всегда
         if (dialog.VoiceChanged)
         {
-            RefreshLearningItems();
             UpdateCustomVoiceText();
         }
 

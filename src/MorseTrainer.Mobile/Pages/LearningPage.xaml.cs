@@ -16,6 +16,7 @@ public partial class LearningPage : ContentPage
     private readonly TrainingPage _trainingPage;
     private readonly IAudioRecorderService _recorder;
     private const string AlphabetKey = "learning.alphabet";
+    private const string CourseCollapsedKey = "learning.course_collapsed";
 
     private readonly Button[] _alphabetButtons;
     private int _alphabet;
@@ -43,6 +44,7 @@ public partial class LearningPage : ContentPage
         _alphabetButtons = new[] { AlphabetRussianButton, AlphabetLatinButton, AlphabetBothButton, AlphabetDigitsButton };
         _alphabet = ChoiceButtons.LoadAlphabet(AlphabetKey);
         ChoiceButtons.Highlight(_alphabetButtons, _alphabet);
+        SetCourseCollapsed(Preferences.Default.Get(CourseCollapsedKey, false));
         _signalSpeed = EarQuiz.ClampSpeed(_settingsService.LoadSettings().LearningSignalSpeed);
         SignalSpeedSlider.Value = _signalSpeed;
         UpdateSignalSpeedLabel();
@@ -87,7 +89,6 @@ public partial class LearningPage : ContentPage
         if (step is null)
         {
             CourseTitleLabel.Text = Course.Title(course);
-            CourseDetailsLabel.Text = Course.Intro(course, steps.Count);
             CourseStatusLabel.Text = passed > 0 ? Texts.F("Пройдено шагов: {0} из {1}.", passed, steps.Count) : string.Empty;
             // Пустая строка статуса оставляла зазор над кнопкой
             CourseStatusLabel.IsVisible = passed > 0;
@@ -100,7 +101,6 @@ public partial class LearningPage : ContentPage
         var stepPassed = Course.IsPassed(history, step);
         var hint = Course.NextCourseHint(history, steps, step);
         CourseTitleLabel.Text = Course.Heading(step, steps.Count);
-        CourseDetailsLabel.Text = step.Details;
         CourseStatusLabel.Text = Course.Status(history, step) + " " + Texts.F("Пройдено шагов: {0} из {1}.", passed, steps.Count) +
                                  (hint.Length > 0 ? "\n" + hint : string.Empty);
         CourseStatusLabel.IsVisible = true;
@@ -122,21 +122,20 @@ public partial class LearningPage : ContentPage
             return;
         }
 
-        var dark = Application.Current?.RequestedTheme == AppTheme.Dark;
-        var passedColor = (Color)Application.Current!.Resources[dark ? "Primary" : "PrimaryDark"];
         var text = new FormattedString();
         foreach (var mark in Course.Marks(steps, history, current))
         {
-            text.Spans.Add(new Span
+            var span = new Span { Text = mark == CourseMark.Ahead ? "○" : "●" };
+            if (mark == CourseMark.Passed)
             {
-                Text = mark == CourseMark.Ahead ? "○" : "●",
-                TextColor = mark switch
-                {
-                    CourseMark.Passed => passedColor,
-                    CourseMark.Current => Color.FromArgb("#F59E0B"),
-                    _ => Color.FromArgb("#94A3B8")
-                }
-            });
+                span.TextColor = ThemeColors.Accent;
+            }
+            else
+            {
+                span.TextColor = Color.FromArgb(mark == CourseMark.Current ? "#F59E0B" : "#94A3B8");
+            }
+
+            text.Spans.Add(span);
         }
 
         CourseProgressLabel.FormattedText = text;
@@ -164,9 +163,6 @@ public partial class LearningPage : ContentPage
 
         await StartCourseStepAsync(settings);
     }
-
-    // «📖 Как устроен курс» — перечитать книжку в любой момент
-    private async void CourseBookButton_OnClicked(object sender, EventArgs e) => await OpenCourseBookAsync(_settingsService.LoadSettings(), startMode: false);
 
     /// <summary>Открывает книжку курса; true — курс нужно начать (дочитали или пропустили).</summary>
     private async Task<bool> OpenCourseBookAsync(AppSettings settings, bool startMode)
@@ -209,18 +205,26 @@ public partial class LearningPage : ContentPage
         await StartCourseStepAsync(settings);
     }
 
-    // «⋯»: выбрать шаг, перечитать книжку, перейти к другому курсу, сбросить курс. Сброс — отдельным пунктом меню,
-    // случайно одним касанием не нажать
+    // «⋯»: подробнее о шаге, выбрать шаг, перечитать книжку, перейти к другому курсу, сбросить курс. Сброс — отдельным
+    // пунктом меню, случайно одним касанием не нажать
     private async void CourseMenuButton_OnClicked(object sender, EventArgs e)
     {
         var settings = _settingsService.LoadSettings();
         var course = CurrentCourse(settings);
+        var step = Course.Find(CourseSteps(settings), settings.CourseStep);
+        var details = step is null ? Texts.T("Подробнее о курсе") : Texts.T("Подробнее о шаге");
         var choose = Texts.T("Выбрать шаг…");
         var book = Texts.T("📖 Как устроен курс");
         var other = Course.SwitchLabel(course);
         var reset = settings.CourseStep > 0 ? Texts.T("Сбросить курс") : null;
-        var action = await DisplayActionSheetAsync(Course.Title(course), Texts.T("Отмена"), reset, choose, book, other);
-        if (action == other)
+        var action = await DisplayActionSheetAsync(Course.Title(course), Texts.T("Отмена"), reset, details, choose, book, other);
+        if (action == details)
+        {
+            var steps = CourseSteps(settings);
+            await DisplayAlertAsync(step is null ? Course.Title(course) : Course.Heading(step, steps.Count),
+                step is null ? Course.Intro(course, steps.Count) : step.Details, Texts.T("Понятно"));
+        }
+        else if (action == other)
         {
             SwitchCourse(settings, course == 2 ? 1 : 2);
         }
@@ -287,11 +291,18 @@ public partial class LearningPage : ContentPage
         await _trainingPage.StartTaskAsync();
     }
 
-    private void CourseDetailsButton_OnClicked(object sender, EventArgs e)
+    // «▴» или нажатие на заголовок курса: карточка сворачивается до одной строки и не мешает слушать символы
+    private void CourseCollapseButton_OnClicked(object? sender, EventArgs e)
     {
-        CourseDetailsLabel.IsVisible = !CourseDetailsLabel.IsVisible;
-        CourseBookButton.IsVisible = CourseDetailsLabel.IsVisible;
-        CourseDetailsButton.Text = CourseDetailsLabel.IsVisible ? "▴" : "▾";
+        SetCourseCollapsed(CourseBody.IsVisible);
+        Preferences.Default.Set(CourseCollapsedKey, !CourseBody.IsVisible);
+    }
+
+    private void SetCourseCollapsed(bool collapsed)
+    {
+        CourseBody.IsVisible = !collapsed;
+        CourseCollapseButton.Text = collapsed ? "▾" : "▴";
+        SemanticProperties.SetDescription(CourseCollapseButton, collapsed ? Texts.T("Развернуть курс") : Texts.T("Свернуть курс"));
     }
 
     private void AlphabetButton_OnClicked(object sender, EventArgs e)
@@ -325,10 +336,7 @@ public partial class LearningPage : ContentPage
 
     private void RefreshItems()
     {
-        // Символы со своей записью голоса помечаются «🎙 ваш голос»
-        var items = LearningCatalog.GetItems(_alphabet)
-            .Select(item => CustomRecording(item.Symbol) is null ? item : item with { HasOwnVoice = true })
-            .ToArray();
+        var items = LearningCatalog.GetItems(_alphabet);
         var search = SearchBox.Text?.Trim() ?? string.Empty;
         CardsView.ItemsSource = string.IsNullOrWhiteSpace(search)
             ? items

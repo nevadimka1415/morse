@@ -55,7 +55,7 @@
                     <Button x:Name="MicButton" Text="{loc:Loc '● Слушать микрофон'}" BackgroundColor="{StaticResource Primary}" TextColor="#06231C"
                             Clicked="MicButton_OnClicked" />
                     <Label x:Name="MicStatusLabel" Text="" Opacity="0.75" />
-                    <ProgressBar x:Name="MicLevelBar" Progress="0" ProgressColor="{StaticResource PrimaryDark}" />
+                    <ProgressBar x:Name="MicLevelBar" Progress="0" ProgressColor="{AppThemeBinding Light={StaticResource PrimaryDark}, Dark={StaticResource Primary}}" />
                     <Label x:Name="MicTextLabel" Text=" " FontSize="22" FontAttributes="Bold" FontFamily="monospace" LineBreakMode="WordWrap" />
                     <Grid ColumnDefinitions="*,8,*">
                         <Button Text="{loc:Loc 'Очистить'}" Clicked="MicClearButton_OnClicked" />

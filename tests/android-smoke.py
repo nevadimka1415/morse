@@ -60,6 +60,11 @@ MIC_LISTENING_PREFIXES = ("Слушаю", "Listening", "Тон ", "Tone ")
 SAVE_PROGRESS_TEXTS = ("Сохранить прогресс…", "Save progress…")
 NOTHING_TO_SAVE_PREFIXES = ("Пока нечего сохранять", "Nothing to save yet")
 SIGNAL_SPEED_TEXTS = ("Скорость сигнала", "Signal speed")
+# Карточка курса на «Обучении» сворачивается до заголовка (2.12): «▴»/«▾» с описанием для TalkBack
+COLLAPSE_COURSE_TEXTS = ("Свернуть курс", "Collapse the course")
+EXPAND_COURSE_TEXTS = ("Развернуть курс", "Expand the course")
+# Пункты пикера «Тема» в «Настройках»
+THEME_TEXTS = {"dark": ("Dark", "Тёмная"), "light": ("Light", "Светлая"), "system": ("System", "Системная")}
 STEP3_TITLE_PREFIXES = ("Курс «С нуля до 60 зн/мин» · шаг 3 из", "Course “From zero to 60 cpm” · step 3 of")
 rustore_apk_arg = sys.argv[3] if len(sys.argv) > 3 else None
 
@@ -553,6 +558,102 @@ def save_progress_empty():
     return "пустая история — сообщение «Пока нечего сохранять», процесс жив"
 
 
+def scroll_to_top(times=6):
+    """Листает страницу вверх у самого левого края — мимо ползунков."""
+    _, height = screen_size()
+    for _ in range(times):
+        swipe(20, height // 4, 20, height * 3 // 4, 250)
+        time.sleep(0.7)
+
+
+def pick_theme(key):
+    """«Настройки» → «Оформление» → пикер «Тема» → пункт списка. Возвращает, сколько раз пересоздалось окно."""
+    scroll_to_top()
+    root, _ = dump_ui()
+    labels = sum(THEME_TEXTS.values(), ())
+    found = nodes_with_text(root, labels)
+    # Тема — верхний пикер страницы: ниже такой же пикер языка («System»/«Системный»)
+    pickers = sorted([node for node in found if "EditText" in node.get("class", "")] or found, key=lambda node: bounds(node)[1])
+    if not pickers:
+        raise RuntimeError("Нет пикера «Тема»")
+    tap(pickers[0])
+    time.sleep(1.5)
+    root, _ = dump_ui()
+    items = [node for node in nodes_with_text(root, THEME_TEXTS[key]) if "EditText" not in node.get("class", "")]
+    if not items:
+        raise RuntimeError(f"В списке тем нет «{THEME_TEXTS[key][0]}»")
+    before = activity_creations()
+    tap(items[0])
+    time.sleep(6)
+    ensure_alive()
+    return activity_creations() - before
+
+
+def theme_dark():
+    """Тёмная тема на ходу: окно пересоздаётся (иначе Android не перекрашивает уже нарисованное) и остаётся на
+    «Настройках»; снимки theme-dark-* всех вкладок и раскрытых «Параметров» — сверить глазами, что всё тёмное и читается."""
+    created = pick_theme("dark")
+    root, parents = dump_ui()
+    node = tab_node(root, parents, ("Settings", "Настройки"))
+    restored = node is not None and is_selected(node, parents)
+    screenshot("theme-dark-settings")
+    for key, russian, english in TABS[:4]:
+        open_tab(f"theme-dark-{key}", (russian, english))()
+        if key == "training":
+            tap(wait_for(PARAMS_TEXTS, 10)[0])
+            wait_for(PARAMS_OPEN_TEXTS, 10)
+            screenshot("theme-dark-training-params")
+            tap(wait_for(PARAMS_TEXTS, 10)[0])
+            time.sleep(1)
+    if not restored:
+        raise RuntimeError("После смены темы открылась не «Настройки»")
+    return f"окно пересоздано: {created}, вкладка «Настройки» осталась"
+
+
+def theme_dark_cold():
+    """Запуск с сохранённой тёмной темой: окно сразу тёмное (тема ставится до первого окна)."""
+    adb("shell", "am", "force-stop", PACKAGE)
+    time.sleep(2)
+    launch()
+    wait_for(READY_PREFIXES, 120, prefix=True)
+    screenshot("theme-dark-cold-training")
+    open_tab("theme-dark-cold-learning", TABS[1][1:])()
+    return "снимки theme-dark-cold-*"
+
+
+def theme_light_and_system():
+    """Светлая тема на ходу (снимки theme-light-*), затем снова «Системная» — дальше тест идёт как обычно."""
+    open_tab("theme-settings", TABS[4][1:])()
+    created = pick_theme("light")
+    screenshot("theme-light-settings")
+    for key, russian, english in TABS[:2]:
+        open_tab(f"theme-light-{key}", (russian, english))()
+    open_tab("theme-settings-system", TABS[4][1:])()
+    pick_theme("system")
+    return f"светлая: окно пересоздано {created}; тема снова системная"
+
+
+def course_collapse():
+    """«Обучение»: «▴» сворачивает карточку курса до заголовка (кнопки курса скрыты), «▾» разворачивает обратно."""
+    def toggle(texts, symbol):
+        root, _ = dump_ui()
+        found = nodes_with_text(root, texts) or [node for node in root.iter("node") if node.get("text", "") == symbol]
+        if not found:
+            raise RuntimeError(f"Нет кнопки «{texts[0]}»")
+        tap(found[0])
+        time.sleep(1.5)
+
+    wait_for(START_COURSE_TEXTS, 10)
+    toggle(COLLAPSE_COURSE_TEXTS, "▴")
+    root, _ = dump_ui()
+    if nodes_with_text(root, START_COURSE_TEXTS):
+        raise RuntimeError("Курс не свернулся: «Начать курс» на месте")
+    screenshot("learning-course-collapsed")
+    toggle(EXPAND_COURSE_TEXTS, "▾")
+    wait_for(START_COURSE_TEXTS, 10)
+    return "свёрнут до заголовка и развёрнут обратно"
+
+
 def microphone_listen():
     """«Передача» → «● Слушать микрофон»: слушает (эмулятор без звука — «ищу тон») или объясняет, что микрофона нет;
     остановка возвращает кнопку; приложение не падает."""
@@ -821,7 +922,11 @@ def main():
             if key == "settings":
                 step("Настройки: значок вверху — пасхалка", logo_easter_egg)
                 step("Настройки: «Сохранить прогресс…» без занятий", save_progress_empty)
+                step("Тема: тёмная на ходу", theme_dark)
+                step("Тема: тёмная при запуске", theme_dark_cold)
+                step("Тема: светлая и снова системная", theme_light_and_system)
         step("Вкладка «Обучение» для курса", open_tab("learning-course", ("Обучение", "Learning")))
+        step("Обучение: свернуть и развернуть курс", course_collapse)
         step("Книжка: свайп по тексту и «Назад»", course_book_swipe_and_back)
         step("Книжка курса и шаг 1", course_book)
         step("Вкладка «Обучение»: выбор шага", open_tab("learning-choose", ("Обучение", "Learning")))
