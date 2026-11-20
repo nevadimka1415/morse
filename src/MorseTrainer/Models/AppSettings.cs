@@ -21,9 +21,6 @@ public sealed class AppSettings
     public bool EmphasizeProblemSymbols { get; set; } = true;
     // Лестница скорости: +5 после двух заданий от 90 %, −5 при точности ниже 70 %
     public bool AutoSpeed { get; set; }
-    // Экзамен: разрешённые прослушивания (1–3) и лимит времени в минутах (0 — без лимита)
-    public int ExamPlaybacks { get; set; } = 1;
-    public int ExamTimeLimitMinutes { get; set; }
     // Цель на день в минутах тренировки (0 — без цели)
     public int DailyGoalMinutes { get; set; } = 10;
     // Курс «С нуля до 60 зн/мин»: текущий шаг (0 — курс не начат)

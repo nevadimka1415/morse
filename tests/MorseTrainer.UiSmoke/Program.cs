@@ -138,7 +138,6 @@ public static class Program
             var area = SystemParameters.WorkArea;
             Check(window.ActualWidth <= area.Width + 1 && window.ActualHeight <= area.Height + 1,
                 $"window fits the work area: {window.ActualWidth:0}×{window.ActualHeight:0} in {area.Width:0}×{area.Height:0}");
-            Check(window.ExamPlaybacksCombo.Items.Count == 3 && window.ExamPlaybacksCombo.SelectedIndex == 0, "exam playbacks default to one");
             Check(window.NudgeBanner.Visibility == Visibility.Collapsed, "no 'you have not practiced' banner for an empty history");
 
             // По умолчанию — как на телефоне: пишут на бумаге и сверяют с текстом задания, ввод ответа и «Прогресс» спрятаны
@@ -184,8 +183,6 @@ public static class Program
                 // На раннере может не быть панели задач — тогда оболочка отказывает, это не ошибка программы
                 Console.WriteLine("      tray notification unavailable: " + exception.Message);
             }
-            Check(window.ExamLimitCombo.Items.Count == Domain.ExamSession.TimeLimitChoices.Count && window.ExamLimitCombo.Items[0] as string == Texts.T("без лимита"),
-                "exam time limit choices are translated: " + window.ExamLimitCombo.Items[0]);
 
             // Показать ответ, ввести его и проверить: точность 100% и запись в истории
             Click(window.ToggleAnswerButton);
@@ -413,7 +410,6 @@ public static class Program
             WaitUntil(() => FindChildren<TextBlock>(window.HistoryListView).Any(block => block.Text == "100%"), "history row bindings render the accuracy");
             Check(window.ProgressSessionsText.Text == "3" && window.ProgressBestText.Text == "100%", "progress summary shows three sessions, best 100%");
             Check(window.DailyBarsPanel.Children.Count == 1, "daily bars show one day");
-            Check(window.ExamSeriesText.Text == Texts.T("Экзаменов пока нет"), "exam series is empty: " + window.ExamSeriesText.Text);
             Check(window.StreakText.Text == Texts.F("Дней подряд: {0} · рекорд {1}", 1, 1), "streak counts today: " + window.StreakText.Text);
             Check(window.DailyGoalCombo.SelectedIndex > 0 && window.GoalText.Text.Length > 0 && window.GoalProgress.Visibility == Visibility.Visible,
                 "daily goal is set by default: " + window.GoalText.Text);

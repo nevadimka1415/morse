@@ -8,7 +8,7 @@ public sealed class TrainingRecord
 {
     public DateTime CompletedAt { get; set; }
 
-    /// <summary>Запись экзамена (одно прослушивание, время) — в истории помечается отдельно.</summary>
+    /// <summary>Запись экзамена из версий до 2.12 (режим экзамена убран): поле осталось, чтобы старая история читалась и помечалась.</summary>
     public bool IsExam { get; set; }
 
     /// <summary>Подпись вида записи для таблиц: «Экзамен», «Курс, шаг N» (второй курс — «Курс 2, шаг N») или пусто.</summary>

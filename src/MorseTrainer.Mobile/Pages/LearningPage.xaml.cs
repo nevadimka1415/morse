@@ -104,8 +104,8 @@ public partial class LearningPage : ContentPage
         CourseStatusLabel.Text = Course.Status(history, step) + " " + Texts.F("Пройдено шагов: {0} из {1}.", passed, steps.Count) +
                                  (hint.Length > 0 ? "\n" + hint : string.Empty);
         CourseStatusLabel.IsVisible = true;
-        CourseStartButton.Text = step.IsExam ? Texts.T("Начать экзамен") : Texts.T("Начать шаг");
-        // После итогового экзамена первого курса «Следующий шаг» ведёт ко второму курсу
+        CourseStartButton.Text = Texts.T("Начать шаг");
+        // После итогового задания первого курса «Следующий шаг» ведёт ко второму курсу
         var hasNext = Course.Next(steps, step.Number) is not null;
         CourseNextButton.Text = hasNext ? Texts.T("Следующий шаг") : Texts.T("Следующий курс");
         CourseNextButton.IsVisible = hasNext || hint.Length > 0;
@@ -196,7 +196,7 @@ public partial class LearningPage : ContentPage
         var settings = _settingsService.LoadSettings();
         if (Course.Next(CourseSteps(settings), settings.CourseStep) is not { } next)
         {
-            // Последний шаг: кнопка видна только как «Следующий курс» после итогового экзамена первого курса
+            // Последний шаг: кнопка видна только как «Следующий курс» после итогового задания первого курса
             if (CurrentCourse(settings) == 1)
             {
                 SwitchCourse(settings, 2);
@@ -272,7 +272,7 @@ public partial class LearningPage : ContentPage
         RefreshCourse();
     }
 
-    /// <summary>Ставит настройки шага, открывает «Тренировку» и создаёт задание (или экзамен).</summary>
+    /// <summary>Ставит настройки шага, открывает «Тренировку» и создаёт задание.</summary>
     private async Task StartCourseStepAsync(AppSettings settings)
     {
         if (Course.Find(CourseSteps(settings), settings.CourseStep) is not { } step)
@@ -284,7 +284,7 @@ public partial class LearningPage : ContentPage
         _settingsService.SaveSettings(settings);
         RefreshCourse();
         await Shell.Current.GoToAsync("//training");
-        await _trainingPage.StartTaskAsync(step.IsExam);
+        await _trainingPage.StartTaskAsync();
     }
 
     private void CourseDetailsButton_OnClicked(object sender, EventArgs e)

@@ -44,35 +44,6 @@ public sealed record DailyGoal(int GoalMinutes, double TodayMinutes)
 
 public sealed record ProblemSymbolCount(char Symbol, int Count);
 
-/// <summary>Серия последних экзаменов (от старых к новым) и тренд точности в процентных пунктах за экзамен.</summary>
-public sealed record ExamSeries(IReadOnlyList<TrainingRecord> Exams, double TrendPerExam)
-{
-    public bool IsEmpty => Exams.Count == 0;
-
-    public string Describe()
-    {
-        if (IsEmpty)
-        {
-            return Texts.T("Экзаменов пока нет");
-        }
-
-        var values = string.Join(" · ", Exams.Select(item => item.AccuracyPercent.ToString("0.#", CultureInfo.CurrentCulture) + "%"));
-        var text = Texts.F("Последние экзамены: {0}", values);
-        if (Exams.Count < 2)
-        {
-            return text;
-        }
-
-        // Меньше половины пункта за экзамен — шум, а не тренд
-        var trend = Math.Abs(TrendPerExam) < 0.5
-            ? Texts.T("тренд → ровно")
-            : TrendPerExam > 0
-                ? Texts.F("тренд ↑ +{0:0.#} п.п. за экзамен", TrendPerExam)
-                : Texts.F("тренд ↓ −{0:0.#} п.п. за экзамен", -TrendPerExam);
-        return text + " — " + trend;
-    }
-}
-
 /// <summary>Сводки по истории тренировок. Чистые функции, одинаковые для Windows и телефона.</summary>
 public static class TrainingStatistics
 {
@@ -95,7 +66,6 @@ public static class TrainingStatistics
         int charactersPerMinute,
         int groupCount,
         EvaluationResult result,
-        bool isExam = false,
         TimeSpan? duration = null,
         int courseStep = 0)
     {
@@ -103,7 +73,6 @@ public static class TrainingStatistics
         return new TrainingRecord
         {
             CompletedAt = completedAt,
-            IsExam = isExam,
             CourseStep = Math.Max(0, courseStep),
             DurationSeconds = duration is null ? 0 : (int)Math.Round(Math.Clamp(duration.Value.TotalSeconds, 0, MaxTaskMinutes * 60)),
             ProfileName = string.IsNullOrWhiteSpace(profileName) ? "Основной" : profileName.Trim(),
@@ -163,38 +132,6 @@ public static class TrainingStatistics
             .ThenBy(item => item.Symbol)
             .Take(Math.Max(1, top))
             .ToArray();
-    }
-
-    /// <summary>Последние count экзаменов и тренд: наклон прямой по методу наименьших квадратов.</summary>
-    public static ExamSeries Exams(IReadOnlyList<TrainingRecord> records, int count = 5)
-    {
-        ArgumentNullException.ThrowIfNull(records);
-        var exams = records
-            .Where(item => item.IsExam)
-            .OrderBy(item => item.CompletedAt)
-            .TakeLast(Math.Max(1, count))
-            .ToArray();
-        return new ExamSeries(exams, Slope(exams.Select(item => item.AccuracyPercent).ToArray()));
-    }
-
-    private static double Slope(IReadOnlyList<double> values)
-    {
-        if (values.Count < 2)
-        {
-            return 0;
-        }
-
-        var meanX = (values.Count - 1) / 2.0;
-        var meanY = values.Average();
-        double numerator = 0;
-        double denominator = 0;
-        for (var index = 0; index < values.Count; index++)
-        {
-            numerator += (index - meanX) * (values[index] - meanY);
-            denominator += (index - meanX) * (index - meanX);
-        }
-
-        return Math.Round(numerator / denominator, 1);
     }
 
     /// <summary>Имена профилей, встречающиеся в истории, по алфавиту.</summary>

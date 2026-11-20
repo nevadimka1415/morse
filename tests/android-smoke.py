@@ -40,7 +40,8 @@ QUIZ_NEW_TEXTS = ("▶ Новый символ", "▶ New symbol")
 QUIZ_QUESTION_TEXTS = ("Какой символ прозвучал?", "Which symbol was that?")
 QUIZ_ANSWERED_PREFIXES = ("Верно:", "Правильно:", "Correct:")
 PARAMS_TEXTS = ("Параметры ▾", "Параметры ▴", "Parameters ▾", "Parameters ▴")
-PARAMS_OPEN_TEXTS = ("Изменить в настройках", "Change in settings")
+# Раскрытые «Параметры» (2.12): параметры тренировки прямо на вкладке — виден заголовок «Что тренировать»
+PARAMS_OPEN_TEXTS = ("Что тренировать", "What to practice")
 START_COURSE_TEXTS = ("Начать курс", "Start the course")
 BOOK_TITLE_TEXTS = ("Как устроен курс", "How the course works")
 KOCH_TITLE_TEXTS = ("Метод Коха", "Koch method")
@@ -56,8 +57,6 @@ GROUP_REPLAY_TEXTS = ("Повтор группы 1", "Replaying group 1")
 MIC_START_TEXTS = ("● Слушать микрофон", "● Listen to the microphone")
 MIC_STOP_TEXTS = ("■ Остановить", "■ Stop")
 MIC_LISTENING_PREFIXES = ("Слушаю", "Listening", "Тон ", "Tone ")
-ADVANCED_OPEN_TEXTS = ("Дополнительные настройки ▾", "More settings ▾")
-ADVANCED_CLOSE_TEXTS = ("Дополнительные настройки ▴", "More settings ▴")
 SAVE_PROGRESS_TEXTS = ("Сохранить прогресс…", "Save progress…")
 NOTHING_TO_SAVE_PREFIXES = ("Пока нечего сохранять", "Nothing to save yet")
 SIGNAL_SPEED_TEXTS = ("Скорость сигнала", "Signal speed")
@@ -426,7 +425,7 @@ def quiz_manual_round():
 
 
 def training_params():
-    """«Тренировка»: параметры свёрнуты, «Параметры ▾» раскрывает сводку, повторное нажатие сворачивает."""
+    """«Тренировка»: параметры свёрнуты, «Параметры ▾» раскрывает параметры тренировки, повторное нажатие сворачивает."""
     root, _ = dump_ui()
     if nodes_with_text(root, PARAMS_OPEN_TEXTS):
         raise RuntimeError("Параметры должны быть свёрнуты по умолчанию")
@@ -543,26 +542,13 @@ def scroll_until(texts, what):
 
 
 def save_progress_empty():
-    """«Настройки» → «Дополнительные настройки ▾» → «Сохранить прогресс…»: без занятий (в тесте ответы не проверяются)
-    — сообщение, а не падение; потом раздел сворачивается обратно."""
-    tap(scroll_until(ADVANCED_OPEN_TEXTS, "«Дополнительные настройки ▾»"))
-    time.sleep(1)
+    """«Настройки» → «Сохранить прогресс…» (раздел «Перенос на другое устройство» виден сразу): без занятий
+    (в тесте ответы не проверяются) — сообщение, а не падение."""
     tap(scroll_until(SAVE_PROGRESS_TEXTS, "«Сохранить прогресс…»"))
     wait_for(NOTHING_TO_SAVE_PREFIXES, 10, prefix=True)
     screenshot("settings-save-progress")
     adb("shell", "input", "keyevent", "4")   # закрыть сообщение
     time.sleep(1)
-    ensure_alive()
-    # Свернуть раздел: он над кнопкой, листаем вверх до него
-    _, height = screen_size()
-    for _ in range(10):
-        root, _ = dump_ui()
-        collapse = nodes_with_text(root, ADVANCED_CLOSE_TEXTS)
-        if collapse:
-            tap(collapse[0])
-            break
-        swipe(20, height // 3, 20, height * 2 // 3, 300)
-        time.sleep(0.8)
     ensure_alive()
     return "пустая история — сообщение «Пока нечего сохранять», процесс жив"
 

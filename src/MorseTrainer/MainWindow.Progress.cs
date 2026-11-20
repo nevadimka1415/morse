@@ -217,7 +217,6 @@ public partial class MainWindow
         HistoryProblemSymbolsText.Text = problems.Count == 0
             ? "—"
             : string.Join("  ", problems.Select(item => $"{item.Symbol} ×{item.Count}"));
-        ExamSeriesText.Text = TrainingStatistics.Exams(history).Describe();
         HistoryListView.ItemsSource = history
             .OrderByDescending(item => item.CompletedAt)
             .Take(50)

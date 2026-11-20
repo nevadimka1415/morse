@@ -19,7 +19,6 @@ const requiredFiles = [
   'src/MorseTrainer/Domain/ProfileTransfer.cs',
   'src/MorseTrainer/Domain/KeyerDecoder.cs',
   'src/MorseTrainer/Domain/WordLists.cs',
-  'src/MorseTrainer/Domain/ExamSession.cs',
   'src/MorseTrainer/Domain/SpeedLadder.cs',
   'src/MorseTrainer/Domain/KeyerAnalysis.cs',
   'src/MorseTrainer/Domain/ReminderSchedule.cs',
@@ -136,6 +135,10 @@ for (const page of ['TrainingPage', 'LearningPage', 'QuizPage', 'SettingsPage', 
     `src/MorseTrainer.Mobile/Pages/${page}.xaml.cs`
   );
 }
+verifyXamlCodeBehind(
+  'src/MorseTrainer.Mobile/Controls/TrainingParamsView.xaml',
+  'src/MorseTrainer.Mobile/Controls/TrainingParamsView.xaml.cs'
+);
 
 for (const relativePath of [
   'src/MorseTrainer/Domain/MorseAlphabet.cs',
@@ -149,7 +152,6 @@ for (const relativePath of [
   'src/MorseTrainer/Domain/ProfileTransfer.cs',
   'src/MorseTrainer/Domain/KeyerDecoder.cs',
   'src/MorseTrainer/Domain/WordLists.cs',
-  'src/MorseTrainer/Domain/ExamSession.cs',
   'src/MorseTrainer/Domain/SpeedLadder.cs',
   'src/MorseTrainer/Domain/KeyerAnalysis.cs',
   'src/MorseTrainer/Domain/ReminderSchedule.cs',
@@ -188,30 +190,45 @@ for (const relativePath of [
   'src/MorseTrainer.Mobile/MauiProgram.cs',
   'src/MorseTrainer.Mobile/Pages/TrainingPage.xaml.cs',
   'src/MorseTrainer.Mobile/Pages/LearningPage.xaml.cs',
-  'src/MorseTrainer.Mobile/Pages/SettingsPage.xaml.cs'
+  'src/MorseTrainer.Mobile/Pages/SettingsPage.xaml.cs',
+  'src/MorseTrainer.Mobile/Controls/TrainingParamsView.xaml.cs',
+  'src/MorseTrainer.Mobile/Services/FeedbackService.cs'
 ]) {
   assertBalancedBraces(read(relativePath), relativePath);
 }
 
 const contentModes = (read('src/MorseTrainer/MainWindow.xaml').match(/<ComboBoxItem Content="[^"]*" \/>/g) || []).length;
-assert(read('src/MorseTrainer/MainWindow.xaml').includes('Метод Коха: по уровням') && read('src/MorseTrainer.Mobile/Pages/SettingsPage.xaml.cs').includes('Texts.T("Метод Коха")'),
+assert(read('src/MorseTrainer/MainWindow.xaml').includes('Метод Коха: по уровням') && read('src/MorseTrainer.Mobile/Controls/TrainingParamsView.xaml.cs').includes('Texts.T("Метод Коха")'),
   'Both apps must offer the Koch content mode.');
-assert(read('src/MorseTrainer/MainWindow.xaml').includes("{loc:Loc 'Позывные'}") && read('src/MorseTrainer.Mobile/Pages/SettingsPage.xaml.cs').includes('Texts.T("Позывные")'),
+assert(read('src/MorseTrainer/MainWindow.xaml').includes("{loc:Loc 'Позывные'}") && read('src/MorseTrainer.Mobile/Controls/TrainingParamsView.xaml.cs').includes('Texts.T("Позывные")'),
   'Both apps must offer the words, callsigns and Q-code content modes.');
-assert(read('src/MorseTrainer/MainWindow.xaml').includes('x:Name="ExamButton"') && read('src/MorseTrainer.Mobile/Pages/TrainingPage.xaml').includes('x:Name="ExamButton"'),
-  'Both apps must offer the exam mode.');
-assert(read('src/MorseTrainer/MainWindow.xaml').includes('x:Name="NoiseSlider"') && read('src/MorseTrainer.Mobile/Pages/SettingsPage.xaml').includes('x:Name="NoiseSlider"'),
+// 2.12: режим экзамена убран по решению владельца — ни кнопки, ни кода сеанса экзамена
+assert(!read('src/MorseTrainer/MainWindow.xaml').includes('ExamButton') && !read('src/MorseTrainer.Mobile/Pages/TrainingPage.xaml').includes('ExamButton')
+  && !existsSync(resolve(root, 'src/MorseTrainer/Domain/ExamSession.cs')) && !read('src/MorseTrainer/Domain/Course.cs').includes('IsExam'),
+  'The exam mode is removed from both apps and from the course.');
+assert(read('src/MorseTrainer/MainWindow.xaml').includes('x:Name="NoiseSlider"') && read('src/MorseTrainer.Mobile/Controls/TrainingParamsView.xaml').includes('x:Name="NoiseSlider"'),
   'Both apps must offer the interference sliders (noise, QSB, drift).');
-assert(read('src/MorseTrainer/MainWindow.xaml').includes('x:Name="AutoSpeedCheckBox"') && read('src/MorseTrainer.Mobile/Pages/SettingsPage.xaml').includes('x:Name="AutoSpeedSwitch"'),
+assert(read('src/MorseTrainer/MainWindow.xaml').includes('x:Name="AutoSpeedCheckBox"') && read('src/MorseTrainer.Mobile/Controls/TrainingParamsView.xaml').includes('x:Name="AutoSpeedSwitch"'),
   'Both apps must offer the auto speed switch.');
 assert(read('src/MorseTrainer/MainWindow.xaml').includes('x:Name="KeyerAnalyzeButton"') && read('src/MorseTrainer.Mobile/Pages/KeyerPage.xaml').includes('x:Name="AnalyzeButton"'),
   'Both apps must offer the keyer quality analysis.');
 assert(read('src/MorseTrainer/MainWindow.xaml').includes('x:Name="ProgressProfileCombo"'), 'Windows must filter progress by profile.');
 assert(!read('src/MorseTrainer.Mobile/Pages/SettingsPage.xaml').includes('ProfilePicker'),
   'Phone has no profiles: one device, one person.');
-assert(read('src/MorseTrainer.Mobile/Pages/SettingsPage.xaml').indexOf('x:Name="ModeLettersButton"') < read('src/MorseTrainer.Mobile/Pages/SettingsPage.xaml').indexOf('x:Name="GroupCountStepper"')
-  && read('src/MorseTrainer.Mobile/Pages/SettingsPage.xaml').indexOf('x:Name="GroupCountStepper"') < read('src/MorseTrainer.Mobile/Pages/SettingsPage.xaml').indexOf('x:Name="AdvancedLayout"'),
-  'Phone settings order: mode buttons first, then task parameters, then the collapsible advanced settings.');
+assert(read('src/MorseTrainer.Mobile/Controls/TrainingParamsView.xaml').indexOf('x:Name="ModeLettersButton"') < read('src/MorseTrainer.Mobile/Controls/TrainingParamsView.xaml').indexOf('x:Name="GroupCountStepper"')
+  && read('src/MorseTrainer.Mobile/Controls/TrainingParamsView.xaml').indexOf('x:Name="GroupCountStepper"') < read('src/MorseTrainer.Mobile/Controls/TrainingParamsView.xaml').indexOf('x:Name="AdvancedLayout"'),
+  'Phone training parameters order: mode buttons first, then task parameters, then the collapsible advanced settings.');
+// 2.12: параметры тренировки — на вкладке «Тренировка» под «Параметры ▾», в «Настройках» только общие настройки и обратная связь
+assert(read('src/MorseTrainer.Mobile/Pages/TrainingPage.xaml').includes('<controls:TrainingParamsView x:Name="ParamsPanel"')
+  && !read('src/MorseTrainer.Mobile/Pages/SettingsPage.xaml').includes('SpeedSlider') && !read('src/MorseTrainer.Mobile/Pages/SettingsPage.xaml').includes('ModeLettersButton')
+  && read('src/MorseTrainer.Mobile/Pages/SettingsPage.xaml').includes('x:Name="ReminderSwitch"') && read('src/MorseTrainer.Mobile/Pages/SettingsPage.xaml').includes('x:Name="ThemePicker"'),
+  'Phone: training parameters live on the Training tab, the Settings tab keeps only app-wide settings.');
+assert(read('src/MorseTrainer.Mobile/Pages/SettingsPage.xaml').includes('x:Name="FeedbackEditor"') && read('src/MorseTrainer.Mobile/Pages/SettingsPage.xaml.cs').includes('FeedbackService.SendAsync')
+  && read('src/MorseTrainer.Mobile/Services/FeedbackService.cs').includes('https://mirpoehal.ru/morse/otzyv') && read('docs/privacy.md').includes('Обратная связь'),
+  'Phone: feedback is sent from the Settings tab only by the button, and the privacy policy describes it.');
+// Параметры тренировки и общие настройки сохраняются поверх свежих настроек, а не своей старой копии — иначе затирают друг друга
+assert(read('src/MorseTrainer.Mobile/Controls/TrainingParamsView.xaml.cs').includes('var settings = _settingsService.LoadSettings();') && !read('src/MorseTrainer.Mobile/Pages/SettingsPage.xaml.cs').includes('private AppSettings _settings'),
+  'Phone: each screen saves only its own fields on top of fresh settings.');
 assert(read('src/MorseTrainer/MainWindow.xaml').includes('x:Name="ExportCsvButton"'), 'Windows must export the history as CSV.');
 assert(!existsSync(resolve(root, 'src/MorseTrainer.Mobile/Pages/ProgressPage.xaml')) && read('src/MorseTrainer.Mobile/AppShell.cs').includes('QuizPage quizPage')
   && !read('src/MorseTrainer.Mobile/AppShell.cs').includes('ProgressPage'),
@@ -220,16 +237,16 @@ assert(!read('src/MorseTrainer.Mobile/Pages/LearningPage.xaml').includes('QuizAn
   && read('src/MorseTrainer.Mobile/Pages/LearningPage.xaml').includes('x:Name="AlphabetLatinButton"') && read('src/MorseTrainer.Mobile/Pages/QuizPage.xaml').includes('x:Name="AlphabetLatinButton"'),
   'Phone learning: symbol sets are chosen with buttons, the quiz lives on its own tab.');
 assert(/x:Name="AnswerPanel"[^>]*IsVisible="False"/.test(read('src/MorseTrainer.Mobile/Pages/TrainingPage.xaml')) && read('src/MorseTrainer.Mobile/Pages/TrainingPage.xaml.cs').includes('SetAnswerPanel(true, remember: false)'),
-  'Phone training: typing the answer is optional (collapsed), exams and course steps open it.');
+  'Phone training: typing the answer is optional (collapsed), course steps open it.');
 assert(/x:Name="ParamsPanel"[^>]*IsVisible="False"/.test(read('src/MorseTrainer.Mobile/Pages/TrainingPage.xaml')) && read('src/MorseTrainer.Mobile/Pages/TrainingPage.xaml').includes('x:Name="ParamsToggleButton"'),
-  'Phone training: the parameters summary is folded under «Параметры ▾».');
+  'Phone training: the training parameters are folded under «Параметры ▾».');
 assert(read('src/MorseTrainer.Mobile/Pages/QuizPage.xaml').includes('x:Name="SpeedSlider"') && read('src/MorseTrainer.Mobile/Pages/QuizPage.xaml').includes('x:Name="AutoNextSwitch"')
   && read('src/MorseTrainer/MainWindow.xaml').includes('x:Name="QuizSpeedSlider"') && read('src/MorseTrainer/MainWindow.xaml').includes('x:Name="QuizAutoNextCheckBox"')
   && read('src/MorseTrainer/MainWindow.xaml').includes('x:Name="QuizRepeatButton"'),
   'Listening quiz on both apps: own signal speed, repeat, next symbol right after the answer.');
 assert(/x:Name="AnswerInputPanel"[^>]*Visibility="Collapsed"/.test(read('src/MorseTrainer/MainWindow.xaml')) && /x:Name="ProgressTab"[^>]*Visibility="Collapsed"/.test(read('src/MorseTrainer/MainWindow.xaml'))
   && readMainWindowCode().includes('SetAnswerInput(true, remember: false)'),
-  'Windows training like the phone: typing the answer and the Progress tab are optional (collapsed), exams and course steps open the input.');
+  'Windows training like the phone: typing the answer and the Progress tab are optional (collapsed), course steps open the input.');
 assert(!read('src/MorseTrainer/MainWindow.xaml').includes('LearningAlphabetCombo') && read('src/MorseTrainer/MainWindow.xaml').includes('x:Name="LearningLatinButton"')
   && !read('src/MorseTrainer/MainWindow.xaml').includes('QuizAnswersPanel'),
   'Windows learning: symbol sets are chosen with buttons, the quiz lives on its own tab.');
@@ -254,8 +271,8 @@ assert(read('src/MorseTrainer/MainWindow.xaml').includes('x:Name="NudgeBanner"')
   'Windows app must show the practice banner and offer the reminder notification.');
 assert(read('src/MorseTrainer/MainWindow.xaml').includes('x:Name="CourseStartButton"') && read('src/MorseTrainer.Mobile/Pages/LearningPage.xaml').includes('x:Name="CourseStartButton"'),
   'Both apps must offer the course from zero to 60 cpm.');
-assert(readMainWindowCode().includes('e.Key == Key.E') && readMainWindowCode().includes('e.Key == Key.K'),
-  'Windows must offer Ctrl+E (exam) and Ctrl+K (sending tab).');
+assert(!/e\.Key == Key\.E\b/.test(readMainWindowCode()) && readMainWindowCode().includes('e.Key == Key.K'),
+  'Windows must offer Ctrl+K (sending tab); Ctrl+E (exam) is gone with the exam mode.');
 assert(readMainWindowCode().includes('KeyerProgress.MatchedLength') && read('src/MorseTrainer.Mobile/Pages/KeyerPage.xaml.cs').includes('KeyerProgress.MatchedLength'),
   'Both apps must highlight the sending task as it is received.');
 assert(read('tests/MorseTrainer.UiSmoke/Program.cs').includes('ThemeIndex = 1'), 'UI smoke test must take dark theme screenshots.');

@@ -13,13 +13,9 @@ public partial class TrainingPage : ContentPage, IDisposable
     private readonly IAudioPlaybackService _audioPlayback;
     private readonly MobileSettingsService _settingsService;
     private readonly TrainingHistoryStore _historyStore;
-    private readonly EventHandler _settingsChanged;
     private bool _currentTaskRecorded;
     private DateTime _currentTaskStartedAt = DateTime.Now;
-    private ExamSession? _exam;
     private DrillPlan? _currentDrill;
-    private string? _examReport;
-    private bool _examTimerRunning;
     private int _currentGroupCount;
     private CancellationTokenSource? _playbackCancellation;
     private AudioClip? _currentClip;
@@ -40,57 +36,29 @@ public partial class TrainingPage : ContentPage, IDisposable
         _audioPlayback = audioPlayback;
         _settingsService = settingsService;
         _historyStore = historyStore;
-        _settingsChanged = (_, _) => MainThread.BeginInvokeOnMainThread(RefreshSettingsSummary);
-        _settingsService.SettingsChanged += _settingsChanged;
+        ParamsPanel.Attach(settingsService);
         SetAnswerPanel(Preferences.Default.Get(AnswerPanelKey, false), remember: false);
         SetParamsPanel(Preferences.Default.Get(ParamsPanelKey, false));
     }
 
-    // Окно закрыто (Android пересоздал активность): страница больше не показывается — отписка от настроек,
-    // остановка звука и таймера экзамена, чтобы старая страница не трогала свои элементы
+    // Окно закрыто (Android пересоздал активность): страница больше не показывается — остановка звука,
+    // чтобы старая страница не трогала свои элементы
     public void Dispose()
     {
-        _settingsService.SettingsChanged -= _settingsChanged;
         _playbackCancellation?.Cancel();
         _audioPlayback.Stop();
-        _exam = null;
     }
 
     protected override async void OnAppearing()
     {
         base.OnAppearing();
-        RefreshSettingsSummary();
+        // Параметры могли поменять шаг курса («Обучение») или перенос настроек («Настройки»)
+        ParamsPanel.Reload();
         UpdateHistoryLabel();
         if (string.IsNullOrEmpty(_currentTask))
         {
             await GenerateTaskAsync();
         }
-    }
-
-    private void RefreshSettingsSummary()
-    {
-        var settings = _settingsService.LoadSettings();
-        var start = settings.PlayStartSignal ? Texts.F(" · Ж Ж Ж + пауза {0}", settings.StartPauseUnits) : Texts.T(" · без сигнала старта");
-        if (settings.ContentModeIndex == (int)ContentMode.Koch)
-        {
-            start += Texts.F(" · Кох: уровень {0}", settings.KochLevel);
-        }
-
-        if (!new NoiseProfile(settings.NoisePercent, settings.QsbPercent, settings.DriftHz).IsClean)
-        {
-            start += Texts.T(" · помехи");
-        }
-
-        var groups = ContentModes.IsWordMode(ContentModes.Clamp(settings.ContentModeIndex))
-            ? Texts.F("{0} слов · {1} знаков/мин · ", settings.GroupCount, settings.CharactersPerMinute)
-            : Texts.F("{0} групп × 5 · {1} знаков/мин · ", settings.GroupCount, settings.CharactersPerMinute);
-        SettingsSummaryLabel.Text = groups +
-                                    Texts.F("{0} Гц · паузы {1}/{2}{3}", settings.FrequencyHz, settings.CharacterGapUnits, settings.GroupGapUnits, start);
-    }
-
-    private async void SettingsButton_OnClicked(object sender, EventArgs e)
-    {
-        await Shell.Current.GoToAsync("//settings");
     }
 
     private void ParamsToggleButton_OnClicked(object sender, EventArgs e)
@@ -99,7 +67,7 @@ public partial class TrainingPage : ContentPage, IDisposable
         Preferences.Default.Set(ParamsPanelKey, ParamsPanel.IsVisible);
     }
 
-    /// <summary>Сводка параметров задания: по умолчанию свёрнута, раскрывается кнопкой «Параметры ▾» в шапке.</summary>
+    /// <summary>Параметры тренировки: по умолчанию свёрнуты, раскрываются кнопкой «Параметры ▾» в шапке.</summary>
     private void SetParamsPanel(bool visible)
     {
         ParamsPanel.IsVisible = visible;
@@ -115,14 +83,13 @@ public partial class TrainingPage : ContentPage, IDisposable
     private async Task GenerateTaskAsync(DrillPlan? drill = null)
     {
         StopPlayback();
-        EndExam();
         var settings = _settingsService.LoadSettings();
         var alphabet = (AlphabetMode)Math.Clamp(settings.AlphabetIndex, 0, 2);
         var content = ContentModes.Clamp(settings.ContentModeIndex);
         var pool = drill?.Pool ?? MorseAlphabet.BuildPool(alphabet, content, settings.CustomSymbols, settings.KochLevel);
         if (pool.Count == 0)
         {
-            await DisplayAlertAsync(Texts.T("Нет символов"), Texts.T("Откройте настройки и выберите хотя бы один символ."), Texts.T("Понятно"));
+            await DisplayAlertAsync(Texts.T("Нет символов"), Texts.T("Откройте «Параметры» и выберите хотя бы один символ."), Texts.T("Понятно"));
             return;
         }
 
@@ -157,17 +124,8 @@ public partial class TrainingPage : ContentPage, IDisposable
                 ? TrainingGenerator.GenerateTask(content, alphabet, pool, Math.Clamp(settings.GroupCount, 1, 100), emphasized)
                 : TrainingGenerator.Generate(pool, Math.Clamp(settings.GroupCount, 1, 100), emphasized);
             // Задание становится текущим только после отрисовки звука: пока доигрывает finally старого прослушивания,
-            // на экране остаётся старое задание — новое (и экзаменационное) не мелькнёт открытым текстом
-            var clip = await Task.Run(() => MorseAudioService.Render(
-                task,
-                Math.Clamp(settings.CharactersPerMinute, 20, 300),
-                Math.Clamp(settings.FrequencyHz, 300, 1200),
-                Math.Clamp(settings.VolumePercent, 0, 100),
-                Math.Clamp(settings.CharacterGapUnits, 3, 20),
-                Math.Clamp(settings.GroupGapUnits, 7, 30),
-                settings.PlayStartSignal,
-                Math.Clamp(settings.StartPauseUnits, 7, 60),
-                new NoiseProfile(settings.NoisePercent, settings.QsbPercent, settings.DriftHz)));
+            // на экране остаётся старое задание — новое не мелькнёт открытым текстом
+            var clip = await Task.Run(() => Render(task, settings));
             _currentTask = task;
             _currentClip = clip;
             _renderSettings = settings;
@@ -202,18 +160,68 @@ public partial class TrainingPage : ContentPage, IDisposable
         await PlayCurrentAsync();
     }
 
-    private bool CanPlayNow => _currentClip is not null && (_exam is null || _exam.CanPlay);
+    private bool CanPlayNow => _currentClip is not null;
 
-    private async Task PlayCurrentAsync()
+    /// <summary>Звук задания по параметрам: скорость, тон, громкость, паузы, сигнал старта и помехи.</summary>
+    private static AudioClip Render(string task, AppSettings settings) => MorseAudioService.Render(
+        task,
+        Math.Clamp(settings.CharactersPerMinute, 20, 300),
+        Math.Clamp(settings.FrequencyHz, 300, 1200),
+        Math.Clamp(settings.VolumePercent, 0, 100),
+        Math.Clamp(settings.CharacterGapUnits, 3, 20),
+        Math.Clamp(settings.GroupGapUnits, 7, 30),
+        settings.PlayStartSignal,
+        Math.Clamp(settings.StartPauseUnits, 7, 60),
+        new NoiseProfile(settings.NoisePercent, settings.QsbPercent, settings.DriftHz));
+
+    /// <summary>
+    /// Параметры поменяли после создания задания: изменился состав (режим, символы, алфавит, уровень Коха, число
+    /// групп) — создаётся новое задание; изменился только звук (скорость, тон, громкость, паузы, сигнал старта,
+    /// помехи) — то же задание звучит по-новому. Так «Слушать» всегда играет то, что выставлено в «Параметрах».
+    /// </summary>
+    private async Task RefreshForChangedSettingsAsync()
     {
-        if (_currentClip is null || (_exam is not null && !_exam.CanPlay))
+        if (_renderSettings is not { } old)
         {
             return;
         }
 
-        // Экзамен: прослушиваний не больше, чем разрешено правилами
-        _exam?.RegisterPlayback();
-        UpdateExamLabel();
+        var now = _settingsService.LoadSettings();
+        var contentChanged = old.AlphabetIndex != now.AlphabetIndex || old.ContentModeIndex != now.ContentModeIndex
+                             || old.CustomSymbols != now.CustomSymbols || old.KochLevel != now.KochLevel || old.GroupCount != now.GroupCount;
+        // Упражнение на ошибки собирает свой состав — смена режима его не отменяет
+        if (contentChanged && _currentDrill is null)
+        {
+            await GenerateTaskAsync();
+            return;
+        }
+
+        var soundChanged = old.CharactersPerMinute != now.CharactersPerMinute || old.FrequencyHz != now.FrequencyHz
+                           || old.VolumePercent != now.VolumePercent || old.CharacterGapUnits != now.CharacterGapUnits
+                           || old.GroupGapUnits != now.GroupGapUnits || old.PlayStartSignal != now.PlayStartSignal
+                           || old.StartPauseUnits != now.StartPauseUnits || old.NoisePercent != now.NoisePercent
+                           || old.QsbPercent != now.QsbPercent || old.DriftHz != now.DriftHz;
+        if (soundChanged)
+        {
+            var task = _currentTask;
+            _currentClip = await Task.Run(() => Render(task, now));
+            _renderSettings = now;
+        }
+    }
+
+    private async Task PlayCurrentAsync()
+    {
+        if (_currentClip is null)
+        {
+            return;
+        }
+
+        await RefreshForChangedSettingsAsync();
+        if (_currentClip is null)
+        {
+            return;
+        }
+
         StopPlayback();
         var cancellation = new CancellationTokenSource();
         _playbackCancellation = cancellation;
@@ -308,7 +316,7 @@ public partial class TrainingPage : ContentPage, IDisposable
 
     /// <summary>
     /// Ввод ответа — по желанию: обычно группы пишут на бумаге и сверяют с текстом задания («Показать»).
-    /// Экзамен и шаги курса засчитываются по введённому ответу — там поле раскрывается само, без запоминания.
+    /// Шаги курса засчитываются по введённому ответу — там поле раскрывается само, без запоминания.
     /// </summary>
     private void SetAnswerPanel(bool visible, bool remember)
     {
@@ -361,8 +369,8 @@ public partial class TrainingPage : ContentPage, IDisposable
         TaskLabel.FormattedText = text;
     }
 
-    /// <summary>Повтор одной группы можно везде, кроме идущего экзамена: там прослушивания ограничены правилами.</summary>
-    private bool CanReplayGroup => _currentClip is not null && _renderSettings is not null && _exam is not { IsFinished: false };
+    /// <summary>Повтор одной группы — как только задание готово.</summary>
+    private bool CanReplayGroup => _currentClip is not null && _renderSettings is not null;
 
     /// <summary>Нажатие на группу в тексте задания — звучит только она, с теми же скоростью, тоном, паузами и помехами.</summary>
     private async Task PlayGroupAsync(int index)
@@ -400,13 +408,13 @@ public partial class TrainingPage : ContentPage, IDisposable
         }
     }
 
-    /// <summary>«Поделиться звуком задания» — только для готового задания и не во время экзамена.</summary>
-    private void UpdateShareAudioButton() => ShareAudioButton.IsEnabled = _currentClip is not null && _exam is not { IsFinished: false };
+    /// <summary>«Поделиться звуком задания» — для готового задания.</summary>
+    private void UpdateShareAudioButton() => ShareAudioButton.IsEnabled = _currentClip is not null;
 
     // Задание аудиофайлом: слушать в любом плеере, в машине, в наушниках или отправить другу; текст для сверки — рядом файлом
     private async void ShareAudioButton_OnClicked(object sender, EventArgs e)
     {
-        if (_currentClip is not { } clip || _exam is { IsFinished: false })
+        if (_currentClip is not { } clip)
         {
             return;
         }
@@ -467,17 +475,6 @@ public partial class TrainingPage : ContentPage, IDisposable
 
         var result = TrainingEvaluator.Evaluate(_currentTask, AnswerEditor.Text ?? string.Empty);
         var autoSpeedNote = string.Empty;
-        // Экзамен завершается первой проверкой: время останавливается, протокол готов
-        ExamResult? examResult = null;
-        if (_exam is not null && !_exam.IsFinished)
-        {
-            examResult = _exam.Finish(AnswerEditor.Text ?? string.Empty, DateTime.Now);
-            UpdateShareAudioButton();
-            _examReport = ExamReport.Format(examResult);
-            ExamLabel.Text = Texts.F("Экзамен завершён · {0}", ExamReport.FormatDuration(examResult.Duration));
-            ExamShareButton.IsVisible = true;
-            ToggleAnswerButton.IsEnabled = true;
-        }
 
         // В историю попадает только первая проверка каждого задания
         if (!_currentTaskRecorded)
@@ -485,9 +482,9 @@ public partial class TrainingPage : ContentPage, IDisposable
             _currentTaskRecorded = true;
             var settings = _settingsService.LoadSettings();
             // Задание по настройкам текущего шага курса помечается его номером — так считается зачёт шага
-            var courseStep = _currentDrill is null ? Course.StepForRecord(settings, examResult is not null) : 0;
+            var courseStep = _currentDrill is null ? Course.StepForRecord(settings) : 0;
             var history = _historyStore.Add(TrainingStatistics.CreateRecord(DateTime.Now, settings.ActiveProfileName,
-                settings.CharactersPerMinute, _currentGroupCount, result, examResult is not null, DateTime.Now - _currentTaskStartedAt, courseStep));
+                settings.CharactersPerMinute, _currentGroupCount, result, DateTime.Now - _currentTaskStartedAt, courseStep));
             UpdateHistoryLabel();
             // Лестница скорости: новая скорость сохраняется в настройки и попадёт в следующее задание
             if (settings.AutoSpeed)
@@ -498,6 +495,8 @@ public partial class TrainingPage : ContentPage, IDisposable
                     autoSpeedNote = SpeedLadder.Describe(settings.CharactersPerMinute, nextSpeed);
                     settings.CharactersPerMinute = nextSpeed;
                     _settingsService.SaveSettings(settings);
+                    // Новая скорость видна в «Параметрах» сразу, а не после ухода с вкладки
+                    ParamsPanel.Reload();
                 }
             }
         }
@@ -515,12 +514,7 @@ public partial class TrainingPage : ContentPage, IDisposable
         }
 
         var checkedSettings = _settingsService.LoadSettings();
-        if (examResult is not null)
-        {
-            ResultLabel.Text = ExamReport.Summary(examResult) + "\n" +
-                               TrainingStatistics.Exams(TrainingStatistics.ForProfile(_historyStore.Load(), examResult.ProfileName)).Describe();
-        }
-        else if (_currentDrill is null && checkedSettings.ContentModeIndex == (int)ContentMode.Koch)
+        if (_currentDrill is null && checkedSettings.ContentModeIndex == (int)ContentMode.Koch)
         {
             var kochAlphabet = (AlphabetMode)Math.Clamp(checkedSettings.AlphabetIndex, 0, 2);
             ResultLabel.Text += "\n" + KochMethod.Advice(kochAlphabet, checkedSettings.KochLevel, result.AccuracyPercent);
@@ -551,105 +545,11 @@ public partial class TrainingPage : ContentPage, IDisposable
         await GenerateTaskAsync(plan);
     }
 
-    // ---------- Экзамен ----------
-
-    private async void ExamButton_OnClicked(object sender, EventArgs e) => await StartExamAsync();
-
-    /// <summary>Новое задание или экзамен по текущим настройкам (кнопки курса на странице «Обучение»).</summary>
-    public async Task StartTaskAsync(bool exam)
-    {
-        SetAnswerPanel(true, remember: false);
-        if (exam)
-        {
-            await StartExamAsync();
-        }
-        else
-        {
-            await GenerateTaskAsync();
-        }
-    }
-
-    private async Task StartExamAsync()
+    /// <summary>Новое задание по текущим параметрам с полем для ответа (кнопки курса на странице «Обучение»).</summary>
+    public async Task StartTaskAsync()
     {
         SetAnswerPanel(true, remember: false);
         await GenerateTaskAsync();
-        if (string.IsNullOrEmpty(_currentTask) || _currentClip is null)
-        {
-            return;
-        }
-
-        var settings = _settingsService.LoadSettings();
-        _exam = new ExamSession(_currentTask, Math.Clamp(settings.CharactersPerMinute, 20, 300), _currentGroupCount, settings.ActiveProfileName, DateTime.Now,
-            settings.ExamPlaybacks, settings.ExamTimeLimitMinutes);
-        _examReport = null;
-        // Ответ скрыт до проверки; повтор доступен, пока не кончились прослушивания
-        _answerVisible = false;
-        UpdateTaskLabel();
-        ToggleAnswerButton.IsEnabled = false;
-        RepeatButton.IsEnabled = false;
-        ExamShareButton.IsVisible = false;
-        ExamLabel.IsVisible = true;
-        UpdateShareAudioButton();
-        UpdateExamLabel();
-        ResultLabel.Text = Texts.F("Правила экзамена: {0}", ExamReport.Rules(_exam.MaxPlaybacks, _exam.TimeLimit));
-        if (!_examTimerRunning)
-        {
-            _examTimerRunning = true;
-            Dispatcher.StartTimer(TimeSpan.FromSeconds(1), () =>
-            {
-                UpdateExamLabel();
-                // Лимит времени вышел — ответ проверяется сам, как по кнопке
-                if (_exam is { IsFinished: false } && _exam.IsTimeUp(DateTime.Now))
-                {
-                    StopPlayback();
-                    CheckButton_OnClicked(CheckButton, EventArgs.Empty);
-                }
-
-                _examTimerRunning = _exam is not null && !_exam.IsFinished;
-                return _examTimerRunning;
-            });
-        }
-
-        await PlayCurrentAsync();
-    }
-
-    private void UpdateExamLabel()
-    {
-        if (_exam is null || _exam.IsFinished)
-        {
-            return;
-        }
-
-        ExamLabel.Text = _exam.Status(DateTime.Now);
-    }
-
-    /// <summary>Новое задание отменяет экзамен.</summary>
-    private void EndExam()
-    {
-        _exam = null;
-        _examReport = null;
-        ExamLabel.IsVisible = false;
-        ExamShareButton.IsVisible = false;
-        ToggleAnswerButton.IsEnabled = true;
-    }
-
-    private async void ExamShareButton_OnClicked(object sender, EventArgs e)
-    {
-        if (string.IsNullOrEmpty(_examReport))
-        {
-            return;
-        }
-
-        try
-        {
-            await Clipboard.Default.SetTextAsync(_examReport);
-            await Share.Default.RequestAsync(new ShareTextRequest { Title = Texts.T("Протокол экзамена Morse Trainer"), Text = _examReport });
-            PlaybackStatusLabel.Text = Texts.T("Протокол скопирован в буфер и отправлен");
-        }
-        catch (Exception exception)
-        {
-            await DisplayAlertAsync(Texts.T("Не удалось поделиться"), exception.Message, Texts.T("Закрыть"));
-        }
     }
 
     private void UpdateHistoryLabel()

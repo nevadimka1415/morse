@@ -11,7 +11,6 @@ using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Threading;
 using Microsoft.Win32;
 using MorseTrainer.Domain;
 using MorseTrainer.Localization;
@@ -20,7 +19,7 @@ using MorseTrainer.Services;
 
 namespace MorseTrainer;
 
-/// <summary>Главное окно: вкладка «Тренировка»: задание, прослушивание, запись на бумаге или ввод ответа, экзамен, повтор сложных.</summary>
+/// <summary>Главное окно: вкладка «Тренировка»: задание, прослушивание, запись на бумаге или ввод ответа, повтор сложных.</summary>
 public partial class MainWindow
 {
     private async void GenerateButton_OnClick(object sender, RoutedEventArgs e)
@@ -52,7 +51,6 @@ public partial class MainWindow
         }
 
         StopPlayback();
-        EndExam();
         SetGenerationState(isGenerating: true);
 
         try
@@ -144,17 +142,15 @@ public partial class MainWindow
         await PlayCurrentAsync();
     }
 
-    private bool CanPlayNow => _currentClip is not null && (_exam is null || _exam.CanPlay);
+    private bool CanPlayNow => _currentClip is not null;
 
     private async Task PlayCurrentAsync()
     {
-        if (_currentClip is null || (_exam is not null && !_exam.CanPlay))
+        if (_currentClip is null)
         {
             return;
         }
 
-        _exam?.RegisterPlayback();
-        UpdateExamStatus();
         StopLearningPlayback();
         StopPlayback();
         var cancellation = new CancellationTokenSource();
@@ -282,7 +278,7 @@ public partial class MainWindow
 
     /// <summary>
     /// Ввод ответа — по желанию: обычно группы пишут на бумаге и сверяют с текстом задания («Показать»).
-    /// С вводом видны точность и попытки и появляется вкладка «Прогресс»; экзамен и шаги курса засчитываются
+    /// С вводом видны точность и попытки и появляется вкладка «Прогресс»; шаги курса засчитываются
     /// по введённому ответу — там ввод раскрывается сам, без запоминания.
     /// </summary>
     private void SetAnswerInput(bool visible, bool remember)
@@ -385,8 +381,8 @@ public partial class MainWindow
         }
     }
 
-    /// <summary>Повтор одной группы можно везде, кроме идущего экзамена: там прослушивания ограничены правилами.</summary>
-    private bool CanReplayGroup => _currentClip is not null && _currentSettings is not null && _exam is not { IsFinished: false };
+    /// <summary>Повтор одной группы доступен, когда есть готовое задание и его звук.</summary>
+    private bool CanReplayGroup => _currentClip is not null && _currentSettings is not null;
 
     /// <summary>Щелчок по группе в тексте задания — звучит только она, с теми же скоростью, тоном, паузами и помехами.</summary>
     internal void PlayGroup(int index)
@@ -427,27 +423,15 @@ public partial class MainWindow
         var result = TrainingEvaluator.Evaluate(_currentTask, UserAnswerText.Text);
         _attempts++;
         AttemptsText.Text = _attempts.ToString(CultureInfo.InvariantCulture);
-        // Экзамен завершается первой проверкой: время останавливается, протокол готов
-        ExamResult? examResult = null;
-        if (_exam is not null && !_exam.IsFinished)
-        {
-            examResult = _exam.Finish(UserAnswerText.Text, DateTime.Now);
-            _examTimer?.Stop();
-            _examReport = ExamReport.Format(examResult);
-            SaveTaskButton.Content = Texts.T("Сохранить протокол");
-            TaskMetaText.Text = Texts.F("Экзамен завершён · {0}", ExamReport.FormatDuration(examResult.Duration));
-            ToggleAnswerButton.IsEnabled = true;
-        }
-
         // В историю попадает только первая проверка каждого задания
         if (!_currentTaskRecorded)
         {
             _currentTaskRecorded = true;
             var taskSettings = _currentSettings ?? ReadSettings();
             // Задание по настройкам текущего шага курса помечается его номером — так считается зачёт шага
-            var courseStep = _currentDrill is null ? Course.StepForRecord(taskSettings, examResult is not null) : 0;
+            var courseStep = _currentDrill is null ? Course.StepForRecord(taskSettings) : 0;
             var record = TrainingStatistics.CreateRecord(DateTime.Now, taskSettings.ActiveProfileName,
-                taskSettings.CharactersPerMinute, _currentTask.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length, result, examResult is not null,
+                taskSettings.CharactersPerMinute, _currentTask.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length, result,
                 DateTime.Now - _currentTaskStartedAt, courseStep);
             _history = _historyStore.Add(record);
             RefreshProgress();
@@ -493,13 +477,7 @@ public partial class MainWindow
             SetStatus(Texts.T("ЕСТЬ ОШИБКИ"), isActive: false);
         }
 
-        if (examResult is not null)
-        {
-            ResultDetailsText.Text = ExamReport.Summary(examResult) + "\n" +
-                                     TrainingStatistics.Exams(TrainingStatistics.ForProfile(_history, examResult.ProfileName)).Describe();
-            SetStatus(result.IsPerfect ? Texts.T("ЭКЗАМЕН СДАН") : Texts.T("ЕСТЬ ОШИБКИ"), result.IsPerfect);
-        }
-        else if (_currentDrill is null && _currentSettings?.ContentModeIndex == (int)ContentMode.Koch)
+        if (_currentDrill is null && _currentSettings?.ContentModeIndex == (int)ContentMode.Koch)
         {
             var kochAlphabet = (AlphabetMode)Math.Clamp(_currentSettings.AlphabetIndex, 0, 2);
             ResultDetailsText.Text += "\n" + KochMethod.Advice(kochAlphabet, _currentSettings.KochLevel, result.AccuracyPercent);
@@ -532,97 +510,10 @@ public partial class MainWindow
         await GenerateTaskAsync(plan);
     }
 
-    // ---------- Экзамен ----------
-
-    private async void ExamButton_OnClick(object sender, RoutedEventArgs e) => await StartExamAsync();
-
-    private async Task StartExamAsync()
-    {
-        MainTabs.SelectedIndex = 0;
-        SetAnswerInput(true, remember: false);
-        await GenerateTaskAsync();
-        if (string.IsNullOrEmpty(_currentTask) || _currentSettings is null || _currentClip is null)
-        {
-            return;
-        }
-
-        var groupCount = _currentTask.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length;
-        _exam = new ExamSession(_currentTask, _currentSettings.CharactersPerMinute, groupCount, _currentSettings.ActiveProfileName, DateTime.Now,
-            _currentSettings.ExamPlaybacks, _currentSettings.ExamTimeLimitMinutes);
-        _examReport = null;
-        _answerVisible = false;
-        UpdateAnswerDisplay();
-        // Ответ скрыт до проверки; повтор доступен, пока не кончились прослушивания
-        ToggleAnswerButton.IsEnabled = false;
-        RepeatButton.IsEnabled = false;
-        if (_examTimer is null)
-        {
-            _examTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
-            _examTimer.Tick += ExamTimer_OnTick;
-        }
-
-        _examTimer.Start();
-        UpdateExamStatus();
-        ResultDetailsText.Text = Texts.F("Правила экзамена: {0}", ExamReport.Rules(_exam.MaxPlaybacks, _exam.TimeLimit));
-        ResultDetailsText.Foreground = (Brush)FindResource("MutedTextBrush");
-        SetStatus(Texts.T("ЭКЗАМЕН"), isActive: true);
-        await PlayCurrentAsync();
-    }
-
-    private void ExamTimer_OnTick(object? sender, EventArgs e)
-    {
-        UpdateExamStatus();
-        // Лимит времени вышел — ответ проверяется сам, как по кнопке
-        if (_exam is { IsFinished: false } && _exam.IsTimeUp(DateTime.Now))
-        {
-            StopPlayback();
-            CheckAnswer();
-        }
-    }
-
-    private void UpdateExamStatus()
-    {
-        if (_exam is null || _exam.IsFinished)
-        {
-            return;
-        }
-
-        TaskMetaText.Text = _exam.Status(DateTime.Now);
-    }
-
-    /// <summary>Новое задание отменяет экзамен: таймер останавливается, кнопки возвращаются в обычный режим.</summary>
-    private void EndExam()
-    {
-        _examTimer?.Stop();
-        _exam = null;
-        _examReport = null;
-        if (SaveTaskButton is not null)
-        {
-            SaveTaskButton.Content = Texts.T("Сохранить TXT");
-        }
-    }
-
     private void SaveTaskButton_OnClick(object sender, RoutedEventArgs e)
     {
         if (string.IsNullOrEmpty(_currentTask))
         {
-            return;
-        }
-
-        if (_examReport is not null)
-        {
-            var reportDialog = new SaveFileDialog
-            {
-                Title = Texts.T("Сохранить протокол"),
-                Filter = Texts.T("Протокол экзамена (*.txt)|*.txt"),
-                FileName = $"morse-exam-{DateTime.Now:yyyy-MM-dd-HHmm}.txt",
-                AddExtension = true
-            };
-            if (reportDialog.ShowDialog(this) == true)
-            {
-                File.WriteAllText(reportDialog.FileName, _examReport, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true));
-            }
-
             return;
         }
 

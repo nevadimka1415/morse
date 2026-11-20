@@ -36,10 +36,7 @@ public partial class MainWindow : Window
     private IReadOnlyList<TrainingRecord> _history = Array.Empty<TrainingRecord>();
     private bool _currentTaskRecorded;
     private DateTime _currentTaskStartedAt = DateTime.Now;
-    private ExamSession? _exam;
     private DrillPlan? _currentDrill;
-    private DispatcherTimer? _examTimer;
-    private string? _examReport;
     private string _autoSpeedNote = string.Empty;
     private const int QuizTabIndex = 2;
     private const int KeyerTabIndex = 3;
@@ -98,10 +95,6 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
-        // Варианты лимита экзамена переводятся кодом: до ApplySettings, который выбирает сохранённый
-        ExamLimitCombo.ItemsSource = ExamSession.TimeLimitChoices
-            .Select(minutes => minutes == 0 ? Texts.T("без лимита") : Texts.F("{0} мин", minutes))
-            .ToArray();
         ReminderTimeCombo.ItemsSource = PracticeNudge.TimeChoices
             .Select(minutes => ReminderSchedule.ToTime(minutes).ToString(@"hh\:mm", CultureInfo.InvariantCulture))
             .ToArray();
@@ -191,7 +184,6 @@ public partial class MainWindow : Window
     private void Window_OnClosing(object? sender, CancelEventArgs e)
     {
         CancelQuizNext();
-        _examTimer?.Stop();
         _reminderTimer?.Stop();
         _trayReminder?.Dispose();
         _trayReminder = null;
@@ -212,11 +204,6 @@ public partial class MainWindow : Window
             MainTabs.SelectedIndex = 0;
             await GenerateTaskAsync();
             e.Handled = true;
-        }
-        else if (e.Key == Key.E && Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
-        {
-            e.Handled = true;
-            await StartExamAsync();
         }
         else if (e.Key == Key.K && Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
         {
@@ -428,7 +415,7 @@ public partial class MainWindow : Window
     // Пасхалка: щелчок по значку «· — —» в шапке — «НЕВАДИМКА» азбукой на 175 знаков/мин
     private void Logo_OnMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
-        // Пасхалка не перебивает прослушивание задания — на экзамене оно может быть единственным
+        // Пасхалка не перебивает прослушивание задания
         if (_playbackCancellation is not null)
         {
             return;

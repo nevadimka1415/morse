@@ -31,14 +31,13 @@ var tests = new (string Name, Action Run)[]
     ("Word lists", TestWordLists),
     ("Word tasks", TestWordTasks),
     ("Same-code evaluation", TestSameCodeEvaluation),
-    ("Exam session", TestExam),
+    ("Legacy exam records", TestLegacyExamRecords),
     ("Noise, QSB and drift", TestNoise),
     ("Speed ladder", TestSpeedLadder),
     ("Keyer analysis", TestKeyerAnalysis),
     ("Progress filter and CSV", TestProgressCsv),
     ("Reminder schedule", TestReminderSchedule),
     ("Problem symbol drill", TestProblemDrill),
-    ("Exam rules and series", TestExamRulesAndSeries),
     ("Daily goal, streak and speed", TestDailyGoalStreakSpeed),
     ("History transfer", TestHistoryTransfer),
     ("Custom chants and voice", TestCustomChantsAndVoice),
@@ -493,40 +492,22 @@ static void TestSameCodeEvaluation()
     Assert(!TrainingEvaluator.Matches('А', 'Б') && TrainingEvaluator.Matches('Р', 'R'), "Matches must compare Morse codes.");
 }
 
-static void TestExam()
+static void TestLegacyExamRecords()
 {
-    var started = new DateTime(2026, 9, 22, 12, 0, 0);
-    var exam = new ExamSession("АБВГД ЕЖЗИК", 60, 2, "Основной", started);
-    Assert(exam.CanPlay && exam.PlaybacksUsed == 0, "A new exam allows one playback.");
-    exam.RegisterPlayback();
-    Assert(!exam.CanPlay, "The second playback must be blocked.");
-    var blocked = false;
-    try { exam.RegisterPlayback(); } catch (InvalidOperationException) { blocked = true; }
-    Assert(blocked, "RegisterPlayback must throw after the single playback.");
-    Assert(exam.Elapsed(started.AddSeconds(75)) == TimeSpan.FromSeconds(75), "Elapsed must count from the start.");
-
-    var result = exam.Finish("абвгд ежзиЛ", started.AddSeconds(95));
-    Assert(exam.IsFinished && result.Duration == TimeSpan.FromSeconds(95) && result.Evaluation.CorrectCount == 9, "Finish must evaluate the answer and keep the duration.");
-    Assert(ExamReport.FormatDuration(result.Duration) == "1:35", "Duration must be formatted as m:ss.");
-    var bySymbol = ExamReport.MistakesBySymbol(result.Evaluation);
-    Assert(bySymbol.Count == 1 && bySymbol[0].Symbol == 'К' && bySymbol[0].Count == 1, "Mistakes must be grouped by the expected symbol.");
+    // Режима экзамена больше нет (2.12), но история прошлых версий хранит записи экзаменов: они читаются и помечаются
     Texts.Apply(AppLanguage.Russian);
-    var report = ExamReport.Format(result);
-    Assert(report.Contains("Протокол экзамена") && report.Contains("90%") && report.Contains("1:35") && report.Contains("К ×1") && report.Contains("10: К→Л"),
-        "Report must contain accuracy, time and mistakes: " + report);
-    Assert(ExamReport.Summary(result).StartsWith("Экзамен: точность 90%"), "Summary must start with the accuracy.");
-    var finishedTwice = false;
-    try { exam.Finish("x", started); } catch (InvalidOperationException) { finishedTwice = true; }
-    Assert(finishedTwice, "Finishing twice must throw.");
-
-    var record = TrainingStatistics.CreateRecord(started, "Основной", 60, 2, result.Evaluation, isExam: true);
-    Assert(record.IsExam && record.Kind == "Экзамен", "Exam record must be marked.");
-    var plain = TrainingStatistics.CreateRecord(started, "Основной", 60, 2, result.Evaluation);
-    Assert(!plain.IsExam && plain.Kind.Length == 0, "Ordinary record must not be marked.");
+    var started = new DateTime(2026, 9, 22, 12, 0, 0);
+    var evaluation = TrainingEvaluator.Evaluate("АБВГД ЕЖЗИК", "абвгд ежзиЛ");
+    var record = TrainingStatistics.CreateRecord(started, "Основной", 60, 2, evaluation);
+    Assert(!record.IsExam && record.Kind.Length == 0, "New records are never exams.");
+    record.IsExam = true;
+    Assert(record.Kind == "Экзамен", "An old exam record is still marked.");
     var json = System.Text.Json.JsonSerializer.Serialize(new[] { record });
     Assert(json.Contains("\"IsExam\":true") && !json.Contains("Kind"), "IsExam is stored, Kind is not.");
-    var legacy = System.Text.Json.JsonSerializer.Deserialize<List<TrainingRecord>>("[{\"CompletedAt\":\"2026-09-22T12:00:00\",\"ProfileName\":\"Основной\"}]")!;
-    Assert(!legacy[0].IsExam, "Old history without IsExam must load as ordinary records.");
+    var legacy = System.Text.Json.JsonSerializer.Deserialize<List<TrainingRecord>>("[{\"CompletedAt\":\"2026-09-22T12:00:00\",\"ProfileName\":\"Основной\",\"IsExam\":true}]")!;
+    Assert(legacy[0].IsExam, "Old history with exams must load.");
+    var settings = System.Text.Json.JsonSerializer.Deserialize<AppSettings>("{\"ExamPlaybacks\":3,\"ExamTimeLimitMinutes\":10,\"GroupCount\":12}")!;
+    Assert(settings.GroupCount == 12, "Old settings with the exam rules must still load.");
 }
 
 static void TestNoise()
@@ -656,7 +637,7 @@ static void TestProgressCsv()
     var records = new[]
     {
         TrainingStatistics.CreateRecord(day, "Основной", 60, 1, flawed),
-        TrainingStatistics.CreateRecord(day.AddHours(1), "Быстрый", 90, 1, perfect, isExam: true),
+        new TrainingRecord { CompletedAt = day.AddHours(1), ProfileName = "Быстрый", IsExam = true, CharactersPerMinute = 90, GroupCount = 1, TotalCount = 5, CorrectCount = 5, AccuracyPercent = 100 },
         TrainingStatistics.CreateRecord(day.AddHours(2), "основной", 65, 1, perfect)
     };
     var names = TrainingStatistics.ProfileNames(records);
@@ -769,58 +750,6 @@ static void TestProblemDrill()
     var old = Enumerable.Range(0, 50).Select(index => new TrainingRecord { CompletedAt = at.AddMinutes(index), ProblemSymbols = "Ж" });
     var fresh = Enumerable.Range(0, ProblemDrill.RecentRecords).Select(index => new TrainingRecord { CompletedAt = at.AddHours(2).AddMinutes(index) });
     Assert(ProblemDrill.Build(old.Concat(fresh).ToArray()).IsEmpty, "Old mistakes outside the recent window must be ignored.");
-}
-
-static void TestExamRulesAndSeries()
-{
-    Texts.Apply(AppLanguage.Russian);
-    Assert(ExamSession.ClampPlaybacks(0) == 1 && ExamSession.ClampPlaybacks(7) == 3 && ExamSession.ClampTimeLimit(99) == 30 && ExamSession.ClampTimeLimit(-5) == 0,
-        "Exam rules must be clamped to 1–3 playbacks and 0–30 minutes.");
-
-    var started = new DateTime(2026, 9, 23, 12, 0, 0);
-    var free = new ExamSession("АБВГД", 60, 1, "Основной", started);
-    Assert(free.MaxPlaybacks == 1 && free.TimeLimit is null && free.Remaining(started) is null && !free.IsTimeUp(started.AddHours(1)),
-        "Default exam has one playback and no time limit.");
-    Assert(free.Status(started.AddSeconds(5)) == "Экзамен · прослушано 0 из 1 · 0:05", "Status without a limit shows the elapsed time: " + free.Status(started.AddSeconds(5)));
-
-    var exam = new ExamSession("АБВГД ЕЖЗИК", 60, 2, "Основной", started, maxPlaybacks: 2, timeLimitMinutes: 1);
-    exam.RegisterPlayback();
-    Assert(exam.CanPlay, "The second playback must be allowed with two playbacks.");
-    exam.RegisterPlayback();
-    Assert(!exam.CanPlay, "The third playback must be blocked.");
-    Assert(exam.Status(started.AddSeconds(15)) == "Экзамен · прослушано 2 из 2 · осталось 0:45", "Status with a limit shows the remaining time: " + exam.Status(started.AddSeconds(15)));
-    Assert(!exam.IsTimeUp(started.AddSeconds(59)) && exam.IsTimeUp(started.AddSeconds(60)), "Time is up exactly at the limit.");
-    Assert(exam.Remaining(started.AddMinutes(5)) == TimeSpan.Zero, "Remaining time must not go below zero.");
-
-    // Проверка позже лимита (приложение было свёрнуто): время в протоколе — ровно лимит
-    var result = exam.Finish("АБВГД", started.AddSeconds(90));
-    Assert(result.TimedOut && result.Duration == TimeSpan.FromMinutes(1) && result.PlaybacksUsed == 2 && result.MaxPlaybacks == 2,
-        "Late finish must be marked as timed out and capped at the limit.");
-    var report = ExamReport.Format(result);
-    Assert(report.Contains("Прослушиваний: 2 из 2") && report.Contains("Лимит времени: 1 мин") && report.Contains("Время вышло"),
-        "Report must list the rules and the timeout: " + report);
-    Assert(ExamReport.Summary(result).Contains("Время вышло"), "Summary must mention the timeout.");
-    Assert(ExamReport.Rules(2, TimeSpan.FromMinutes(5)) == "прослушиваний: 2 · лимит 5 мин" && ExamReport.Rules(1, null) == "прослушиваний: 1 · без лимита времени",
-        "Rules line is wrong.");
-    var inTime = new ExamSession("АБВГД", 60, 1, "Основной", started, timeLimitMinutes: 2).Finish("АБВГД", started.AddSeconds(30));
-    Assert(!inTime.TimedOut && inTime.Duration == TimeSpan.FromSeconds(30) && !ExamReport.Format(inTime).Contains("Время вышло"), "An answer in time is not a timeout.");
-
-    // Серия экзаменов: последние пять, тренд — наклон прямой
-    Assert(TrainingStatistics.Exams(Array.Empty<TrainingRecord>()).Describe() == "Экзаменов пока нет", "Empty series text is wrong.");
-    var accuracies = new[] { 50.0, 80, 85, 90, 95, 100 };
-    var history = accuracies.Select((accuracy, index) => new TrainingRecord { CompletedAt = started.AddDays(index), IsExam = true, AccuracyPercent = accuracy })
-        .Append(new TrainingRecord { CompletedAt = started.AddDays(10), AccuracyPercent = 10 })
-        .ToArray();
-    var series = TrainingStatistics.Exams(history);
-    Assert(series.Exams.Count == 5 && series.Exams[0].AccuracyPercent == 80 && Math.Abs(series.TrendPerExam - 5) < 0.01,
-        $"Series must take the last five exams with trend +5: {series.Exams.Count}, {series.TrendPerExam}.");
-    Assert(series.Describe().Contains("80% · 85% · 90% · 95% · 100%") && series.Describe().Contains("↑ +5"), "Series text is wrong: " + series.Describe());
-    var falling = TrainingStatistics.Exams(new[] { 90.0, 70 }.Select((accuracy, index) => new TrainingRecord { CompletedAt = started.AddDays(index), IsExam = true, AccuracyPercent = accuracy }).ToArray());
-    Assert(falling.Describe().Contains("↓ −20"), "Falling series must show a negative trend: " + falling.Describe());
-    var flat = TrainingStatistics.Exams(new[] { 90.0, 90.2 }.Select((accuracy, index) => new TrainingRecord { CompletedAt = started.AddDays(index), IsExam = true, AccuracyPercent = accuracy }).ToArray());
-    Assert(flat.Describe().Contains("ровно"), "A tiny change must be shown as flat: " + flat.Describe());
-    var single = TrainingStatistics.Exams(history.Take(1).ToArray());
-    Assert(single.Exams.Count == 1 && !single.Describe().Contains("тренд"), "One exam has no trend.");
 }
 
 static void TestDailyGoalStreakSpeed()
@@ -1065,25 +994,25 @@ static void TestCourse()
            && kochSteps.Zip(kochSteps.Skip(1)).All(pair => pair.Second.KochLevel - pair.First.KochLevel is > 0 and <= Course.KochStep),
         "Koch steps go from level 2 to the last level by at most 4 symbols.");
     Assert(russian.Select(step => step.Number).SequenceEqual(Enumerable.Range(1, russian.Count)), "Steps are numbered 1…N.");
-    Assert(russian[^1].IsExam && russian[^1].CharactersPerMinute == Course.TargetSpeed && russian[^2].Content == ContentMode.Words && russian[^3].CharactersPerMinute == Course.WordsWarmUpSpeed,
-        "Course ends with words at 50 and 60 cpm and the exam.");
+    Assert(russian[^1].Content == ContentMode.LettersAndDigits && russian[^1].CharactersPerMinute == Course.TargetSpeed && russian[^1].Title == Texts.F("Итоговое задание на {0} знаков в минуту", 60)
+           && russian[^2].Content == ContentMode.Words && russian[^3].CharactersPerMinute == Course.WordsWarmUpSpeed,
+        "Course ends with words at 50 and 60 cpm and the final task.");
     Assert(kochSteps[0].Details == "Первые символы: К М" && kochSteps[1].Details == "Новые символы: Р С У А", "Step details list the new symbols: " + kochSteps[1].Details);
     Assert(latin.Count < russian.Count && latin[0].Details == "Первые символы: K M", "Latin course follows the Latin order.");
     Assert(Course.Find(russian, 0) is null && Course.Find(russian, russian.Count + 1) is null && Course.Find(russian, 1) == russian[0], "Find must return null outside the course.");
 
     // Настройки шага и пометка записи
-    var settings = new AppSettings { AlphabetIndex = (int)AlphabetMode.RussianAndLatin, NoisePercent = 40, AutoSpeed = true, ExamPlaybacks = 3 };
+    var settings = new AppSettings { AlphabetIndex = (int)AlphabetMode.RussianAndLatin, NoisePercent = 40, AutoSpeed = true };
     Course.Apply(russian[1], settings);
     Assert(settings.CourseStep == 2 && settings.AlphabetIndex == (int)AlphabetMode.Russian && settings.ContentModeIndex == (int)ContentMode.Koch && settings.KochLevel == 6
            && settings.CharactersPerMinute == 60 && settings.NoisePercent == 0 && !settings.AutoSpeed, "Apply must set the step settings.");
-    Assert(Course.StepForRecord(settings, isExam: false) == 2, "A task with the step settings belongs to the step.");
+    Assert(Course.StepForRecord(settings) == 2, "A task with the step settings belongs to the step.");
     settings.CharactersPerMinute = 40;
-    Assert(Course.StepForRecord(settings, isExam: false) == 0, "A slower task does not count.");
-    var exam = new AppSettings();
-    Course.Apply(russian[^1], exam);
-    Assert(exam.ExamPlaybacks == 1 && exam.ExamTimeLimitMinutes == Course.ExamTimeLimitMinutes, "Exam step sets the exam rules.");
-    Assert(Course.StepForRecord(exam, isExam: false) == 0 && Course.StepForRecord(exam, isExam: true) == russian.Count, "The final step counts only as an exam.");
-    Assert(Course.StepForRecord(new AppSettings(), isExam: false) == 0, "Outside the course there is no step.");
+    Assert(Course.StepForRecord(settings) == 0, "A slower task does not count.");
+    var final = new AppSettings();
+    Course.Apply(russian[^1], final);
+    Assert(Course.StepForRecord(final) == russian.Count && final.ContentModeIndex == (int)ContentMode.LettersAndDigits, "The final step is an ordinary task of the step.");
+    Assert(Course.StepForRecord(new AppSettings()) == 0, "Outside the course there is no step.");
 
     // Зачёт по истории
     var at = new DateTime(2026, 9, 23, 10, 0, 0);
@@ -1247,7 +1176,7 @@ static void TestCourseStepChoice()
            && choices[2].Passed && choices[2].Label.StartsWith("✓ 3. + ", StringComparison.Ordinal),
         "passed steps are ticked: " + string.Join(" | ", choices.Take(3).Select(choice => choice.Label)));
     Assert(choices.Select(choice => choice.Label).Distinct().Count() == choices.Count, "step labels are unique (the phone maps the picked label back to a step)");
-    Assert(choices[^1].Label.StartsWith($"{steps.Count}. ", StringComparison.Ordinal), "the exam is the last choice: " + choices[^1].Label);
+    Assert(choices[^1].Label.StartsWith($"{steps.Count}. ", StringComparison.Ordinal), "the final task is the last choice: " + choices[^1].Label);
     var marks = Course.Marks(steps, history, current: 2);
     Assert(marks.Count == steps.Count && marks[0] == CourseMark.Passed && marks[1] == CourseMark.Current && marks[2] == CourseMark.Passed
            && marks.Skip(3).All(mark => mark == CourseMark.Ahead), "progress marks: passed, current, ahead");
@@ -1544,9 +1473,9 @@ static void TestSecondCourse()
     Assert(Course.Steps(AlphabetMode.Russian, 1).Count == first.Count && first.Count == 14, "the first course is unchanged");
     Assert(second.Count == 9 && second.Select(step => step.Number).SequenceEqual(Enumerable.Range(101, 9))
            && second.Take(8).Select(step => step.CharactersPerMinute).SequenceEqual(new[] { 65, 70, 75, 80, 85, 90, 95, 100 })
-           && second[^1].IsExam && second[^1].CharactersPerMinute == 100
+           && second[^1].Title == Texts.F("Итоговое задание на {0} знаков в минуту", 100) && second[^1].CharactersPerMinute == 100
            && second.All(step => step.Content == ContentMode.LettersAndDigits && step.CharacterGapUnits == 3 && step.GroupGapUnits == 7),
-        "second course: letters and digits, +5 cpm per step from 65 to 100, then the exam, numbered 101…");
+        "second course: letters and digits, +5 cpm per step from 65 to 100, then the final task, numbered 101…");
     Assert(Course.CourseOf(3) == 1 && Course.CourseOf(103) == 2 && Course.DisplayNumber(103) == 3 && Course.DisplayNumber(3) == 3,
         "step numbers tell the course and show as 1…9");
     Assert(Course.StepsFor(AlphabetMode.Russian, 105).Count == 9 && Course.Title(2) == Texts.T("Курс «С 60 до 100 зн/мин»"), "steps by number and title");
@@ -1556,7 +1485,7 @@ static void TestSecondCourse()
     Course.Apply(second[2], settings);
     Assert(settings.CourseStep == 103 && settings.CharactersPerMinute == 75 && settings.ContentModeIndex == (int)ContentMode.LettersAndDigits,
         "applying step 3 of the second course");
-    Assert(Course.StepForRecord(settings, isExam: false) == 103, "a task with these settings belongs to step 103");
+    Assert(Course.StepForRecord(settings) == 103, "a task with these settings belongs to step 103");
     var history = new List<TrainingRecord> { new() { CourseStep = 103, AccuracyPercent = 95, CompletedAt = DateTime.Now } };
     Assert(Course.IsPassed(history, second[2]) && !Course.IsPassed(history, first[2]), "step 3 of the second course is not step 3 of the first");
     Assert(HistoryTransfer.Import(HistoryTransfer.Export(history))[0].CourseStep == 103, "history transfer keeps second-course steps");
@@ -1564,7 +1493,7 @@ static void TestSecondCourse()
 
     var choices = Course.StepChoices(second, history);
     Assert(choices[0].Label == "1. " + Texts.F("Буквы и цифры на {0} знаков в минуту", 65) && choices[2].Label.StartsWith("✓ 3. ", StringComparison.Ordinal)
-           && choices[^1].Label == "9. " + Texts.F("Экзамен на {0} знаков в минуту", 100), "second-course choices are numbered 1…9: " + choices[2].Label);
+           && choices[^1].Label == "9. " + Texts.F("Итоговое задание на {0} знаков в минуту", 100), "second-course choices are numbered 1…9: " + choices[2].Label);
     var book = CourseBook.Pages(AlphabetMode.Russian, 2);
     Assert(book.Count == 3 && book[^1].Paragraphs.Count == 9 && CourseBook.Pages(AlphabetMode.Russian, 1).Count == 5, "the second course has its own short book");
 
@@ -1579,12 +1508,12 @@ static void TestSecondCourse()
     Assert(Course.Intro(2, 9).StartsWith("9 шагов: буквы и цифры", StringComparison.Ordinal) && Course.Intro(1, 14).StartsWith("14 шагов: метод Коха", StringComparison.Ordinal)
            && Course.SwitchLabel(1) == Texts.T("Перейти к курсу «С 60 до 100 зн/мин»") && Course.SwitchLabel(2) == Texts.T("Перейти к курсу «С нуля до 60 зн/мин»"),
         "intro and switch labels");
-    var exam = first[^1];
-    var examPassed = new List<TrainingRecord> { new() { CourseStep = exam.Number, IsExam = true, AccuracyPercent = 92, CompletedAt = DateTime.Now } };
-    Assert(Course.NextCourseHint(examPassed, first, exam).Length > 0 && Course.NextCourseHint(history, first, exam).Length == 0
-           && Course.NextCourseHint(examPassed, first, first[2]).Length == 0
-           && Course.NextCourseHint(new List<TrainingRecord> { new() { CourseStep = 109, IsExam = true, AccuracyPercent = 99, CompletedAt = DateTime.Now } }, second, second[^1]).Length == 0,
-        "the hint to go on appears only after the first course's exam is passed");
+    var final = first[^1];
+    var finalPassed = new List<TrainingRecord> { new() { CourseStep = final.Number, AccuracyPercent = 92, CompletedAt = DateTime.Now } };
+    Assert(Course.NextCourseHint(finalPassed, first, final).Length > 0 && Course.NextCourseHint(history, first, final).Length == 0
+           && Course.NextCourseHint(finalPassed, first, first[2]).Length == 0
+           && Course.NextCourseHint(new List<TrainingRecord> { new() { CourseStep = 109, AccuracyPercent = 99, CompletedAt = DateTime.Now } }, second, second[^1]).Length == 0,
+        "the hint to go on appears only after the first course's final task is passed");
 }
 
 static void Assert(bool condition, string message)

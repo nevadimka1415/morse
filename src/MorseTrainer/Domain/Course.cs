@@ -14,8 +14,7 @@ public sealed record CourseStep(
     int CharactersPerMinute,
     int GroupCount,
     int CharacterGapUnits,
-    int GroupGapUnits,
-    bool IsExam);
+    int GroupGapUnits);
 
 /// <summary>Пункт списка «Выбрать шаг…»: номер шага, подпись («✓ 3. + П Т Л О») и пройден ли он.</summary>
 public sealed record CourseStepChoice(int Number, string Label, bool Passed);
@@ -30,9 +29,9 @@ public enum CourseMark
 
 /// <summary>
 /// Курс «С нуля до 60 зн/мин»: метод Коха по 4 новых символа на шаг (скорость знака сразу 60, в начале паузы
-/// растянуты), затем слова на 50 и 60 зн/мин и итоговый экзамен. Шаг засчитан, когда в истории есть задание
+/// растянуты), затем слова на 50 и 60 зн/мин и итоговое задание. Шаг засчитан, когда в истории есть задание
 /// этого шага с точностью от 90 %.
-/// Курс 2 «С 60 до 100 зн/мин» продолжает первый: буквы и цифры с обычными паузами, +5 зн/мин за шаг, экзамен на 100.
+/// Курс 2 «С 60 до 100 зн/мин» продолжает первый: буквы и цифры с обычными паузами, +5 зн/мин за шаг, итоговое задание на 100.
 /// Номера его шагов — 101, 102, … (в настройках и истории шаг 3 одного курса не путается с шагом 3 другого);
 /// на экране — «шаг 3 из 9» (DisplayNumber).
 /// </summary>
@@ -42,7 +41,6 @@ public static class Course
     public const int TargetSpeed = 60;
     public const int WordsWarmUpSpeed = 50;
     public const int KochStep = 4;
-    public const int ExamTimeLimitMinutes = 10;
     public const int SecondCourseOffset = 100;
     public const int SecondCourseTargetSpeed = 100;
     public const int SecondCourseStepSpeed = 5;
@@ -73,8 +71,8 @@ public static class Course
 
     /// <summary>Описание курса, пока он не начат.</summary>
     public static string Intro(int course, int count) => course == 2
-        ? Texts.F("{0} шагов: буквы и цифры от 65 до 100 знаков в минуту, по 5 за шаг, итоговый экзамен. Кнопка ставит нужные настройки и создаёт задание.", count)
-        : Texts.F("{0} шагов: метод Коха по 4 символа, слова на 50 и 60 зн/мин, итоговый экзамен. Кнопка ставит нужные настройки и создаёт задание.", count);
+        ? Texts.F("{0} шагов: буквы и цифры от 65 до 100 знаков в минуту, по 5 за шаг, итоговое задание. Кнопка ставит нужные настройки и создаёт задание.", count)
+        : Texts.F("{0} шагов: метод Коха по 4 символа, слова на 50 и 60 зн/мин, итоговое задание. Кнопка ставит нужные настройки и создаёт задание.", count);
 
     /// <summary>Пункт меню «Перейти к курсу …» — к другому курсу, не к текущему.</summary>
     public static string SwitchLabel(int course) => course == 2
@@ -82,11 +80,11 @@ public static class Course
         : Texts.T("Перейти к курсу «С 60 до 100 зн/мин»");
 
     /// <summary>
-    /// Подсказка после итогового экзамена первого курса: дальше — второй (пусто, если рано или это курс 2). Пока она
+    /// Подсказка после итогового задания первого курса: дальше — второй (пусто, если рано или это курс 2). Пока она
     /// есть, кнопка «Следующий шаг» становится «Следующий курс».
     /// </summary>
     public static string NextCourseHint(IReadOnlyList<TrainingRecord> history, IReadOnlyList<CourseStep> steps, CourseStep step) =>
-        CourseOf(step.Number) == 1 && step.IsExam && step.Number == steps[^1].Number && IsPassed(history, step)
+        CourseOf(step.Number) == 1 && step.Number == steps[^1].Number && IsPassed(history, step)
             ? Texts.T("Курс пройден ✓ Дальше — курс «С 60 до 100 зн/мин».")
             : string.Empty;
 
@@ -96,7 +94,7 @@ public static class Course
     /// <summary>Шаги того курса, к которому относится шаг с этим номером.</summary>
     public static IReadOnlyList<CourseStep> StepsFor(AlphabetMode alphabet, int stepNumber) => Steps(alphabet, CourseOf(stepNumber));
 
-    /// <summary>Курс 2: буквы и цифры с обычными паузами, каждый шаг на 5 зн/мин быстрее (65…100), затем экзамен на 100.</summary>
+    /// <summary>Курс 2: буквы и цифры с обычными паузами, каждый шаг на 5 зн/мин быстрее (65…100), затем итоговое задание на 100.</summary>
     private static IReadOnlyList<CourseStep> SecondSteps(AlphabetMode alphabet)
     {
         alphabet = alphabet == AlphabetMode.Latin ? AlphabetMode.Latin : AlphabetMode.Russian;
@@ -107,12 +105,12 @@ public static class Course
         {
             steps.Add(new CourseStep(++number, Texts.F("Буквы и цифры на {0} знаков в минуту", speed),
                 Texts.T("Все буквы и цифры, обычные паузы: каждый шаг на 5 знаков в минуту быстрее прошлого."),
-                ContentMode.LettersAndDigits, alphabet, max, speed, 10, 3, 7, false));
+                ContentMode.LettersAndDigits, alphabet, max, speed, 10, 3, 7));
         }
 
-        steps.Add(new CourseStep(++number, Texts.F("Экзамен на {0} знаков в минуту", SecondCourseTargetSpeed),
-            Texts.F("Буквы и цифры, 10 групп, одно прослушивание, лимит {0} минут. Точность от 90 % — курс пройден.", ExamTimeLimitMinutes),
-            ContentMode.LettersAndDigits, alphabet, max, SecondCourseTargetSpeed, 10, 3, 7, true));
+        steps.Add(new CourseStep(++number, Texts.F("Итоговое задание на {0} знаков в минуту", SecondCourseTargetSpeed),
+            Texts.T("Буквы и цифры, 10 групп. Точность от 90 % — курс пройден."),
+            ContentMode.LettersAndDigits, alphabet, max, SecondCourseTargetSpeed, 10, 3, 7));
         return steps;
     }
 
@@ -141,19 +139,19 @@ public static class Course
             steps.Add(new CourseStep(steps.Count + 1,
                 Texts.F("Метод Коха, уровень {0}", level),
                 previous == 0 ? Texts.F("Первые символы: {0}", added) : Texts.F("Новые символы: {0}", added),
-                ContentMode.Koch, alphabet, level, TargetSpeed, 10, wide ? 5 : 4, wide ? 12 : 9, false));
+                ContentMode.Koch, alphabet, level, TargetSpeed, 10, wide ? 5 : 4, wide ? 12 : 9));
             previous = level;
         }
 
         steps.Add(new CourseStep(steps.Count + 1, Texts.F("Слова на {0} знаков в минуту", WordsWarmUpSpeed),
             Texts.T("Целые слова вместо групп: ухо учится узнавать слово, а не отдельные знаки."),
-            ContentMode.Words, alphabet, max, WordsWarmUpSpeed, 10, 3, 7, false));
+            ContentMode.Words, alphabet, max, WordsWarmUpSpeed, 10, 3, 7));
         steps.Add(new CourseStep(steps.Count + 1, Texts.F("Слова на {0} знаков в минуту", TargetSpeed),
             Texts.T("Та же работа на целевой скорости и с обычными паузами."),
-            ContentMode.Words, alphabet, max, TargetSpeed, 10, 3, 7, false));
-        steps.Add(new CourseStep(steps.Count + 1, Texts.F("Экзамен на {0} знаков в минуту", TargetSpeed),
-            Texts.F("Буквы и цифры, 10 групп, одно прослушивание, лимит {0} минут. Точность от 90 % — курс пройден.", ExamTimeLimitMinutes),
-            ContentMode.LettersAndDigits, alphabet, max, TargetSpeed, 10, 3, 7, true));
+            ContentMode.Words, alphabet, max, TargetSpeed, 10, 3, 7));
+        steps.Add(new CourseStep(steps.Count + 1, Texts.F("Итоговое задание на {0} знаков в минуту", TargetSpeed),
+            Texts.T("Буквы и цифры, 10 групп. Точность от 90 % — курс пройден."),
+            ContentMode.LettersAndDigits, alphabet, max, TargetSpeed, 10, 3, 7));
         return steps;
     }
 
@@ -180,15 +178,10 @@ public static class Course
         settings.QsbPercent = 0;
         settings.DriftHz = 0;
         settings.AutoSpeed = false;
-        if (step.IsExam)
-        {
-            settings.ExamPlaybacks = 1;
-            settings.ExamTimeLimitMinutes = ExamTimeLimitMinutes;
-        }
     }
 
-    /// <summary>Задание сделано по настройкам шага (скорость не ниже, уровень Коха не ниже, экзамен для итогового шага).</summary>
-    public static bool Matches(CourseStep step, AppSettings taskSettings, bool isExam)
+    /// <summary>Задание сделано по настройкам шага (скорость не ниже, уровень Коха не ниже).</summary>
+    public static bool Matches(CourseStep step, AppSettings taskSettings)
     {
         ArgumentNullException.ThrowIfNull(step);
         ArgumentNullException.ThrowIfNull(taskSettings);
@@ -196,22 +189,21 @@ public static class Course
                && taskSettings.AlphabetIndex != (int)AlphabetMode.RussianAndLatin
                && taskSettings.ContentModeIndex == (int)step.Content
                && taskSettings.CharactersPerMinute >= step.CharactersPerMinute
-               && (step.Content != ContentMode.Koch || taskSettings.KochLevel >= step.KochLevel)
-               && (!step.IsExam || isExam);
+               && (step.Content != ContentMode.Koch || taskSettings.KochLevel >= step.KochLevel);
     }
 
     /// <summary>Номер шага для записи истории: текущий шаг курса, если задание сделано по его настройкам; иначе 0.</summary>
-    public static int StepForRecord(AppSettings taskSettings, bool isExam)
+    public static int StepForRecord(AppSettings taskSettings)
     {
         ArgumentNullException.ThrowIfNull(taskSettings);
         var step = Find(StepsFor(AlphabetFor(taskSettings.AlphabetIndex), taskSettings.CourseStep), taskSettings.CourseStep);
-        return step is not null && Matches(step, taskSettings, isExam) ? step.Number : 0;
+        return step is not null && Matches(step, taskSettings) ? step.Number : 0;
     }
 
     public static double? BestAccuracy(IReadOnlyList<TrainingRecord> history, CourseStep step)
     {
         ArgumentNullException.ThrowIfNull(history);
-        var records = history.Where(item => item.CourseStep == step.Number && (!step.IsExam || item.IsExam)).ToArray();
+        var records = history.Where(item => item.CourseStep == step.Number).ToArray();
         return records.Length == 0 ? null : records.Max(item => item.AccuracyPercent);
     }
 
@@ -221,7 +213,7 @@ public static class Course
     public static int PassedCount(IReadOnlyList<TrainingRecord> history, IReadOnlyList<CourseStep> steps) =>
         steps.Count(step => IsPassed(history, step));
 
-    /// <summary>«1. К М», «2. + Р С У А», … затем шаги со словами и экзамен — для книжки и списка «Выбрать шаг…».</summary>
+    /// <summary>«1. К М», «2. + Р С У А», … затем шаги со словами и итоговое задание — для книжки и списка «Выбрать шаг…».</summary>
     public static IReadOnlyList<string> StepLines(IReadOnlyList<CourseStep> steps)
     {
         var lines = new List<string>();

@@ -59,8 +59,8 @@ public partial class MainWindow
         CourseStatusText.Text = Course.Status(_history, step) + " " + Texts.F("Пройдено шагов: {0} из {1}.", passed, steps.Count) +
                                 (hint.Length > 0 ? " " + hint : string.Empty);
         CourseStatusText.Foreground = (Brush)FindResource(stepPassed ? "PrimaryBrush" : "MutedTextBrush");
-        CourseStartButton.Content = step.IsExam ? Texts.T("Начать экзамен") : Texts.T("Начать шаг");
-        // После итогового экзамена первого курса «Следующий шаг» ведёт ко второму курсу
+        CourseStartButton.Content = Texts.T("Начать шаг");
+        // После итогового задания первого курса «Следующий шаг» ведёт ко второму курсу
         var hasNext = Course.Next(steps, step.Number) is not null;
         CourseNextButton.Content = hasNext ? Texts.T("Следующий шаг") : Texts.T("Следующий курс");
         CourseNextButton.Visibility = hasNext || hint.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
@@ -128,7 +128,7 @@ public partial class MainWindow
     {
         if (Course.Next(CourseSteps, _courseStep) is not { } next)
         {
-            // Последний шаг: кнопка видна только как «Следующий курс» после итогового экзамена первого курса
+            // Последний шаг: кнопка видна только как «Следующий курс» после итогового задания первого курса
             if (CurrentCourse == 1)
             {
                 SwitchCourse(2);
@@ -213,7 +213,7 @@ public partial class MainWindow
         RefreshCourse();
     }
 
-    /// <summary>Ставит настройки текущего шага, переходит на «Тренировку» и создаёт задание (или экзамен).</summary>
+    /// <summary>Ставит настройки текущего шага, переходит на «Тренировку» и создаёт задание.</summary>
     private async Task StartCourseStepAsync()
     {
         if (Course.Find(CourseSteps, _courseStep) is not { } step)
@@ -230,14 +230,7 @@ public partial class MainWindow
         RefreshCourse();
         MainTabs.SelectedIndex = 0;
         SetAnswerInput(true, remember: false);
-        if (step.IsExam)
-        {
-            await StartExamAsync();
-        }
-        else
-        {
-            await GenerateTaskAsync();
-        }
+        await GenerateTaskAsync();
     }
 
 

@@ -2,34 +2,25 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:loc="clr-namespace:MorseTrainer.Mobile.Localization"
+             xmlns:controls="clr-namespace:MorseTrainer.Mobile.Controls"
              x:Class="MorseTrainer.Mobile.Pages.TrainingPage"
              Title="{loc:Loc 'Тренировка'}">
     <ScrollView>
         <VerticalStackLayout x:Name="RootLayout" Padding="16" Spacing="14">
-            <!-- Параметры задания нужны редко: свёрнуты под кнопкой в шапке, выбор запоминается -->
+            <!-- Параметры тренировки (что и как звучит) выставляют один раз и меняют редко: они здесь, свёрнуты под
+                 кнопкой в шапке, раскрытость запоминается. В «Настройках» — только общие настройки приложения. -->
             <Grid ColumnDefinitions="*,Auto">
                 <Label Text="{loc:Loc 'Тренировка'}" FontSize="26" FontAttributes="Bold" VerticalOptions="Center" SemanticProperties.HeadingLevel="Level1" />
                 <Button x:Name="ParamsToggleButton" Grid.Column="1" Text="{loc:Loc 'Параметры ▾'}" Padding="12,6"
                         Clicked="ParamsToggleButton_OnClicked" />
             </Grid>
 
-            <Border x:Name="ParamsPanel" IsVisible="False" BackgroundColor="{AppThemeBinding Light=#ECFDF5, Dark=#102F29}">
-                <VerticalStackLayout Spacing="8">
-                    <Label x:Name="SettingsSummaryLabel" Text="{loc:Loc '10 групп × 5 · 60 знаков/мин'}" LineBreakMode="WordWrap" />
-                    <Label Text="{loc:Loc 'Перед началом: Ж Ж Ж → пауза → задание'}" TextColor="{StaticResource PrimaryDark}" FontAttributes="Bold" />
-                    <Button Text="{loc:Loc 'Изменить в настройках'}" Clicked="SettingsButton_OnClicked" />
-                </VerticalStackLayout>
-            </Border>
+            <controls:TrainingParamsView x:Name="ParamsPanel" IsVisible="False" />
 
-            <Grid ColumnDefinitions="*,10,Auto">
-                <Button x:Name="GenerateButton" Text="{loc:Loc 'Сгенерировать новое задание'}"
-                        BackgroundColor="{StaticResource Primary}" TextColor="#06231C"
-                        Clicked="GenerateButton_OnClicked" />
-                <Button x:Name="ExamButton" Grid.Column="2" Text="{loc:Loc 'Экзамен'}" Clicked="ExamButton_OnClicked" />
-            </Grid>
+            <Button x:Name="GenerateButton" Text="{loc:Loc 'Сгенерировать новое задание'}"
+                    BackgroundColor="{StaticResource Primary}" TextColor="#06231C"
+                    Clicked="GenerateButton_OnClicked" />
             <Button x:Name="DrillButton" Text="{loc:Loc 'Повторить сложные символы'}" Clicked="DrillButton_OnClicked" />
-            <Label x:Name="ExamLabel" Text="" IsVisible="False" FontAttributes="Bold" HorizontalTextAlignment="Center"
-                   TextColor="{StaticResource PrimaryDark}" />
 
             <Border>
                 <VerticalStackLayout Spacing="12">
@@ -59,7 +50,7 @@
             <!-- Обычно группы записывают на бумаге и сверяют с текстом задания; ввод в приложении — по желанию -->
             <Label x:Name="PaperHintLabel" Text="{loc:Loc 'Записывайте на бумаге, затем нажмите «Показать» и сверьте. Нажатие на группу в тексте задания повторяет только её.'}"
                    HorizontalTextAlignment="Center" FontSize="13" Opacity="0.65" LineBreakMode="WordWrap" />
-            <!-- Задание аудиофайлом: слушать в любом плеере или отправить другу вместе с текстом для сверки (не на экзамене) -->
+            <!-- Задание аудиофайлом: слушать в любом плеере или отправить другу вместе с текстом для сверки -->
             <Button x:Name="ShareAudioButton" Text="{loc:Loc 'Поделиться звуком задания'}" IsEnabled="False" Clicked="ShareAudioButton_OnClicked" />
             <Button x:Name="AnswerPanelButton" Text="{loc:Loc 'Проверить вводом ▾'}" Clicked="AnswerPanelButton_OnClicked" />
 
@@ -73,7 +64,6 @@
                         <Label x:Name="AccuracyLabel" Text="{loc:Loc 'Точность: —'}" FontSize="20" FontAttributes="Bold" />
                         <Label x:Name="ResultLabel" Text="{loc:Loc 'Пробелы между группами не учитываются'}" LineBreakMode="WordWrap" />
                         <Label x:Name="HistoryLabel" Text="" Opacity="0.65" LineBreakMode="WordWrap" />
-                        <Button x:Name="ExamShareButton" Text="{loc:Loc 'Поделиться протоколом'}" IsVisible="False" Clicked="ExamShareButton_OnClicked" />
                     </VerticalStackLayout>
                 </Border>
             </VerticalStackLayout>

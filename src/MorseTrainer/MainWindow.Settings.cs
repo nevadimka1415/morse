@@ -251,8 +251,6 @@ public partial class MainWindow
             KochLevel = (int)KochLevelSlider.Value,
             EmphasizeProblemSymbols = EmphasizeProblemsCheckBox.IsChecked == true,
             AutoSpeed = AutoSpeedCheckBox.IsChecked == true,
-            ExamPlaybacks = ExamSession.ClampPlaybacks(ExamPlaybacksCombo.SelectedIndex + 1),
-            ExamTimeLimitMinutes = ExamSession.TimeLimitChoices[Math.Clamp(ExamLimitCombo.SelectedIndex, 0, ExamSession.TimeLimitChoices.Count - 1)],
             DailyGoalMinutes = SelectedDailyGoal,
             ReminderEnabled = ReminderCheckBox.IsChecked == true,
             ReminderMinutes = SelectedReminderMinutes,
@@ -300,8 +298,6 @@ public partial class MainWindow
         KochLevelSlider.Value = KochMethod.ClampLevel((AlphabetMode)Math.Clamp(settings.AlphabetIndex, 0, 2), settings.KochLevel);
         EmphasizeProblemsCheckBox.IsChecked = settings.EmphasizeProblemSymbols;
         AutoSpeedCheckBox.IsChecked = settings.AutoSpeed;
-        ExamPlaybacksCombo.SelectedIndex = ExamSession.ClampPlaybacks(settings.ExamPlaybacks) - 1;
-        ExamLimitCombo.SelectedIndex = Math.Max(0, ExamSession.TimeLimitChoices.ToList().IndexOf(ExamSession.ClampTimeLimit(settings.ExamTimeLimitMinutes)));
         DailyGoalCombo.SelectedIndex = Math.Max(0, TrainingStatistics.DailyGoalChoices.ToList().IndexOf(TrainingStatistics.ClampGoal(settings.DailyGoalMinutes)));
         ReminderCheckBox.IsChecked = settings.ReminderEnabled;
         ReminderTimeCombo.SelectedIndex = PracticeNudge.NearestChoiceIndex(settings.ReminderMinutes);

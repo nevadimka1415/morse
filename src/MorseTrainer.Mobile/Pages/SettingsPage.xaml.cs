@@ -18,8 +18,6 @@ public partial class SettingsPage : ContentPage
     private readonly ChantStore _chantStore;
     private readonly IAudioPlaybackService _audioPlayback;
     private readonly TrainingHistoryStore _historyStore;
-    private AppSettings _settings = new();
-    private readonly HashSet<char> _selectedSymbols = new();
     private bool _ready;
 
     public SettingsPage(MobileSettingsService settingsService, IReminderService reminders, ChantStore chantStore, IAudioPlaybackService audioPlayback,
@@ -34,25 +32,13 @@ public partial class SettingsPage : ContentPage
         // Списки пикеров задаются кодом, чтобы переводиться вместе с интерфейсом
         ThemePicker.ItemsSource = new[] { Texts.T("Системная"), Texts.T("Тёмная"), Texts.T("Светлая") };
         LanguagePicker.ItemsSource = new[] { Texts.T("Системный"), Texts.T("Русский (Russian)"), Texts.T("English") };
-        AlphabetPicker.ItemsSource = new[] { Texts.T("Русский"), Texts.T("Латинский"), Texts.T("Русский и латинский") };
-        ContentPicker.ItemsSource = new[]
-        {
-            Texts.T("Только буквы"), Texts.T("Только цифры"), Texts.T("Буквы и цифры"),
-            Texts.T("Все символы"), Texts.T("Выбранные символы"), Texts.T("Метод Коха"),
-            Texts.T("Слова"), Texts.T("Позывные"), Texts.T("Q-код и сокращения"), Texts.T("Радиообмен")
-        };
-        ExamPlaybacksPicker.ItemsSource = Enumerable.Range(ExamSession.MinPlaybacks, ExamSession.MaxAllowedPlaybacks)
-            .Select(count => count.ToString()).ToList();
-        ExamLimitPicker.ItemsSource = ExamSession.TimeLimitChoices
-            .Select(minutes => minutes == 0 ? Texts.T("без лимита") : Texts.F("{0} мин", minutes)).ToList();
         VersionLabel.Text = $"Morse Trainer {CurrentVersion}";
 #if RUSTORE
         // Сборка для RuStore (-p:DistributionChannel=RuStore): обновления ставит сам магазин — по правилам RuStore
         // приложение из него должно обновляться только через RuStore, поэтому своей проверки через GitHub нет
         CheckUpdatesButton.IsVisible = false;
-        UpdatesNoteLabel.Text = Texts.T("Обновления приходят через RuStore. Приложение работает без интернета.");
+        UpdatesNoteLabel.Text = Texts.T("Обновления приходят через RuStore. Интернет нужен только для отправки сообщения разработчику.");
 #endif
-        BuildSymbolButtons();
         LoadAll();
         _ready = true;
     }
@@ -70,10 +56,10 @@ public partial class SettingsPage : ContentPage
 
     // ---------- напоминание ----------
 
-    private void UpdateReminderStatus()
+    private void UpdateReminderStatus(AppSettings settings)
     {
-        ReminderStatusLabel.Text = _settings.ReminderEnabled
-            ? Texts.F("Каждый день в {0}", ReminderSchedule.ToTime(_settings.ReminderMinutes).ToString(@"hh\:mm"))
+        ReminderStatusLabel.Text = settings.ReminderEnabled
+            ? Texts.F("Каждый день в {0}", ReminderSchedule.ToTime(settings.ReminderMinutes).ToString(@"hh\:mm"))
             : Texts.T("Напоминание выключено");
     }
 
@@ -96,15 +82,17 @@ public partial class SettingsPage : ContentPage
     /// <summary>Сохраняет переключатель и время; при включении просит разрешение и ставит уведомление.</summary>
     private async Task ApplyReminderAsync()
     {
-        _settings.ReminderMinutes = ReminderSchedule.ToMinutes(ReminderTimePicker.Time ?? ReminderSchedule.ToTime(ReminderSchedule.DefaultMinutes));
-        _settings.ReminderEnabled = ReminderSwitch.IsToggled;
+        // Свежие настройки: параметры тренировки с вкладки «Тренировка» не перетираются
+        var settings = _settingsService.LoadSettings();
+        settings.ReminderMinutes = ReminderSchedule.ToMinutes(ReminderTimePicker.Time ?? ReminderSchedule.ToTime(ReminderSchedule.DefaultMinutes));
+        settings.ReminderEnabled = ReminderSwitch.IsToggled;
         try
         {
-            if (_settings.ReminderEnabled)
+            if (settings.ReminderEnabled)
             {
                 if (!await _reminders.RequestPermissionAsync())
                 {
-                    _settings.ReminderEnabled = false;
+                    settings.ReminderEnabled = false;
                     _ready = false;
                     ReminderSwitch.IsToggled = false;
                     _ready = true;
@@ -113,7 +101,7 @@ public partial class SettingsPage : ContentPage
                 }
                 else
                 {
-                    await _reminders.ScheduleDailyAsync(ReminderSchedule.ToTime(_settings.ReminderMinutes), ReminderTexts.Title, ReminderTexts.Body(_settings, _historyStore.Load()));
+                    await _reminders.ScheduleDailyAsync(ReminderSchedule.ToTime(settings.ReminderMinutes), ReminderTexts.Title, ReminderTexts.Body(settings, _historyStore.Load()));
                 }
             }
             else
@@ -126,8 +114,12 @@ public partial class SettingsPage : ContentPage
             await DisplayAlertAsync(Texts.T("Напоминание"), exception.Message, Texts.T("Закрыть"));
         }
 
-        _settingsService.SaveSettings(_settings);
-        UpdateReminderStatus();
+        // Пока ждали разрешения, могли поменять что-то ещё — сохраняются только поля напоминания
+        var latest = _settingsService.LoadSettings();
+        latest.ReminderEnabled = settings.ReminderEnabled;
+        latest.ReminderMinutes = settings.ReminderMinutes;
+        _settingsService.SaveSettings(latest);
+        UpdateReminderStatus(latest);
     }
 
     // ---------- отчёт о сбое ----------
@@ -224,140 +216,14 @@ public partial class SettingsPage : ContentPage
     private void LoadAll()
     {
         _ready = false;
-        _settings = _settingsService.LoadSettings();
-        ApplySettingsToControls();
+        var settings = _settingsService.LoadSettings();
+        ThemePicker.SelectedIndex = Math.Clamp(settings.ThemeIndex, 0, 2);
+        LanguagePicker.SelectedIndex = Math.Clamp(settings.LanguageIndex, 0, 2);
+        ReminderSwitch.IsToggled = settings.ReminderEnabled;
+        ReminderTimePicker.Time = ReminderSchedule.ToTime(settings.ReminderMinutes);
+        UpdateReminderStatus(settings);
+        ApplyTheme(settings.ThemeIndex);
         _ready = true;
-    }
-
-    // ---------- что тренировать: четыре основных режима ----------
-
-    private static readonly ContentMode[] MainModes = { ContentMode.Letters, ContentMode.Digits, ContentMode.LettersAndDigits, ContentMode.Custom };
-
-    private void ModeButton_OnClicked(object? sender, EventArgs e)
-    {
-        if (sender is not Button { CommandParameter: string value } || !int.TryParse(value, out var mode))
-        {
-            return;
-        }
-
-        // Пикер «Режим (все варианты)» в дополнительных настройках — единственный источник режима
-        ContentPicker.SelectedIndex = mode;
-    }
-
-    private void UpdateModeButtons()
-    {
-        var mode = ContentModes.Clamp(ContentPicker.SelectedIndex);
-        ChoiceButtons.Highlight(new[] { ModeLettersButton, ModeDigitsButton, ModeBothButton, ModeCustomButton }, Array.IndexOf(MainModes, mode));
-
-        CustomSymbolsLayout.IsVisible = mode == ContentMode.Custom;
-        var alphabet = (AlphabetMode)Math.Clamp(AlphabetPicker.SelectedIndex, 0, 2);
-        var alphabetName = AlphabetPicker.SelectedItem as string ?? string.Empty;
-        ModeHintLabel.Text = Array.IndexOf(MainModes, mode) < 0
-            ? Texts.F("Сейчас особый режим «{0}» — он выбран в дополнительных настройках.", ContentPicker.SelectedItem as string ?? string.Empty)
-            : Texts.F("Символов в задании: {0} · алфавит: {1} (меняется в дополнительных настройках)",
-                MorseAlphabet.BuildPool(alphabet, mode, new string(_selectedSymbols.ToArray()), (int)KochStepper.Value).Count, alphabetName);
-    }
-
-    private void AdvancedButton_OnClicked(object sender, EventArgs e)
-    {
-        AdvancedLayout.IsVisible = !AdvancedLayout.IsVisible;
-        AdvancedButton.Text = AdvancedLayout.IsVisible ? Texts.T("Дополнительные настройки ▴") : Texts.T("Дополнительные настройки ▾");
-    }
-
-    private void ApplySettingsToControls()
-    {
-        ThemePicker.SelectedIndex = Math.Clamp(_settings.ThemeIndex, 0, 2);
-        LanguagePicker.SelectedIndex = Math.Clamp(_settings.LanguageIndex, 0, 2);
-        AlphabetPicker.SelectedIndex = Math.Clamp(_settings.AlphabetIndex, 0, 2);
-        ContentPicker.SelectedIndex = (int)ContentModes.Clamp(_settings.ContentModeIndex);
-        KochStepper.Value = KochMethod.ClampLevel((AlphabetMode)Math.Clamp(_settings.AlphabetIndex, 0, 2), _settings.KochLevel);
-        EmphasizeSwitch.IsToggled = _settings.EmphasizeProblemSymbols;
-        AutoSpeedSwitch.IsToggled = _settings.AutoSpeed;
-        ExamPlaybacksPicker.SelectedIndex = ExamSession.ClampPlaybacks(_settings.ExamPlaybacks) - 1;
-        ExamLimitPicker.SelectedIndex = Math.Max(0, ExamSession.TimeLimitChoices.ToList().IndexOf(ExamSession.ClampTimeLimit(_settings.ExamTimeLimitMinutes)));
-        GroupCountStepper.Value = Math.Clamp(_settings.GroupCount, 1, 100);
-        SpeedSlider.Value = Math.Clamp(_settings.CharactersPerMinute, 20, 300);
-        FrequencySlider.Value = Math.Clamp(_settings.FrequencyHz, 300, 1200);
-        VolumeSlider.Value = Math.Clamp(_settings.VolumePercent, 0, 100);
-        CharacterGapSlider.Value = Math.Clamp(_settings.CharacterGapUnits, 3, 20);
-        GroupGapSlider.Value = Math.Clamp(_settings.GroupGapUnits, 7, 30);
-        StartSignalSwitch.IsToggled = _settings.PlayStartSignal;
-        StartPauseSlider.Value = Math.Clamp(_settings.StartPauseUnits, 7, 60);
-        ReminderSwitch.IsToggled = _settings.ReminderEnabled;
-        ReminderTimePicker.Time = ReminderSchedule.ToTime(_settings.ReminderMinutes);
-        UpdateReminderStatus();
-        NoiseSlider.Value = Math.Clamp(_settings.NoisePercent, 0, 100);
-        QsbSlider.Value = Math.Clamp(_settings.QsbPercent, 0, 100);
-        DriftSlider.Value = Math.Clamp(_settings.DriftHz, 0, NoiseProfile.MaxDriftHz);
-        _selectedSymbols.Clear();
-        foreach (var symbol in MorseAlphabet.FilterSupportedSymbols(_settings.CustomSymbols))
-        {
-            _selectedSymbols.Add(symbol);
-        }
-
-        ApplyTheme(_settings.ThemeIndex);
-        UpdateLabelsAndSymbols();
-    }
-
-    private void BuildSymbolButtons()
-    {
-        var symbols = MorseAlphabet.Russian.Keys
-            .Concat(MorseAlphabet.Latin.Keys)
-            .Concat(MorseAlphabet.Digits.Keys)
-            .Distinct()
-            .ToArray();
-        foreach (var symbol in symbols)
-        {
-            var button = new Button
-            {
-                Text = symbol.ToString(),
-                CommandParameter = symbol,
-                WidthRequest = 48,
-                HeightRequest = 44,
-                Padding = 4,
-                Margin = 3
-            };
-            button.Clicked += SymbolButton_OnClicked;
-            SymbolsFlex.Children.Add(button);
-        }
-    }
-
-    private void SymbolButton_OnClicked(object? sender, EventArgs e)
-    {
-        if (sender is not Button { CommandParameter: char symbol })
-        {
-            return;
-        }
-
-        if (!_selectedSymbols.Add(symbol))
-        {
-            _selectedSymbols.Remove(symbol);
-        }
-
-        ContentPicker.SelectedIndex = (int)ContentMode.Custom;
-        SaveControlsToSettings();
-    }
-
-    private void SelectAllButton_OnClicked(object sender, EventArgs e)
-    {
-        _selectedSymbols.Clear();
-        foreach (var button in SymbolsFlex.Children.OfType<Button>())
-        {
-            if (button.CommandParameter is char symbol)
-            {
-                _selectedSymbols.Add(symbol);
-            }
-        }
-
-        ContentPicker.SelectedIndex = (int)ContentMode.Custom;
-        SaveControlsToSettings();
-    }
-
-    private void ClearSymbolsButton_OnClicked(object sender, EventArgs e)
-    {
-        _selectedSymbols.Clear();
-        ContentPicker.SelectedIndex = (int)ContentMode.Custom;
-        SaveControlsToSettings();
     }
 
     private async void LanguagePicker_OnChanged(object sender, EventArgs e)
@@ -379,65 +245,15 @@ public partial class SettingsPage : ContentPage
         }
     }
 
+    /// <summary>Тема и язык — поверх свежих настроек: параметры тренировки правятся на вкладке «Тренировка».</summary>
     private void SaveControlsToSettings()
     {
-        _settings.ThemeIndex = Math.Clamp(ThemePicker.SelectedIndex, 0, 2);
-        _settings.LanguageIndex = Math.Clamp(LanguagePicker.SelectedIndex, 0, 2);
-        _settings.AlphabetIndex = Math.Clamp(AlphabetPicker.SelectedIndex, 0, 2);
-        _settings.ContentModeIndex = (int)ContentModes.Clamp(ContentPicker.SelectedIndex);
-        _settings.KochLevel = (int)KochStepper.Value;
-        _settings.EmphasizeProblemSymbols = EmphasizeSwitch.IsToggled;
-        _settings.AutoSpeed = AutoSpeedSwitch.IsToggled;
-        _settings.ExamPlaybacks = ExamSession.ClampPlaybacks(ExamPlaybacksPicker.SelectedIndex + 1);
-        _settings.ExamTimeLimitMinutes = ExamSession.TimeLimitChoices[Math.Clamp(ExamLimitPicker.SelectedIndex, 0, ExamSession.TimeLimitChoices.Count - 1)];
-        _settings.GroupCount = (int)Math.Round(GroupCountStepper.Value);
-        _settings.CharactersPerMinute = Snap(SpeedSlider.Value, 5, 20, 300);
-        _settings.FrequencyHz = Snap(FrequencySlider.Value, 50, 300, 1200);
-        _settings.VolumePercent = Snap(VolumeSlider.Value, 5, 0, 100);
-        _settings.CharacterGapUnits = (int)Math.Round(CharacterGapSlider.Value);
-        _settings.GroupGapUnits = (int)Math.Round(GroupGapSlider.Value);
-        _settings.PlayStartSignal = StartSignalSwitch.IsToggled;
-        _settings.StartPauseUnits = (int)Math.Round(StartPauseSlider.Value);
-        _settings.NoisePercent = Snap(NoiseSlider.Value, 5, 0, 100);
-        _settings.QsbPercent = Snap(QsbSlider.Value, 5, 0, 100);
-        _settings.DriftHz = Snap(DriftSlider.Value, 5, 0, NoiseProfile.MaxDriftHz);
-        _settings.CustomSymbols = new string(_selectedSymbols.ToArray());
-        ApplyTheme(_settings.ThemeIndex);
-        UpdateLabelsAndSymbols();
-        _settingsService.SaveSettings(_settings);
+        var settings = _settingsService.LoadSettings();
+        settings.ThemeIndex = Math.Clamp(ThemePicker.SelectedIndex, 0, 2);
+        settings.LanguageIndex = Math.Clamp(LanguagePicker.SelectedIndex, 0, 2);
+        ApplyTheme(settings.ThemeIndex);
+        _settingsService.SaveSettings(settings);
         SaveStatusLabel.Text = Texts.F("Сохранено {0:HH:mm}", DateTime.Now);
-    }
-
-    private void UpdateLabelsAndSymbols()
-    {
-        GroupCountValue.Text = ((int)Math.Round(GroupCountStepper.Value)).ToString();
-        SpeedValue.Text = Texts.F("{0} зн/мин", Snap(SpeedSlider.Value, 5, 20, 300));
-        FrequencyValue.Text = Texts.F("{0} Гц", Snap(FrequencySlider.Value, 50, 300, 1200));
-        VolumeValue.Text = $"{Snap(VolumeSlider.Value, 5, 0, 100)}%";
-        CharacterGapValue.Text = Texts.F("{0} точек", (int)Math.Round(CharacterGapSlider.Value));
-        GroupGapValue.Text = Texts.F("{0} точек", (int)Math.Round(GroupGapSlider.Value));
-        StartPauseValue.Text = Texts.F("{0} точек", (int)Math.Round(StartPauseSlider.Value));
-        NoiseValue.Text = $"{Snap(NoiseSlider.Value, 5, 0, 100)}%";
-        QsbValue.Text = $"{Snap(QsbSlider.Value, 5, 0, 100)}%";
-        DriftValue.Text = Texts.F("±{0} Гц", Snap(DriftSlider.Value, 5, 0, NoiseProfile.MaxDriftHz));
-        SelectedSymbolsLabel.Text = Texts.F("Выбрано: {0}", _selectedSymbols.Count);
-        UpdateModeButtons();
-        var kochAlphabet = (AlphabetMode)Math.Clamp(AlphabetPicker.SelectedIndex, 0, 2);
-        KochLayout.IsVisible = ContentPicker.SelectedIndex == (int)ContentMode.Koch;
-        KochStepper.Maximum = KochMethod.MaxLevel(kochAlphabet);
-        var kochLevel = KochMethod.ClampLevel(kochAlphabet, (int)KochStepper.Value);
-        KochLabel.Text = Texts.F("Метод Коха: уровень {0} из {1}", kochLevel, KochMethod.MaxLevel(kochAlphabet));
-        KochSummaryLabel.Text = KochMethod.Describe(kochAlphabet, kochLevel);
-        foreach (var button in SymbolsFlex.Children.OfType<Button>())
-        {
-            var selected = button.CommandParameter is char symbol && _selectedSymbols.Contains(symbol);
-            button.BackgroundColor = selected
-                ? (Color)Application.Current!.Resources["Primary"]
-                : Colors.Transparent;
-            button.TextColor = selected
-                ? Color.FromArgb("#06231C")
-                : Application.Current!.RequestedTheme == AppTheme.Dark ? Colors.White : Colors.Black;
-        }
     }
 
     private async void ShareSettingsButton_OnClicked(object sender, EventArgs e)
@@ -445,8 +261,8 @@ public partial class SettingsPage : ContentPage
         try
         {
             // Настройки уходят одним профилем, вместе со своими напевами
-            SaveControlsToSettings();
-            var text = ProfileTransfer.Export(new[] { TrainingProfile.FromSettings(_settings.ActiveProfileName, _settings) }, LearningCatalog.CustomChants);
+            var settings = _settingsService.LoadSettings();
+            var text = ProfileTransfer.Export(new[] { TrainingProfile.FromSettings(settings.ActiveProfileName, settings) }, LearningCatalog.CustomChants);
             await Clipboard.Default.SetTextAsync(text);
             await Share.Default.RequestAsync(new ShareTextRequest { Title = Texts.T("Настройки Morse Trainer"), Text = text });
             SaveStatusLabel.Text = Texts.T("Настройки скопированы в буфер и отправлены");
@@ -464,12 +280,13 @@ public partial class SettingsPage : ContentPage
             var text = await Clipboard.Default.GetTextAsync();
             var package = ProfileTransfer.ImportPackage(text ?? string.Empty);
             // Профилей на телефоне нет: берём одноимённый профиль из текста, иначе первый, и ставим его настройки
-            var profile = package.Profiles.FirstOrDefault(item => string.Equals(item.Name, _settings.ActiveProfileName, StringComparison.OrdinalIgnoreCase))
+            var settings = _settingsService.LoadSettings();
+            var profile = package.Profiles.FirstOrDefault(item => string.Equals(item.Name, settings.ActiveProfileName, StringComparison.OrdinalIgnoreCase))
                           ?? package.Profiles[0];
-            var name = _settings.ActiveProfileName;
-            profile.ApplyTo(_settings);
-            _settings.ActiveProfileName = name;
-            _settingsService.SaveSettings(_settings);
+            var name = settings.ActiveProfileName;
+            profile.ApplyTo(settings);
+            settings.ActiveProfileName = name;
+            _settingsService.SaveSettings(settings);
             LoadAll();
             SaveStatusLabel.Text = Texts.T("Настройки приняты");
             if (package.Chants.Count > 0)
@@ -482,6 +299,41 @@ public partial class SettingsPage : ContentPage
         {
             await DisplayAlertAsync(Texts.T("Перенос настроек"),
                 Texts.F("{0}\nСкопируйте текст настроек (из «Поделиться» на другом устройстве) и нажмите кнопку снова.", exception.Message), Texts.T("Понятно"));
+        }
+    }
+
+    // ---------- обратная связь ----------
+
+    private void FeedbackEditor_OnTextChanged(object? sender, TextChangedEventArgs e)
+    {
+        FeedbackSendButton.IsEnabled = !string.IsNullOrWhiteSpace(e.NewTextValue);
+    }
+
+    /// <summary>Сообщение разработчику: уходит только по кнопке; при сбое текст остаётся в поле — можно отправить ещё раз.</summary>
+    private async void FeedbackSendButton_OnClicked(object sender, EventArgs e)
+    {
+        var text = FeedbackEditor.Text?.Trim() ?? string.Empty;
+        if (text.Length == 0)
+        {
+            return;
+        }
+
+        FeedbackSendButton.IsEnabled = false;
+        FeedbackStatusLabel.IsVisible = true;
+        FeedbackStatusLabel.ClearValue(Label.TextColorProperty);
+        FeedbackStatusLabel.Text = Texts.T("Отправляем…");
+        try
+        {
+            await FeedbackService.SendAsync(text, FeedbackContactEntry.Text ?? string.Empty, CurrentVersion.ToString(3));
+            FeedbackEditor.Text = string.Empty;
+            FeedbackStatusLabel.TextColor = (Color)Application.Current!.Resources["PrimaryDark"];
+            FeedbackStatusLabel.Text = Texts.T("Спасибо! Сообщение отправлено разработчику.");
+        }
+        catch (Exception)
+        {
+            FeedbackStatusLabel.TextColor = (Color)Application.Current!.Resources["Danger"];
+            FeedbackStatusLabel.Text = Texts.T("Не удалось отправить. Проверьте интернет и нажмите «Отправить» ещё раз — текст сохранён.");
+            FeedbackSendButton.IsEnabled = true;
         }
     }
 
@@ -532,24 +384,6 @@ public partial class SettingsPage : ContentPage
         }
     }
 
-    private void FarnsworthButton_OnClicked(object sender, EventArgs e)
-    {
-        var preset = new AppSettings { CharactersPerMinute = Snap(SpeedSlider.Value, 5, 20, 300) };
-        TrainingPresets.ApplyFarnsworth(preset);
-        _ready = false;
-        SpeedSlider.Value = preset.CharactersPerMinute;
-        CharacterGapSlider.Value = preset.CharacterGapUnits;
-        GroupGapSlider.Value = preset.GroupGapUnits;
-        _ready = true;
-        SaveControlsToSettings();
-        SaveStatusLabel.Text = Texts.T("Пресет Фарнсворта применён");
-    }
-
-    private static int Snap(double value, int step, int minimum, int maximum)
-    {
-        return Math.Clamp((int)Math.Round(value / step) * step, minimum, maximum);
-    }
-
     private static void ApplyTheme(int themeIndex)
     {
         if (Application.Current is null)
@@ -582,7 +416,7 @@ public partial class SettingsPage : ContentPage
 
     private async Task PlayEasterEggAsync()
     {
-        // Пасхалка не перебивает другой звук — например, единственное прослушивание экзамена
+        // Пасхалка не перебивает другой звук — например, прослушивание задания
         if (_audioPlayback.IsPlaying)
         {
             return;
