@@ -589,6 +589,56 @@ def pick_theme(key):
     return activity_creations() - before
 
 
+def tab_bar_contrast(name):
+    """Невыбранные вкладки читаются: в полосе подписей вкладок есть пиксели, заметно отличные от фона панели
+    (после смены темы на ходу MAUI красил их цветом прежней темы — белым по белому)."""
+    import struct
+    import zlib
+    data = (out_dir / f"android-{name}.png").read_bytes()
+    # Простейший разбор PNG (RGBA/RGB, 8 бит) без Pillow: снимки эмулятора — обычный PNG без чересстрочности
+    width, height, depth, color = struct.unpack(">IIBB", data[16:26])
+    chunks, pos = b"", 8
+    while pos < len(data):
+        length = struct.unpack(">I", data[pos:pos + 4])[0]
+        kind = data[pos + 4:pos + 8]
+        if kind == b"IDAT":
+            chunks += data[pos + 8:pos + 8 + length]
+        pos += 12 + length
+    raw = zlib.decompress(chunks)
+    channels = 4 if color == 6 else 3
+    stride = width * channels
+    rows, previous = [], bytearray(stride)
+    for y in range(height):
+        kind, line = raw[y * (stride + 1)], bytearray(raw[y * (stride + 1) + 1:(y + 1) * (stride + 1)])
+        for i in range(stride):
+            left = line[i - channels] if i >= channels else 0
+            up, corner = previous[i], previous[i - channels] if i >= channels else 0
+            if kind == 1:
+                line[i] = (line[i] + left) & 255
+            elif kind == 2:
+                line[i] = (line[i] + up) & 255
+            elif kind == 3:
+                line[i] = (line[i] + (left + up) // 2) & 255
+            elif kind == 4:
+                p = left + up - corner
+                pa, pb, pc = abs(p - left), abs(p - up), abs(p - corner)
+                line[i] = (line[i] + (left if pa <= pb and pa <= pc else up if pb <= pc else corner)) & 255
+        rows.append(line)
+        previous = line
+    # Подписи вкладок — полоса над системной полосой жестов (1080×2400: y 2268–2323); первая вкладка — левая пятая часть
+    y1, y2 = int(height * 0.945), int(height * 0.968)
+    background = tuple(rows[y1][0:3])
+    best = 0
+    for y in range(y1, y2):
+        for x in range(0, width // 5 * channels, channels):
+            pixel = rows[y][x:x + 3]
+            best = max(best, sum(abs(a - b) for a, b in zip(pixel, background)))
+    # Норма — около 430–460 (серый по белому, светло-серый по синему); сбой — 0 (белое по белому) или ~150 (чёрное по синему)
+    if best < 250:
+        raise RuntimeError(f"Невыбранная вкладка не видна на снимке {name}: разница с фоном {best}")
+    return best
+
+
 def theme_dark():
     """Тёмная тема на ходу: окно пересоздаётся (иначе Android не перекрашивает уже нарисованное) и остаётся на
     «Настройках»; снимки theme-dark-* всех вкладок и раскрытых «Параметров» — сверить глазами, что всё тёмное и читается."""
@@ -597,6 +647,7 @@ def theme_dark():
     node = tab_node(root, parents, ("Settings", "Настройки"))
     restored = node is not None and is_selected(node, parents)
     screenshot("theme-dark-settings")
+    contrast = tab_bar_contrast("theme-dark-settings")
     for key, russian, english in TABS[:4]:
         open_tab(f"theme-dark-{key}", (russian, english))()
         if key == "training":
@@ -607,7 +658,7 @@ def theme_dark():
             time.sleep(1)
     if not restored:
         raise RuntimeError("После смены темы открылась не «Настройки»")
-    return f"окно пересоздано: {created}, вкладка «Настройки» осталась"
+    return f"окно пересоздано: {created}, вкладка «Настройки» осталась, невыбранные вкладки видны ({contrast})"
 
 
 def theme_dark_cold():
@@ -626,11 +677,12 @@ def theme_light_and_system():
     open_tab("theme-settings", TABS[4][1:])()
     created = pick_theme("light")
     screenshot("theme-light-settings")
+    contrast = tab_bar_contrast("theme-light-settings")
     for key, russian, english in TABS[:2]:
         open_tab(f"theme-light-{key}", (russian, english))()
     open_tab("theme-settings-system", TABS[4][1:])()
     pick_theme("system")
-    return f"светлая: окно пересоздано {created}; тема снова системная"
+    return f"светлая: окно пересоздано {created}, невыбранные вкладки видны ({contrast}); тема снова системная"
 
 
 def course_collapse():
