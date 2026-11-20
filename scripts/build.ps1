@@ -1,5 +1,5 @@
 param(
-    [string]$Version = "2.11.1",
+    [string]$Version = "2.12.0",
     [switch]$SkipInstaller,
     [switch]$SkipUiSmoke
 )
