@@ -705,7 +705,7 @@ public static class Texts
         ["Обратная связь"] = "Feedback",
         ["Что улучшить, что изменить, что не нравится — напишите, сообщение придёт разработчику."] = "What to improve, what to change, what you don't like — write it here and the message goes to the developer.",
         ["Ваше сообщение"] = "Your message",
-        ["Как с вами связаться — необязательно (почта или Telegram)"] = "How to reach you — optional (email or Telegram)",
+        ["Почта или Telegram для ответа — по желанию"] = "Email or Telegram for a reply — optional",
         ["Отправить"] = "Send",
         ["Отправляем…"] = "Sending…",
         ["Спасибо! Сообщение отправлено разработчику."] = "Thank you! The message has been sent to the developer.",

@@ -67,7 +67,7 @@
                     <Editor x:Name="FeedbackEditor" HeightRequest="120" AutoSize="TextChanges" MaxLength="3000"
                             Placeholder="{loc:Loc 'Ваше сообщение'}" TextChanged="FeedbackEditor_OnTextChanged" />
                     <Entry x:Name="FeedbackContactEntry" MaxLength="200"
-                           Placeholder="{loc:Loc 'Как с вами связаться — необязательно (почта или Telegram)'}" />
+                           Placeholder="{loc:Loc 'Почта или Telegram для ответа — по желанию'}" />
                     <Button x:Name="FeedbackSendButton" Text="{loc:Loc 'Отправить'}" IsEnabled="False" Clicked="FeedbackSendButton_OnClicked" />
                     <Label x:Name="FeedbackStatusLabel" Text="" IsVisible="False" FontSize="13" LineBreakMode="WordWrap" />
                 </VerticalStackLayout>
