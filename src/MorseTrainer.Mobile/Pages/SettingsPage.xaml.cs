@@ -386,17 +386,29 @@ public partial class SettingsPage : ContentPage
 
     private static void ApplyTheme(int themeIndex)
     {
-        if (Application.Current is null)
-        {
-            return;
-        }
-
-        Application.Current.UserAppTheme = themeIndex switch
+        var theme = themeIndex switch
         {
             1 => AppTheme.Dark,
             2 => AppTheme.Light,
             _ => AppTheme.Unspecified
         };
+        if (Application.Current is null || Application.Current.UserAppTheme == theme)
+        {
+            return;
+        }
+
+        try
+        {
+            Application.Current.UserAppTheme = theme;
+        }
+        catch (Exception exception)
+        {
+            // Тема уже записана и окно пересоздаётся в новой теме (MainActivity); сбой в рассылке «тема сменилась»
+            // старым элементам не должен ронять приложение
+#if ANDROID
+            global::Android.Util.Log.Warn("MorseTrainer", "Смена темы: " + exception);
+#endif
+        }
     }
 
     // Планшет или альбомная ориентация: центрируем контент полосой до 720 px

@@ -85,5 +85,9 @@ public static class MauiProgram
         }
 
         CrashReport.Write(MobilePaths.CrashLogFile, source, exception, version, platform);
+#if ANDROID
+        // То же целиком (с внутренними исключениями) — в logcat: в отчёте Android видна только обёртка
+        global::Android.Util.Log.Error("MorseTrainer", $"{source}: {exception}");
+#endif
     }
 }
