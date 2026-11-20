@@ -265,6 +265,26 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: gh release upload "${{ github.ref_name }}" "dist/MorseTrainer-Android-RuStore.apk" --clobber
 
+      # Тот же APK сам уходит в RuStore: черновик с «Что нового» из CHANGELOG.md → APK → отправка на модерацию,
+      # после одобрения версия выходит сразу. Ключ API RuStore — секреты RUSTORE_KEY_ID и RUSTORE_PRIVATE_KEY;
+      # без них шаг ничего не делает. Сбой здесь не роняет выпуск: версию тогда можно загрузить в консоли вручную.
+      - name: Publish to RuStore
+        if: ${{ steps.rustore.outcome == 'success' }}
+        continue-on-error: true
+        shell: powershell
+        env:
+          RUSTORE_KEY_ID: ${{ secrets.RUSTORE_KEY_ID }}
+          RUSTORE_PRIVATE_KEY: ${{ secrets.RUSTORE_PRIVATE_KEY }}
+          # скрипт печатает по-русски, а консоль раннера Windows не в UTF-8
+          PYTHONUTF8: "1"
+        run: |
+          if (-not $env:RUSTORE_KEY_ID -or -not $env:RUSTORE_PRIVATE_KEY) { "RuStore: no API key secrets, skipping"; exit 0 }
+          python -m pip install --quiet --disable-pip-version-check cryptography
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $version = "${{ github.ref_name }}".TrimStart("v")
+          python .\scripts\rustore_publish.py vylozhit .\dist\MorseTrainer-Android-RuStore.apk $version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
   # Неподписанный IPA для установки на iPhone через Sideloadly/AltStore
   ios:
     needs: release
