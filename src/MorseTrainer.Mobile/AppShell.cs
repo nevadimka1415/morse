@@ -21,7 +21,7 @@ public sealed class AppShell : Shell
         tabs.Items.Add(CreateTab(Texts.T("На слух"), "quiz", quizPage));
         tabs.Items.Add(CreateTab(Texts.T("Передача"), "keyer", keyerPage));
         tabs.Items.Add(CreateTab(Texts.T("Настройки"), "settings", settingsPage));
-        // Окно пересоздано из-за смены темы — открыть ту вкладку, где были (обычно «Настройки»)
+        // Окно пересоздано (смена темы или шрифта) — открыть ту вкладку, где были (после смены темы — «Настройки»)
         if (App.TakeTabAfterRecreate() is { } route && tabs.Items.FirstOrDefault(tab => tab.CurrentItem?.Route == route) is { } current)
         {
             tabs.CurrentItem = current;

@@ -403,8 +403,8 @@ public partial class SettingsPage : ContentPage
         }
         catch (Exception exception)
         {
-            // Тема уже записана и окно пересоздаётся в новой теме (MainActivity); сбой в рассылке «тема сменилась»
-            // старым элементам не должен ронять приложение
+            // Тема уже записана, и Android пересоздаёт окно в новой теме (см. MainActivity); сбой в рассылке
+            // «тема сменилась» элементам уходящего окна не должен ронять приложение
 #if ANDROID
             global::Android.Util.Log.Warn("MorseTrainer", "Смена темы: " + exception);
 #endif

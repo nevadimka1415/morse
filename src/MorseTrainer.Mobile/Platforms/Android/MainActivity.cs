@@ -1,41 +1,28 @@
 using Android.App;
 using Android.Content.PM;
-using Android.Content.Res;
-using Android.OS;
 
 namespace MorseTrainer.Mobile;
 
+// UiMode (тёмная/светлая тема) намеренно НЕ в ConfigurationChanges: при смене темы — в «Настройках» или в системе
+// при «Системной» — Android сам пересоздаёт окно, и всё рисуется заново в новой теме. Если менять тему в том же окне,
+// уже нарисованное остаётся в старой теме, а MAUI перекрашивает поля ввода по ресурсам, которые Android только что
+// заменил («AssetManager has been destroyed») — приложение падало.
 [Activity(
     Theme = "@style/Maui.SplashTheme",
     MainLauncher = true,
     LaunchMode = LaunchMode.SingleTop,
-    ConfigurationChanges = ConfigChanges.ScreenSize | ConfigChanges.Orientation | ConfigChanges.UiMode |
+    ConfigurationChanges = ConfigChanges.ScreenSize | ConfigChanges.Orientation |
                            ConfigChanges.ScreenLayout | ConfigChanges.SmallestScreenSize | ConfigChanges.Density)]
 public class MainActivity : MauiAppCompatActivity
 {
-    // Тёмная или светлая тема, в которой нарисовано окно; null — окно ещё создаётся
-    private UiMode? _night;
-
-    protected override void OnCreate(Bundle? savedInstanceState)
+    protected override void OnStop()
     {
-        base.OnCreate(savedInstanceState);
-        _night = Resources!.Configuration!.UiMode & UiMode.NightMask;
-    }
-
-    public override void OnConfigurationChanged(Configuration newConfig)
-    {
-        base.OnConfigurationChanged(newConfig);
-        var night = newConfig.UiMode & UiMode.NightMask;
-        if (_night is null || night == _night)
+        // Окно пересоздаётся (тема, размер шрифта) — в новом окне открыть ту же вкладку, а не первую
+        if (IsChangingConfigurations)
         {
-            return;
+            App.RememberTabForRecreate();
         }
 
-        // Тему сменили в «Настройках» (или в системе при «Системной»): уже нарисованные элементы Android сам не
-        // перекрашивает — фон, текст и вкладки оставались бы в старой теме. Окно пересоздаётся, как при смене
-        // шрифта, и открывается та же вкладка
-        _night = night;
-        App.RememberTabForRecreate();
-        Recreate();
+        base.OnStop();
     }
 }

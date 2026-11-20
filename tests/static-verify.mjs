@@ -234,8 +234,11 @@ assert(read('src/MorseTrainer.Mobile/Pages/SettingsPage.xaml').includes('x:Name=
 assert(read('src/MorseTrainer.Mobile/Pages/LearningPage.xaml').includes('x:Name="CourseBody"') && read('src/MorseTrainer.Mobile/Pages/LearningPage.xaml.cs').includes('CourseCollapsedKey')
   && !read('src/MorseTrainer.Mobile/Pages/LearningPage.xaml').includes('ваш голос'),
   'Phone learning: the course card collapses (remembered), no own-voice mark on the cards.');
-// Смена темы на ходу: Android не перекрашивает уже нарисованное — окно пересоздаётся; тема из настроек ставится до первого окна
-assert(read('src/MorseTrainer.Mobile/Platforms/Android/MainActivity.cs').includes('Recreate();') && read('src/MorseTrainer.Mobile/Platforms/Android/MainApplication.cs').includes('AppCompatDelegate.DefaultNightMode')
+// Смена темы: окно пересоздаёт сам Android (UiMode не в ConfigurationChanges) — в том же окне MAUI падал на полях ввода
+// («AssetManager has been destroyed»); тема из настроек ставится до первого окна, после пересоздания — та же вкладка
+assert(!/ConfigurationChanges = [^\]]*UiMode/.test(read('src/MorseTrainer.Mobile/Platforms/Android/MainActivity.cs'))
+  && read('src/MorseTrainer.Mobile/Platforms/Android/MainActivity.cs').includes('App.RememberTabForRecreate()')
+  && read('src/MorseTrainer.Mobile/Platforms/Android/MainApplication.cs').includes('AppCompatDelegate.DefaultNightMode')
   && read('src/MorseTrainer.Mobile/AppShell.cs').includes('TakeTabAfterRecreate'),
   'Phone: a theme change recreates the window on the same tab, the saved theme applies before the first window.');
 // Параметры тренировки и общие настройки сохраняются поверх свежих настроек, а не своей старой копии — иначе затирают друг друга
